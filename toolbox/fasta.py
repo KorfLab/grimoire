@@ -22,6 +22,9 @@ class Fasta:
 			if line == '': break
 			if line[0:1] == '>':
 				m = re.search('>\s*(\S+)', line)
+				if m[1] in self.offset:
+					sys.stderr.write('error: duplicate id: ' + m[1] + '\n')
+					sys.exit(1)
 				self.ids.append(m[1])
 				self.offset[m[1]] = self.file.tell() - len(line)
 	
