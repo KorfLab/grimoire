@@ -6,7 +6,7 @@ import re
 import json
 import operator
 
-import kmer
+import toolbox.kmer as kmer
 
 def emission_model(context=1, alphabet='nt') :
 	if (context > 0) :
@@ -37,7 +37,7 @@ def train_emissions(seqs, context=0) :
 			total = 0
 			freq = {}
 			for nt in count: total += count[nt]
-			for nt in count: freq[nt] = count[nt] / total	
+			for nt in count: freq[nt] = round(count[nt] / total	, 4)
 			freqs.append(freq)
 	else :
 		for i in range(context):
@@ -59,7 +59,7 @@ def train_emissions(seqs, context=0) :
 				for nt in counts[i][ctx]: total += counts[i][ctx][nt]
 				for nt in counts[i][ctx]:
 					if total != 0:
-						freqs[i][ctx][nt] = counts[i][ctx][nt] / total
+						freqs[i][ctx][nt] = round(counts[i][ctx][nt]/total, 4)
 					else:
 						freqs[i][ctx][nt] = 0
 	return freqs
@@ -67,7 +67,7 @@ def train_emissions(seqs, context=0) :
 def train_emission(seqs, context=0):
 	count = emission_model(context=context)
 	freq = {}
-		
+	
 	if context == 0:
 		total = 0
 		for seq in seqs:
@@ -76,7 +76,7 @@ def train_emission(seqs, context=0):
 				if (nt in count):
 					count[nt] += 1
 					total += 1
-		for nt in count: freq[nt] = count[nt] / total
+		for nt in count: freq[nt] = round(count[nt] / total, 4)
 	else:
 		for seq in seqs:
 			for i in range(len(seq) -context):
@@ -89,7 +89,7 @@ def train_emission(seqs, context=0):
 			total = 0
 			freq[ctx] = {}
 			for nt in count[ctx]: total += count[ctx][nt]
-			for nt in count[ctx]: freq[ctx][nt] = count[ctx][nt] / total
+			for nt in count[ctx]: freq[ctx][nt] = round(count[ctx][nt]/total, 4)
 				
 	return freq
 

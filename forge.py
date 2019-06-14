@@ -6,22 +6,34 @@ import json
 
 import toolbox
 import hmm
+from hmm import HMM
 
 ## Command line stuff ##
 
-parser = argparse.ArgumentParser(description='Simple exon trainer (for now)')
+parser = argparse.ArgumentParser(description='HMM trainer for genes')
 parser.add_argument('--fasta', required=True, type=str,
 	metavar='<path>', help='path to fasta file (%(type)s)')
 parser.add_argument('--gff', required=True, type=str,
 	metavar='<path>', help='path to GFF file (%(type)s)')
+parser.add_argument('--out', required=True, type=str,
+	metavar='<path>', help='path to output file (%(type)s)')
 parser.add_argument('--model', required=True, type=str,
 	metavar='<model>', help='exon|cds')
+parser.add_argument('--acc', required=False, type=int, default=0,
+	metavar='<int>', help='acceptor context [%(default)d]')
+parser.add_argument('--don', required=False, type=int, default=0,
+	metavar='<int>', help='donor context [%(default)d]')
+parser.add_argument('--exon', required=False, type=int, default=0,
+	metavar='<int>', help='exon context [%(default)d]')
+parser.add_argument('--gen', required=False, type=int, default=0,
+	metavar='<int>', help='genomic context [%(default)d]')
+parser.add_argument('--int', required=False, type=int, default=0,
+	metavar='<int>', help='intron context [%(default)d]')
+parser.add_argument('--test', action='store_true')
 args = parser.parse_args()
 
 ff = toolbox.fasta.Fasta('data/TAIR10_1.fasta')
 gf = toolbox.gff.Gff('data/TAIR10_1.gff3')
-
-
 
 if args.model == 'exon':
 	acc_seqs = []
@@ -46,17 +58,41 @@ if args.model == 'exon':
 			genes.append({'beg':f.beg, 'end':f.end})
 		genes = sorted(genes, key=lambda i: i['beg'])
 		for i in range(len(genes) -1):
+			if args.test and i > 100: break # too much intergenic
 			beg = genes[i]['end'] + 1
 			end = genes[i+1]['beg'] -1
 			int_seqs.append(seq[beg:end])
 			int_seqs.append(toolbox.dna.revcomp(seq[beg:end]))
 	
-	model = hmm.create_exon_hmm(
-		exon_seqs = exon_seqs, exon_context=3,
-		acc_seqs = acc_seqs, acc_context=1,
-		don_seqs = don_seqs, don_context=1,
-		int_seqs = int_seqs, int_context=3)
+	acc_emits = hmm.state.train_emissions(acc_seqs, context=args.acc)
+	don_emits = hmm.state.train_emissions(don_seqs, context=args.don)
+	exon_emits = hmm.state.train_emission(exon_seqs, context=args.exon)
+	int_emits = hmm.state.train_emission(int_seqs, context=args.gen)
 	
-	model.dump()
+	acc_states = hmm.state.state_factory('ACC', acc_emits)
+	don_states = hmm.state.state_factory('DON', don_emits)
+	exon_state = hmm.state.State(name='EXON', context=args.exon, emits=exon_emits)
+	int_state = hmm.state.State(name='GEN', context=args.gen, emits=int_emits)
+
+	hmm.connect_all(acc_states)
+	hmm.connect2(acc_states[-1], exon_state, 1)
+	hmm.connect2(exon_state, exon_state, 0.99)
+	hmm.connect2(exon_state, don_states[0], 0.01)
+	hmm.connect_all(don_states)
+	hmm.connect2(don_states[-1], int_state, 1)
+	hmm.connect2(int_state, int_state, 0.99)
+	hmm.connect2(int_state, acc_states[0], 0.01)
 	
+	model = HMM(name='simple_exon',
+		states=[int_state] + acc_states + [exon_state] + don_states)
+	model.write('test1.hmm')
+	
+elif args.model == 'cds':
+	pass
+
+elif args.model == 'prok':
+	pass
+
+elif args.model == 'euk':
+	pass
 

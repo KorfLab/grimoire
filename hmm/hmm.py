@@ -1,4 +1,8 @@
-import hmm.state
+
+import json
+import sys
+
+import hmm.state as state
 
 def connect_all (states) :
 	for i in range(len(states)-1) :
@@ -7,15 +11,39 @@ def connect_all (states) :
 def connect2 (s1, s2, p) :
 	s1.next[s2.name] = p
 
-class Hmm:
+class HMMdecoder(json.JSONEncoder):
+	def default(self, o):
+		return o.__dict__
+
+class HMM:
 	"""something"""
 	
-	def __init__(self, name, states):
+	def __init__(self, name=None, states=None):
 		self.name = name
-		self.state = states
+		self.states = states
 	
-	def dump(self):
-		print('hello')
+	@classmethod
+	def read(cls, filename):
+		fp = open(filename, 'r')
+		d = json.loads(fp.read())
+		hmm = HMM()
+		hmm.name = d['name']
+		hmm.states = []
+		for s in d['states']:
+			st = state.State()
+			st.name = s['name']
+			st.init = s['init']
+			st.term = s['term']
+			st.ctxt = s['ctxt']
+			st.emit = s['emit']
+			st.next = s['next']
+			hmm.states.append(st)
+		return hmm
+	
+	def write(self, filename):
+		fp = open(filename, 'w+')
+		fp.write(json.dumps(self.__dict__, indent=4, cls=HMMdecoder))
+
 
 def create_exon_hmm(
 		exon_seqs=None, exon_context=None,
@@ -42,5 +70,8 @@ def create_exon_hmm(
 	connect2(int_state, int_state, 0.99)
 	connect2(int_state, acc_states[0], 0.01)
 	
-	return Hmm('simple_exon', [[int_state] + acc_states + [exon_state] + don_states])
-	
+	return HMM(name='simple_exon', states=[int_state] + acc_states + [exon_state] + don_states)
+
+def create_orf_hmm():
+	pass
+
