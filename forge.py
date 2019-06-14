@@ -30,12 +30,12 @@ parser.add_argument('--gen', required=False, type=int, default=0,
 parser.add_argument('--int', required=False, type=int, default=0,
 	metavar='<int>', help='intron context [%(default)d]')
 parser.add_argument('--test', action='store_true')
-args = parser.parse_args()
+arg = parser.parse_args()
 
 ff = toolbox.fasta.Fasta('data/TAIR10_1.fasta')
 gf = toolbox.gff.Gff('data/TAIR10_1.gff3')
 
-if args.model == 'exon':
+if arg.model == 'exon':
 	acc_seqs = []
 	don_seqs = []
 	exon_seqs = []
@@ -58,21 +58,21 @@ if args.model == 'exon':
 			genes.append({'beg':f.beg, 'end':f.end})
 		genes = sorted(genes, key=lambda i: i['beg'])
 		for i in range(len(genes) -1):
-			if args.test and i > 100: break # too much intergenic
+			if arg.test and i > 100: break # too much intergenic
 			beg = genes[i]['end'] + 1
 			end = genes[i+1]['beg'] -1
 			int_seqs.append(seq[beg:end])
 			int_seqs.append(toolbox.dna.revcomp(seq[beg:end]))
 	
-	acc_emits = hmm.state.train_emissions(acc_seqs, context=args.acc)
-	don_emits = hmm.state.train_emissions(don_seqs, context=args.don)
-	exon_emits = hmm.state.train_emission(exon_seqs, context=args.exon)
-	int_emits = hmm.state.train_emission(int_seqs, context=args.gen)
+	acc_emits = hmm.state.train_emissions(acc_seqs, context=arg.acc)
+	don_emits = hmm.state.train_emissions(don_seqs, context=arg.don)
+	exon_emits = hmm.state.train_emission(exon_seqs, context=arg.exon)
+	int_emits = hmm.state.train_emission(int_seqs, context=arg.gen)
 	
 	acc_states = hmm.state.state_factory('ACC', acc_emits)
 	don_states = hmm.state.state_factory('DON', don_emits)
-	exon_state = hmm.state.State(name='EXON', context=args.exon, emits=exon_emits)
-	int_state = hmm.state.State(name='GEN', context=args.gen, emits=int_emits)
+	exon_state = hmm.state.State(name='EXON', context=arg.exon, emits=exon_emits)
+	int_state = hmm.state.State(name='GEN', context=arg.gen, emits=int_emits)
 
 	hmm.connect_all(acc_states)
 	hmm.connect2(acc_states[-1], exon_state, 1)
@@ -85,14 +85,14 @@ if args.model == 'exon':
 	
 	model = HMM(name='simple_exon',
 		states=[int_state] + acc_states + [exon_state] + don_states)
-	model.write('test1.hmm')
+	model.write(arg.out)
 	
-elif args.model == 'cds':
+elif arg.model == 'cds':
 	pass
 
-elif args.model == 'prok':
+elif arg.model == 'prok':
 	pass
 
-elif args.model == 'euk':
+elif arg.model == 'euk':
 	pass
 
