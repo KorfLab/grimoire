@@ -21,6 +21,8 @@ args = parser.parse_args()
 ff = toolbox.fasta.Fasta('data/TAIR10_1.fasta')
 gf = toolbox.gff.Gff('data/TAIR10_1.gff3')
 
+
+
 if args.model == 'exon':
 	acc_seqs = []
 	don_seqs = []
@@ -38,6 +40,7 @@ if args.model == 'exon':
 					acc_seqs.append(seq[f.beg-11:f.beg-1])
 					don_seqs.append(seq[f.end:f.end+9])
 					exon_seqs.append(seq[f.beg:f.end-1])
+		# intergenic
 		genes = []
 		for f in gf.get(type='gene', chrom=c):
 			genes.append({'beg':f.beg, 'end':f.end})
@@ -48,11 +51,12 @@ if args.model == 'exon':
 			int_seqs.append(seq[beg:end])
 			int_seqs.append(toolbox.dna.revcomp(seq[beg:end]))
 	
-	acc_emits = hmm.state.train_emissions(acc_seqs, context=0)
-	don_emits = hmm.state.train_emissions(don_seqs, context=0)
-	exon_emits = hmm.state.train_emission(exon_seqs, context=0)
-	#int_emits = hmm.state.train_emission(int_seqs, context=0)
+	model = hmm.create_exon_hmm(
+		exon_seqs = exon_seqs, exon_context=3,
+		acc_seqs = acc_seqs, acc_context=1,
+		don_seqs = don_seqs, don_context=1,
+		int_seqs = int_seqs, int_context=3)
 	
-	acc_models = hmm.state.state_factory('ACC', acc_emits)
-	#print(json.dumps(acc_models[0].__dict__, indent=4))
+	model.dump()
+	
 

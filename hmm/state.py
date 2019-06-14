@@ -94,13 +94,13 @@ def train_emission(seqs, context=0):
 	return freq
 
 class State:
-	def __init__(self, name=None, context=None, emits=None, init=0, term=0, next={}):
+	def __init__(self, name=None, context=None, emits=None, init=0, term=0, next=None):
 		self.name = name
 		self.ctxt = context
 		self.init = init
 		self.term = term
 		self.emit = emits
-		self.next = next
+		self.next = {}
 		
 	@classmethod
 	def from_json(cls, json_string):
@@ -126,6 +126,5 @@ def state_factory(stub, emissions):
 			emits=emissions[i],
 			context=context)
 		state_list.append(state)
-		# connect them?
 	return(state_list)
 
