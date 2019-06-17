@@ -4,8 +4,8 @@
         {
             "name": "GEN",
             "ctxt": 0,
-            "init": 0,
-            "term": 0,
+            "init": 1,
+            "term": 1,
             "emit": {
                 "A": 0.3386,
                 "C": 0.1614,

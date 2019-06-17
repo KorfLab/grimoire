@@ -73,6 +73,8 @@ if arg.model == 'exon':
 	don_states = hmm.state.state_factory('DON', don_emits)
 	exon_state = hmm.state.State(name='EXON', context=arg.exon, emits=exon_emits)
 	int_state = hmm.state.State(name='GEN', context=arg.gen, emits=int_emits)
+	int_state.init = 1
+	int_state.term = 1
 
 	hmm.connect_all(acc_states)
 	hmm.connect2(acc_states[-1], exon_state, 1)
