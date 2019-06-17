@@ -4,6 +4,7 @@
 
 import sys
 import json
+import toolbox.dna
 
 ### FASTA ###
 
@@ -22,3 +23,8 @@ print(gf.chroms)
 for f in gf.get(chrom='Chr1', beg=7500, end=8500):
 	print(f.beg, f.end, f.type, f.strand)
 
+## DNA ##
+
+seq = 'ACCCCGAGGAGAGGACCCATAGGC'
+rev = toolbox.dna.revcomp(seq)
+print(seq, rev)
