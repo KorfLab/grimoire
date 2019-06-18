@@ -49,8 +49,8 @@ if arg.model == 'exon':
 				acc = seq[f.beg-3:f.beg-1]
 				don = seq[f.end:f.end+2]
 				if acc == 'AG' and don == 'GT':
-					acc_seqs.append(seq[f.beg-11:f.beg-1])
-					don_seqs.append(seq[f.end:f.end+9])
+					acc_seqs.append(seq[f.beg-6:f.beg-1])
+					don_seqs.append(seq[f.end:f.end+5])
 					exon_seqs.append(seq[f.beg:f.end-1])
 		# intergenic
 		genes = []
