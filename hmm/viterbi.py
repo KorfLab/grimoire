@@ -6,6 +6,10 @@ import toolbox.gff
 
 
 def inspector(model, matrix, beg, end):
+	print('{:<6s}'.format(''), end='')
+	for col in range(beg, end):
+		print('{:<10d}'.format(col), end='')
+	print()
 	for state in model.states:
 		print('{:<6s}'.format(state.name), end='')
 		for i in range(beg, end):
@@ -38,7 +42,7 @@ def decode(model=None, seq=None, inspect=False):
 			max_score = 0
 			max_state = None
 			for prev in model.states:
-				if this.name in prev.next:
+				if this.name in tm[this.name]:
 					tp = tm[this.name][prev.name]
 					pp = viterbi[pos - 1][prev.name]['score']
 					ep = None
@@ -66,13 +70,14 @@ def decode(model=None, seq=None, inspect=False):
 		if viterbi[-1][state.name]['score'] > max_score:
 			max_score = viterbi[-1][state.name]['score']
 			max_state = state.name
+	# for verbose output
 	if inspect:
 		inspector(model, viterbi, 0, len(seq) + 1)	
 	# traceback
 	pos = len(seq)
 	path = []
 	prev = viterbi[pos][max_state]['trace']
-	# viterbi position 0 is the initial column. do not append to path
+
 	while pos > 0:
 		path.append(prev)
 		prev = viterbi[pos][max_state]['trace']

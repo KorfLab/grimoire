@@ -38,4 +38,5 @@ for id in ff.ids:
 	seq = ff.get(id).seq
 	print(seq)
 	path, score = viterbi.decode(model=hmm, seq=seq, inspect=False)
-	print(path, score)
+	print(path)
+	print(score)
