@@ -8,7 +8,7 @@ import toolbox.dna
 
 ### FASTA ###
 
-from toolbox.fasta import Fasta
+from toolbox.fasta import FastaFile
 # ff = Fasta('data/TAIR10_1.fasta')
 # for id in ff.ids:
 # 	entry = ff.get(id)
@@ -33,7 +33,7 @@ from toolbox.fasta import Fasta
 from hmm import HMM
 import viterbi
 hmm = HMM.read('toy.hmm')
-ff = Fasta('toy.fasta')
+ff = FastaFile('toy.fasta')
 for id in ff.ids:
 	seq = ff.get(id).seq
 	print(seq)

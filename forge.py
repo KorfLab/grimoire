@@ -32,7 +32,7 @@ parser.add_argument('--int', required=False, type=int, default=0,
 parser.add_argument('--test', action='store_true')
 arg = parser.parse_args()
 
-ff = toolbox.fasta.Fasta('data/TAIR10_1.fasta')
+ff = toolbox.fasta.FastaFile('data/TAIR10_1.fasta')
 gf = toolbox.gff.Gff('data/TAIR10_1.gff3')
 
 if arg.model == 'exon':

@@ -11,7 +11,7 @@ class Entry:
 		self.desc = desc
 		self.seq = seq
 
-class Fasta:
+class FastaFile:
 	
 	def __init__(self, filename):
 		self.offset = {} # indexes identifiers to file offsets
@@ -42,4 +42,46 @@ class Fasta:
 			line = line.replace(' ', '')
 			seq.append(line.strip())
 		return Entry(id, desc, "".join(seq))
+
+class FastaStream:
+	def __init__(self, filename=None, filepointer=None):
+		self.fp = None
+		if   filename    != None: self.fp = open(filename, 'r')
+		elif filepointer != None: self.fp = filepointer
+		else: sys.exit(1)
+		self.lastline = ''
+		self.done = False
+
+	def __iter__(self):
+		return self
+
+	def __next__(self):
+		return self.next()
+
+	def next(self):
+		if self.done: raise StopIteration()
+		header = None
+		if self.lastline[0:1] == '>': header = self.lastline
+		else:                         header = self.fp.readline()
+		
+		m = re.search('>\s*(\S+)\s*(.*)', header)
+		id = m[1]
+		desc = m[2]
+		seq = []
+		
+		while (True):
+			line = self.fp.readline()
+			if line[0:1] == '>':
+				self.lastline = line
+				break
+			if line == '':
+				self.done = True
+				break
+
+			line = line.replace(' ', '')
+			seq.append(line.strip())
+
+		return Entry(id, desc, "".join(seq))
+
+
 
