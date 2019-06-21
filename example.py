@@ -37,6 +37,11 @@ ff = FastaFile('toy.fasta')
 for id in ff.ids:
 	seq = ff.get(id).seq
 	print(seq)
-	path, score = viterbi.decode(model=hmm, seq=seq, inspect=False)
-	print(path)
-	print(score)
+# 	path, score = viterbi.decode(model=hmm, seq=seq)
+# 	print(path)
+# 	print(score)
+	paths, scores = viterbi.stochastic(model=hmm, seq=seq, n=10)
+	for i in range(len(paths)):
+		print(paths[i])
+		print(scores[i])
+	break
