@@ -6,6 +6,7 @@ import json
 
 import toolbox
 import hmm
+import genome
 from hmm import HMM
 
 ## Command line stuff ##
@@ -19,15 +20,19 @@ parser.add_argument('--out', required=True, type=str,
 	metavar='<path>', help='path to output file (%(type)s)')
 parser.add_argument('--model', required=True, type=str,
 	metavar='<model>', help='exon|cds')
-parser.add_argument('--acc', required=False, type=int, default=0,
+parser.add_argument('--acc_len', required=False, type=int, default=5,
+	metavar='<int>', help='acceptor length [%(default)d]')
+parser.add_argument('--acc_ctx', required=False, type=int, default=0,
 	metavar='<int>', help='acceptor context [%(default)d]')
-parser.add_argument('--don', required=False, type=int, default=0,
+parser.add_argument('--don_len', required=False, type=int, default=5,
+	metavar='<int>', help='donor length [%(default)d]')
+parser.add_argument('--don_ctx', required=False, type=int, default=0,
 	metavar='<int>', help='donor context [%(default)d]')
-parser.add_argument('--exon', required=False, type=int, default=0,
+parser.add_argument('--exon_ctx', required=False, type=int, default=0,
 	metavar='<int>', help='exon context [%(default)d]')
-parser.add_argument('--gen', required=False, type=int, default=0,
+parser.add_argument('--gen_ctx', required=False, type=int, default=0,
 	metavar='<int>', help='genomic context [%(default)d]')
-parser.add_argument('--int', required=False, type=int, default=0,
+parser.add_argument('--int_ctx', required=False, type=int, default=0,
 	metavar='<int>', help='intron context [%(default)d]')
 parser.add_argument('--test', action='store_true')
 arg = parser.parse_args()
@@ -89,8 +94,46 @@ if arg.model == 'exon':
 		states=[int_state] + acc_states + [exon_state] + don_states)
 	model.write(arg.out)
 	
-elif arg.model == 'cds':
-	pass
+elif arg.model == 'internal_exon':
+	# skippng
+	#	genes with issues
+	#	genes with multiple transcripts
+	#	genes with fewer than 3 exons
+	gen = genome.Genome(gff=arg.gff, fasta=arg.fasta)
+	acc_seqs = []
+	don_seqs = []
+	exon_seqs = []
+	for chr in gen.chromosomes:
+		for gene in chr.genes:
+			tx = gene.transcripts[0]
+			if gene.issues: continue
+			if len(gene.transcripts) > 1: continue
+			if len(tx.exons) < 3: continue
+			for i in range(1, len(tx.exons) -1):
+				exon_seqs.append(tx.exons[i].seq())
+			for intron in tx.introns:
+				iseq = intron.seq()
+				acc_seqs.append(iseq[-arg.acc_len:len(iseq)])
+				don_seqs.append(iseq[0:arg.don_len])
+	
+	acc_emits = hmm.state.train_emissions(acc_seqs, context=arg.acc_ctx)
+	don_emits = hmm.state.train_emissions(don_seqs, context=arg.don_ctx)
+	exon_emits = hmm.state.train_emission(exon_seqs, context=arg.exon_ctx)
+	
+	acc_states = hmm.state.state_factory('ACC', acc_emits)
+	don_states = hmm.state.state_factory('DON', don_emits)
+	exon_state = hmm.state.State(name='EXON', context=arg.exon_ctx, emits=exon_emits)
+	acc_states[0].init = 1
+	don_states[arg.don_len-1].term = 1
+
+	hmm.connect_all(acc_states)
+	hmm.connect2(acc_states[-1], exon_state, 1)
+	hmm.connect2(exon_state, exon_state, 0.99)
+	hmm.connect2(exon_state, don_states[0], 0.01)
+	hmm.connect_all(don_states)
+	
+	model = HMM(name=arg.out, states=acc_states + [exon_state] + don_states)
+	model.write(arg.out)
 
 elif arg.model == 'prok':
 	pass

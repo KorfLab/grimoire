@@ -90,7 +90,7 @@ class mRNA:
 		min_intron = 30
 		max_intron = 10000
 		dons = {'GT':True}
-		accs = {'AC':True}
+		accs = {'AG':True}
 		starts = {'ATG':True}
 		stops = {'TAA':True, 'TGA':True, 'TAG':True}
 		if rules == 'std':
@@ -116,7 +116,7 @@ class mRNA:
 		cds = self.cds()
 		pro = toolbox.dna.translate(cds)
 		start = cds[0:3]
-		stop = cds[-2:len(cds)]
+		stop = cds[-3:len(cds)]
 		if start not in starts: self.issues.append('start:' + start)
 		if stop not in stops: self.issues.append('stop:' + stop)
 		for i in range(len(pro) - 1):
