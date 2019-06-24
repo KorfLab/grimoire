@@ -135,6 +135,56 @@ elif arg.model == 'internal_exon':
 	model = HMM(name=arg.out, states=acc_states + [exon_state] + don_states)
 	model.write(arg.out)
 
+
+elif arg.model == 'splicing':
+	gen = genome.Genome(gff=arg.gff, fasta=arg.fasta)
+	ep_seqs = []
+	en_seqs = []
+	don_seqs = []
+	acc_seqs = []
+	intron_seqs = []
+	for chr in gen.chromosomes:
+		for gene in chr.genes:
+			tx = gene.transcripts[0]
+			if gene.issues: continue
+			if len(gene.transcripts) > 1: continue
+			if len(tx.exons) < 2: continue
+			for i in range(len(tx.exons) - 1):
+				ep_seqs.append(tx.exons[i].seq())
+				en_seqs.append(tx.exons[i + 1].seq())
+			for intron in tx.introns:
+				iseq = intron.seq()
+				don_seqs.append(iseq[0:arg.don_len])
+				acc_seqs.append(iseq[-arg.acc_len:len(iseq)])
+				intron_seqs.append(iseq[arg.don_len:-arg.acc_len])
+	
+	ep_emits = hmm.state.train_emission(ep_seqs, context=arg.exon_ctx)
+	don_emits = hmm.state.train_emissions(don_seqs, context=arg.don_ctx)
+	intron_emits = hmm.state.train_emission(intron_seqs, context=arg.int_ctx)
+	acc_emits = hmm.state.train_emissions(acc_seqs, context=arg.acc_ctx)
+	en_emits = hmm.state.train_emission(en_seqs, context=arg.exon_ctx)
+	
+	ep_state = hmm.state.State(name='EXP', context=arg.exon_ctx, emits=ep_emits)
+	ep_state.init = 1
+	don_states = hmm.state.state_factory('DON', acc_emits)
+	intron_state = hmm.state.State(name='INT', context=arg.int_ctx, emits=intron_emits)
+	acc_states = hmm.state.state_factory('ACC', don_emits)
+	en_state = hmm.state.State(name='EXN', context=arg.exon_ctx, emits=en_emits)
+	en_state.term = 1
+	
+	hmm.connect2(ep_state, ep_state, 0.99)
+	hmm.connect2(ep_state, don_states[0], 0.01)
+	hmm.connect_all(don_states)
+	hmm.connect2(don_states[arg.don_len-1], intron_state, 1)
+	hmm.connect2(intron_state, intron_state, 0.98)
+	hmm.connect2(intron_state, acc_states[0], 0.02)
+	hmm.connect_all(acc_states)
+	hmm.connect2(acc_states[arg.acc_len-1], en_state, 1)
+	hmm.connect2(en_state, en_state, 1)
+	
+	model = HMM(name=arg.out, states=[ep_state] + don_states + [intron_state] + acc_states + [en_state])
+	model.write(arg.out)
+
 elif arg.model == 'prok':
 	pass
 
