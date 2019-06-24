@@ -15,8 +15,9 @@ parser.add_argument('--fasta', required=True, type=str,
 	metavar='<path>', help='path to fasta file (%(type)s)')
 parser.add_argument('--gff', required=True, type=str,
 	metavar='<path>', help='path to GFF file (%(type)s)')
-parser.add_argument('--validate', action='store_true')
 parser.add_argument('--stats', action='store_true')
+parser.add_argument('--split', type=int, metavar='<int>',
+	help='number of discrete parts to split into')
 arg = parser.parse_args()
 
 if arg.stats:
@@ -45,30 +46,7 @@ if arg.stats:
 				ipt.append(len(tx.introns))
 				u5pt.append(len(tx.utr5s))
 				u3pt.append(len(tx.utr3s))
-				
-				## start and stop
-				cds = tx.cds()
-				icodon = cds[0:3]
-				if icodon not in start: start[icodon] = 0
-				start[icodon] += 1
-				tcodon = cds[len(cds)-3:len(cds)]
-				if tcodon not in stop: stop[tcodon] = 0
-				stop[tcodon] += 1
-				
-				## coding sequence
-				pro = tx.protein()
-				if '*' in pro[0: -1]: ifs.append(tx.id)
-				if pro[-1:len(pro)] != '*': nsc.append(tx.id)
-				
-				## introns
-				for i in tx.introns:
-					iseq = i.seq()
-					sd = iseq[0:2]
-					sa = iseq[-2:len(iseq)]
-					ss = sd + '-' + sa
-					if ss not in splice: splice[ss] = 0
-					splice[ss] += 1
-				
+								
 				#  lengths
 				for e in tx.exons: elen.append(e.end - e.beg + 1)
 				for u in tx.utr5s: u5len.append(u.end - u.beg + 1)
@@ -77,4 +55,6 @@ if arg.stats:
 	
 	
 	# do stuff...
-	print(splice)
+
+elif arg.split:
+	print('splitting soon')
