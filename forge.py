@@ -34,6 +34,22 @@ parser.add_argument('--gen_ctx', required=False, type=int, default=0,
 	metavar='<int>', help='genomic context [%(default)d]')
 parser.add_argument('--int_ctx', required=False, type=int, default=0,
 	metavar='<int>', help='intron context [%(default)d]')
+parser.add_argument('--u5_len', required=False, type=int, default=5,
+	metavar='<int>', help='UTR5 length [%(default)d]')
+parser.add_argument('--u5_ctx', required=False, type=int, default=0,
+	metavar='<int>', help='UTR5 context [%(default)d]')
+parser.add_argument('--u3_len', required=False, type=int, default=5,
+	metavar='<int>', help='UTR3 length [%(default)d]')
+parser.add_argument('--u3_ctx', required=False, type=int, default=0,
+	metavar='<int>', help='UTR3 context [%(default)d]')
+parser.add_argument('--koz_len', required=False, type=int, default=5,
+	metavar='<int>', help='Kozak length [%(default)d]')
+parser.add_argument('--koz_ctx', required=False, type=int, default=0,
+	metavar='<int>', help='Kozak context [%(default)d]')
+parser.add_argument('--atg_ctx', required=False, type=int, default=0,
+	metavar='<int>', help='ATG context [%(default)d]')
+parser.add_argument('--cds_ctx', required=False, type=int, default=0,
+	metavar='<int>', help='CDS context [%(default)d]')
 parser.add_argument('--test', action='store_true')
 arg = parser.parse_args()
 
@@ -160,23 +176,29 @@ elif arg.model == 'mRNA':
 	u5_emits = hmm.state.train_emission(u5_seqs, context=arg.u5_ctx)
 	koz_emits = hmm.state.train_emissions(koz_seqs, context=arg.koz_ctx)
 	atg_emits = hmm.state.train_emissions(atg_seqs, context=arg.atg_ctx)
-	#cds_emits = hmm.state.train_cds(cds_seqs, context=arg.cds_ctx)
+	cds_emits = hmm.state.train_cds(cds_seqs, context=arg.cds_ctx)
 	u3_emits = hmm.state.train_emission(u3_seqs, context=arg.u3_ctx)
 	
-	"""
-	acc_states = hmm.state.state_factory('ACC', acc_emits)
-	don_states = hmm.state.state_factory('DON', don_emits)
-	exon_state = hmm.state.State(name='EXON', context=arg.exon_ctx, emits=exon_emits)
-	acc_states[0].init = 1
-	don_states[arg.don_len-1].term = 1
-
-	hmm.connect_all(acc_states)
-	hmm.connect2(acc_states[-1], exon_state, 1)
-	hmm.connect2(exon_state, exon_state, 0.99)
-	hmm.connect2(exon_state, don_states[0], 0.01)
-	hmm.connect_all(don_states)
 	
-	model = HMM(name=arg.out, states=acc_states + [exon_state] + don_states)
+	u5_state = hmm.state.State(name='UTR5', context=arg.u5_ctx, emits=u5_emits)
+	koz_states = hmm.state.state_factory('KOZ', koz_emits)
+	atg_states = hmm.state.state_factory('ATG', atg_emits)
+	cds_states = hmm.state.state_factory('CDS', cds_emits)
+	u3_state = hmm.state.State(name='UTR3', context=arg.u3_ctx, emits=u3_emits)
+	u5_state.init = 1
+	u3_state.term = 1
+
+	hmm.connect2(u5_state, u5_state, 0.99)
+	hmm.connect2(u5_state, koz_states[0], 0.01)
+	hmm.connect_all(koz_states)
+	hmm.connect2(koz_states[-1], atg_states[0], 1)
+	hmm.connect_all(atg_states)
+	hmm.connect2(atg_states[-1], cds_states[0], 1)
+	hmm.connect_all(cds_states)
+	hmm.connect2(cds_states[2], cds_states[0], 0.99)
+	hmm.connect2(cds_states[2], u3_state, 0.01)
+	
+	model = HMM(name=arg.out, states=[u5_state] + koz_states + atg_states
+		+ cds_states + [u3_state])
 	model.write(arg.out)
-	"""
 

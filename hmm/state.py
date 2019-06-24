@@ -43,7 +43,7 @@ def train_emissions(seqs, context=0) :
 		for i in range(context):
 			for ctx in counts[i]:
 				for nt in counts[i][ctx]:
-					counts[i][ctx][nt] = 1
+					counts[i][ctx][nt] = 1 # they will all be 0.25
 		for seq in seqs:
 			for i in range(len(seq) - context):
 				pos = i + context
@@ -62,6 +62,49 @@ def train_emissions(seqs, context=0) :
 						freqs[i][ctx][nt] = round(counts[i][ctx][nt]/total, 4)
 					else:
 						freqs[i][ctx][nt] = 0
+	return freqs
+
+def train_cds(seqs, context=0) :
+	counts = []
+	freqs = []
+	for i in range(3):
+		counts.append(emission_model(context=context))
+	
+	if (context == 0) :
+		for seq in seqs:	
+			for i in range(0, len(seq) -3, 3):
+				for j in range(3):
+					nt = seq[i+j]
+					if (nt in counts[j]) : counts[j][nt] += 1
+		for count in counts:
+			total = 0
+			freq = {}
+			for nt in count: total += count[nt]
+			for nt in count: freq[nt] = round(count[nt] / total	, 4)
+			freqs.append(freq)
+	else :
+		for seq in seqs:
+			#print(seq[0:10])
+			for i in range(0, len(seq) -context -3, 3):
+				for j in range(3):
+					pos = i + j + context
+					ctx = seq[i+j:i+j+context]
+					nt = seq[i + j + context]
+					#print('>>', i, j, pos, ctx, nt)
+					if (ctx in counts[j] and nt in counts[j][ctx]) :
+						counts[j][ctx][nt] += 1
+		for j in range(3):
+			freqs.append({})
+			for ctx in counts[j]:
+				total = 0
+				freqs[j][ctx] = {}
+				for nt in counts[j][ctx]: total += counts[j][ctx][nt]
+				for nt in counts[j][ctx]:
+					if total != 0:
+						freqs[j][ctx][nt] = round(counts[j][ctx][nt]/total, 4)
+					else:
+						freqs[j][ctx][nt] = 0
+	
 	return freqs
 
 def train_emission(seqs, context=0):

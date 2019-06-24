@@ -122,6 +122,12 @@ class mRNA:
 		for i in range(len(pro) - 1):
 			if pro[i:i+1] == '*': self.issues.append('ptc:' + str(i))
 	
+	def primary_tx(self):
+		seq = []
+		for exon in self.exons: seq.append(exon.seq())
+		if self.strand == '-': seq.reverse()
+		return ''.join(seq)
+	
 	def cds(self):
 		seq = []
 		for exon in self.cdss: seq.append(exon.seq())
