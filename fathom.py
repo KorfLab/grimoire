@@ -26,11 +26,6 @@ if arg.stats:
 	ipt = [] # introns per transcript
 	u5pt = [] # 5'utrs per transcript
 	u3pt = [] # 3'utrs per transcript
-	start = {} # start sequences
-	stop = {} # stop sequences
-	ifs = [] # names of genes with in frame stops
-	nsc = [] # names of genes with no stop codon
-	splice = {} # splice sequences
 	ilen = [] # intron lengths
 	elen = [] # exon lengths
 	u5len = [] # 5'utr lengths
