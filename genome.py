@@ -11,22 +11,49 @@ class AnnotationError(Exception):
 
 class Feature:
 
-	def __init__(self, chrom, beg, end, strand, type, id=None):
+	def __init__(self, chrom, beg, end, strand, type,
+			id=None, score='.', source='.', parent=None):
 		self.chrom = chrom
 		self.beg = beg
 		self.end = end
 		self.strand = strand
 		self.type = type
 		self.id = id
+		self.score = score
+		self.source = source
 		self.issues = []
+		self.children = []
+		self.parent_id = parent
 		if beg < 0: self.issues.append('beg < 0')
 		if beg > end: self.issues.append('beg > end')
 		if end > chrom.length: self.issues.append('end out of range')
+
+	def add_child(self, child):
+		if not self.id:
+			raise AnnotationError('parent feature without ID')
+		else:
+			self.children.append(child)
 
 	def seq(self):
 		seq = self.chrom.seq[self.beg-1:self.end]
 		if self.strand == '-': seq = toolbox.dna.revcomp(seq)
 		return seq
+
+	def gff(self):
+		attr = ''
+		if self.parent_id and self.children:
+			attr = 'ID=' + self.id + ';Parent=' + self.parent_id
+		elif self.children:
+			attr = 'ID=' + self.id
+		elif self.parent_id:
+			attr = 'Parent=' + self.parent_id
+		
+		string = '\t'.join([self.chrom.id, self.source, self.type,
+			str(self.beg), str(self.end), str(self.score),
+			self.strand, '.', attr]) + '\n'
+		for child in self.children:
+			string += child.gff()
+		return string
 
 class mRNA:
 
@@ -169,7 +196,7 @@ class Chromosome:
 		self.id = fasta.id
 		self.seq = fasta.seq
 		self.genes = []
-		self.length = len(fasta.seq)
+		self.length = len(self.seq)
 		ft = {}
 		parts = ['CDS', 'exon', 'five_prime_UTR', 'three_prime_UTR']
 		for part in parts:

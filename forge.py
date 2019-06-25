@@ -15,9 +15,11 @@ parser = argparse.ArgumentParser(description='HMM trainer for genes')
 parser.add_argument('--fasta', required=True, type=str,
 	metavar='<path>', help='path to fasta file (%(type)s)')
 parser.add_argument('--gff', required=True, type=str,
-	metavar='<path>', help='path to GFF file (%(type)s)')
-parser.add_argument('--out', required=True, type=str,
-	metavar='<path>', help='path to output file (%(type)s)')
+	metavar='<path>', help='path to GFF3 file (%(type)s)')
+parser.add_argument('--hmm', required=True, type=str,
+	metavar='<path>', help='path to output HMM file (%(type)s)')
+parser.add_argument('--sources', required=False, type=str,
+	metavar='<path>', help='path to sources GFF (%(type)s)')
 parser.add_argument('--model', required=True, type=str,
 	metavar='<model>', help='exon|cds')
 parser.add_argument('--acc_len', required=False, type=int, default=5,
@@ -59,14 +61,12 @@ gf = toolbox.gff.Gff('data/TAIR10_1.gff3')
 
 	
 if arg.model == 'internal_exon':
-	# skippng
-	#	genes with issues
-	#	genes with multiple transcripts
-	#	genes with fewer than 3 exons
 	gen = genome.Genome(gff=arg.gff, fasta=arg.fasta)
 	acc_seqs = []
 	don_seqs = []
 	exon_seqs = []
+	exon_len = 0
+	splices = 0
 	for chr in gen.chromosomes:
 		for gene in chr.genes:
 			tx = gene.transcripts[0]
@@ -75,6 +75,8 @@ if arg.model == 'internal_exon':
 			if len(tx.exons) < 3: continue
 			for i in range(1, len(tx.exons) -1):
 				exon_seqs.append(tx.exons[i].seq())
+				exon_len += tx.exons[i].end - tx.exons[i].beg + 1
+				splices += 1
 			for intron in tx.introns:
 				iseq = intron.seq()
 				acc_seqs.append(iseq[-arg.acc_len:len(iseq)])
@@ -92,12 +94,12 @@ if arg.model == 'internal_exon':
 
 	hmm.connect_all(acc_states)
 	hmm.connect2(acc_states[-1], exon_state, 1)
-	hmm.connect2(exon_state, exon_state, 0.99)
-	hmm.connect2(exon_state, don_states[0], 0.01)
+	hmm.connect2(exon_state, exon_state, 1 - splices/exon_len)
+	hmm.connect2(exon_state, don_states[0], splices/exon_len)
 	hmm.connect_all(don_states)
 	
-	model = HMM(name=arg.out, states=acc_states + [exon_state] + don_states)
-	model.write(arg.out)
+	model = HMM(name=arg.hmm, states=acc_states + [exon_state] + don_states)
+	model.write(arg.hmm)
 
 
 elif arg.model == 'splicing':
@@ -107,6 +109,9 @@ elif arg.model == 'splicing':
 	don_seqs = []
 	acc_seqs = []
 	intron_seqs = []
+	exon_len = 0
+	splices = 0
+	intron_len = 0
 	for chr in gen.chromosomes:
 		for gene in chr.genes:
 			tx = gene.transcripts[0]
@@ -116,8 +121,11 @@ elif arg.model == 'splicing':
 			for i in range(len(tx.exons) - 1):
 				ep_seqs.append(tx.exons[i].seq())
 				en_seqs.append(tx.exons[i + 1].seq())
+				exon_len += tx.exons[i].end - tx.exons[i].beg + 1
+				splices += 1
 			for intron in tx.introns:
 				iseq = intron.seq()
+				intron_len += len(iseq) - arg.don_len - arg.acc_len
 				don_seqs.append(iseq[0:arg.don_len])
 				acc_seqs.append(iseq[-arg.acc_len:len(iseq)])
 				intron_seqs.append(iseq[arg.don_len:-arg.acc_len])
@@ -136,18 +144,18 @@ elif arg.model == 'splicing':
 	en_state = hmm.state.State(name='EXN', context=arg.exon_ctx, emits=en_emits)
 	en_state.term = 1
 	
-	hmm.connect2(ep_state, ep_state, 0.99)
-	hmm.connect2(ep_state, don_states[0], 0.01)
+	hmm.connect2(ep_state, ep_state, 1 - splices/exon_len)
+	hmm.connect2(ep_state, don_states[0], splices/exon_len)
 	hmm.connect_all(don_states)
 	hmm.connect2(don_states[arg.don_len-1], intron_state, 1)
-	hmm.connect2(intron_state, intron_state, 0.98)
-	hmm.connect2(intron_state, acc_states[0], 0.02)
+	hmm.connect2(intron_state, intron_state, 1 - splices/intron_len)
+	hmm.connect2(intron_state, acc_states[0], splices/intron_len)
 	hmm.connect_all(acc_states)
 	hmm.connect2(acc_states[arg.acc_len-1], en_state, 1)
 	hmm.connect2(en_state, en_state, 1)
 	
-	model = HMM(name=arg.out, states=[ep_state] + don_states + [intron_state] + acc_states + [en_state])
-	model.write(arg.out)
+	model = HMM(name=arg.hmm, states=[ep_state] + don_states + [intron_state] + acc_states + [en_state])
+	model.write(arg.hmm)
 
 elif arg.model == 'mRNA':
 	gen = genome.Genome(gff=arg.gff, fasta=arg.fasta)
@@ -156,6 +164,9 @@ elif arg.model == 'mRNA':
 	atg_seqs = []
 	cds_seqs = []
 	u3_seqs = []
+	u5_len = 0
+	mRNAs = 0
+	cds_len = 0
 	for chr in gen.chromosomes:
 		for gene in chr.genes:
 			tx = gene.transcripts[0]
@@ -163,16 +174,21 @@ elif arg.model == 'mRNA':
 			if len(gene.transcripts) > 1: continue
 			cds = tx.cds()
 			ptx = tx.primary_tx()
-			start = ptx.find(cds)
-			end = start + len(cds)
-			if start > arg.u5_ctx + arg.koz_len:
-				koz_seqs.append(ptx[start-arg.koz_len:start])
-				u5_seqs.append(ptx[0 : start - arg.koz_len])
-			if len(ptx) - end > arg.u3_ctx:
-				u3_seqs.append(ptx[end:len(ptx)])
+			beg = ptx.find(cds)
+			end = beg + len(cds)
+			if beg < arg.u5_ctx + arg.koz_len: continue
+			if len(ptx) - end < arg.u3_ctx: continue
+			
+			u5_seqs.append(ptx[0 : beg - arg.koz_len])
+			koz_seqs.append(ptx[beg-arg.koz_len:beg])
+			u3_seqs.append(ptx[end:len(ptx)])
 			atg_seqs.append(cds[0:3])
 			cds_seqs.append(cds[3:len(cds)])
 			
+			u5_len += beg - arg.koz_len
+			cds_len += len(cds) - 3
+			mRNAs += 1
+						
 	u5_emits = hmm.state.train_emission(u5_seqs, context=arg.u5_ctx)
 	koz_emits = hmm.state.train_emissions(koz_seqs, context=arg.koz_ctx)
 	atg_emits = hmm.state.train_emissions(atg_seqs, context=arg.atg_ctx)
@@ -188,17 +204,17 @@ elif arg.model == 'mRNA':
 	u5_state.init = 1
 	u3_state.term = 1
 
-	hmm.connect2(u5_state, u5_state, 0.99)
-	hmm.connect2(u5_state, koz_states[0], 0.01)
+	hmm.connect2(u5_state, u5_state, 1 - mRNAs/u5_len)
+	hmm.connect2(u5_state, koz_states[0], mRNAs/u5_len)
 	hmm.connect_all(koz_states)
 	hmm.connect2(koz_states[-1], atg_states[0], 1)
 	hmm.connect_all(atg_states)
 	hmm.connect2(atg_states[-1], cds_states[0], 1)
 	hmm.connect_all(cds_states)
-	hmm.connect2(cds_states[2], cds_states[0], 0.99)
-	hmm.connect2(cds_states[2], u3_state, 0.01)
+	hmm.connect2(cds_states[2], cds_states[0], 1 - mRNAs / (cds_len/3))
+	hmm.connect2(cds_states[2], u3_state, mRNAs / (cds_len/3))
 	
-	model = HMM(name=arg.out, states=[u5_state] + koz_states + atg_states
+	model = HMM(name=arg.hmm, states=[u5_state] + koz_states + atg_states
 		+ cds_states + [u3_state])
-	model.write(arg.out)
+	model.write(arg.hmm)
 
