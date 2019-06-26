@@ -2,45 +2,39 @@
 
 """test harness for grimoire"""
 
-import sys
-import json
-import toolbox.dna
+
+import toolbox
+import hmm
+import genome
 
 ### FASTA ###
 
-from toolbox.fasta import FastaFile
-# ff = Fasta('data/TAIR10_1.fasta')
-# for id in ff.ids:
-# 	entry = ff.get(id)
-# 	print(entry.id, entry.desc, entry.seq[0:50])
+ff = toolbox.FASTA_file('data/TAIR10_1.fasta')
+for id in ff.ids:
+ 	entry = ff.get(id)
 
 ### GFF ###
 
-# from toolbox.gff import Gff
-# gf = Gff('data/TAIR10_1.gff3')
-# print(gf.types)
-# print(gf.chroms)
-# for f in gf.get(chrom='Chr1', beg=7500, end=8500):
-# 	print(f.beg, f.end, f.type, f.strand)
+gf = toolbox.GFF_file('data/TAIR10_1.gff3')
+for f in gf.get(chrom='Chr1', beg=7500, end=8500):
+	type = f.type
 
 ## DNA ##
 
-# seq = 'ACCCCGAGGAGAGGACCCATAGGC'
-# rev = toolbox.dna.revcomp(seq)
-# print(seq, rev)
+seq = 'ACCCCGAGGAGAGGACCCATAGGC'
+rev = toolbox.revcomp(seq)
+pro = toolbox.translate(seq)
 
 ## HMM ##
-from hmm import HMM
-import viterbi
-hmm = HMM.read('toy.hmm')
-ff = FastaFile('toy.fasta')
+model = hmm.HMM.read('toy.hmm')
+ff = toolbox.FASTA_file('toy.fasta')
 for id in ff.ids:
 	seq = ff.get(id).seq
 	print(seq)
 # 	path, score = viterbi.decode(model=hmm, seq=seq)
 # 	print(path)
 # 	print(score)
-	paths, scores = viterbi.stochastic(model=hmm, seq=seq, n=10)
+	paths, scores = hmm.stochastic(model=model, seq=seq, n=10)
 	for i in range(len(paths)):
 		print(paths[i])
 		print(scores[i])

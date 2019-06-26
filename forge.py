@@ -57,8 +57,8 @@ parser.add_argument('--cds_ctx', required=False, type=int, default=0,
 parser.add_argument('--test', action='store_true')
 arg = parser.parse_args()
 
-ff = toolbox.fasta.FastaFile('data/TAIR10_1.fasta')
-gf = toolbox.gff.Gff('data/TAIR10_1.gff3')
+ff = toolbox.FASTA_file('data/TAIR10_1.fasta')
+gf = toolbox.GFF_file('data/TAIR10_1.gff3')
 
 def output_sources(features, filename):
 	fp = open(filename, 'w+')
@@ -109,13 +109,13 @@ if arg.model == 'internal_exon':
 						parent=txid))
 					txa.append(parent)
 	
-	acc_emits = hmm.state.train_emissions(acc_seqs, context=arg.acc_ctx)
-	don_emits = hmm.state.train_emissions(don_seqs, context=arg.don_ctx)
-	exon_emits = hmm.state.train_emission(exon_seqs, context=arg.exon_ctx)
+	acc_emits = hmm.train_emissions(acc_seqs, context=arg.acc_ctx)
+	don_emits = hmm.train_emissions(don_seqs, context=arg.don_ctx)
+	exon_emits = hmm.train_emission(exon_seqs, context=arg.exon_ctx)
 	
-	acc_states = hmm.state.state_factory('ACC', acc_emits)
-	don_states = hmm.state.state_factory('DON', don_emits)
-	exon_state = hmm.state.State(name='EXON', context=arg.exon_ctx, emits=exon_emits)
+	acc_states = hmm.state_factory('ACC', acc_emits)
+	don_states = hmm.state_factory('DON', don_emits)
+	exon_state = hmm.State(name='EXON', context=arg.exon_ctx, emits=exon_emits)
 	acc_states[0].init = 1
 	don_states[arg.don_len-1].term = 1
 
@@ -184,18 +184,18 @@ elif arg.model == 'splicing':
 				
 					txa.append(parent)				
 	
-	ep_emits = hmm.state.train_emission(ep_seqs, context=arg.exon_ctx)
-	don_emits = hmm.state.train_emissions(don_seqs, context=arg.don_ctx)
-	intron_emits = hmm.state.train_emission(intron_seqs, context=arg.int_ctx)
-	acc_emits = hmm.state.train_emissions(acc_seqs, context=arg.acc_ctx)
-	en_emits = hmm.state.train_emission(en_seqs, context=arg.exon_ctx)
+	ep_emits = hmm.train_emission(ep_seqs, context=arg.exon_ctx)
+	don_emits = hmm.train_emissions(don_seqs, context=arg.don_ctx)
+	intron_emits = hmm.train_emission(intron_seqs, context=arg.int_ctx)
+	acc_emits = hmm.train_emissions(acc_seqs, context=arg.acc_ctx)
+	en_emits = hmm.train_emission(en_seqs, context=arg.exon_ctx)
 	
-	ep_state = hmm.state.State(name='EXP', context=arg.exon_ctx, emits=ep_emits)
+	ep_state = hmm.State(name='EXP', context=arg.exon_ctx, emits=ep_emits)
 	ep_state.init = 1
-	don_states = hmm.state.state_factory('DON', acc_emits)
-	intron_state = hmm.state.State(name='INT', context=arg.int_ctx, emits=intron_emits)
-	acc_states = hmm.state.state_factory('ACC', don_emits)
-	en_state = hmm.state.State(name='EXN', context=arg.exon_ctx, emits=en_emits)
+	don_states = hmm.state_factory('DON', acc_emits)
+	intron_state = hmm.State(name='INT', context=arg.int_ctx, emits=intron_emits)
+	acc_states = hmm.state_factory('ACC', don_emits)
+	en_state = hmm.State(name='EXN', context=arg.exon_ctx, emits=en_emits)
 	en_state.term = 1
 	
 	hmm.connect2(ep_state, ep_state, 1 - splices/exon_len)
@@ -262,18 +262,18 @@ elif arg.model == 'mRNA':
 					parent=txid))
 				txa.append(parent)
 					
-	u5_emits = hmm.state.train_emission(u5_seqs, context=arg.u5_ctx)
-	koz_emits = hmm.state.train_emissions(koz_seqs, context=arg.koz_ctx)
-	atg_emits = hmm.state.train_emissions(atg_seqs, context=arg.atg_ctx)
-	cds_emits = hmm.state.train_cds(cds_seqs, context=arg.cds_ctx)
-	u3_emits = hmm.state.train_emission(u3_seqs, context=arg.u3_ctx)
+	u5_emits = hmm.train_emission(u5_seqs, context=arg.u5_ctx)
+	koz_emits = hmm.train_emissions(koz_seqs, context=arg.koz_ctx)
+	atg_emits = hmm.train_emissions(atg_seqs, context=arg.atg_ctx)
+	cds_emits = hmm.train_cds(cds_seqs, context=arg.cds_ctx)
+	u3_emits = hmm.train_emission(u3_seqs, context=arg.u3_ctx)
 	
 	
-	u5_state = hmm.state.State(name='UTR5', context=arg.u5_ctx, emits=u5_emits)
-	koz_states = hmm.state.state_factory('KOZ', koz_emits)
-	atg_states = hmm.state.state_factory('ATG', atg_emits)
-	cds_states = hmm.state.state_factory('CDS', cds_emits)
-	u3_state = hmm.state.State(name='UTR3', context=arg.u3_ctx, emits=u3_emits)
+	u5_state = hmm.State(name='UTR5', context=arg.u5_ctx, emits=u5_emits)
+	koz_states = hmm.state_factory('KOZ', koz_emits)
+	atg_states = hmm.state_factory('ATG', atg_emits)
+	cds_states = hmm.state_factory('CDS', cds_emits)
+	u3_state = hmm.State(name='UTR3', context=arg.u3_ctx, emits=u3_emits)
 	u5_state.init = 1
 	u3_state.term = 1
 

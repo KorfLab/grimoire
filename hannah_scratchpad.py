@@ -1,14 +1,13 @@
 import sys
 import json
 
-import toolbox.dna
-from toolbox.gff import Gff
-from toolbox.fasta import FastaFile
+import toolbox
+from toolbox import GFF_file as GFF
+from toolbox import FASTA_file as FASTA
 from hmm import HMM
-import viterbi
 
-gf = Gff('internal.gff')
-ff = FastaFile('data/TAIR10_1.fasta')
+gf = GFF('internal.gff')
+ff = FASTA('data/TAIR10_1.fasta')
 
 seqs = []
 
@@ -22,7 +21,7 @@ hmm = HMM.read('internal.hmm')
 
 for seq in seqs:
 	print(seq)
-	path, score = viterbi.decode(model=hmm, seq=seq)
+	path, score = hmm.decode(model=hmm, seq=seq)
 	print(path)
 	print(score)
 # 	paths, scores = viterbi.stochastic(model=hmm, seq=seq, n=100)
