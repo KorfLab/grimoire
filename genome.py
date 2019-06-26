@@ -36,7 +36,7 @@ class Feature:
 
 	def seq(self):
 		seq = self.chrom.seq[self.beg-1:self.end]
-		if self.strand == '-': seq = toolbox.dna.revcomp(seq)
+		if self.strand == '-': seq = toolbox.revcomp(seq)
 		return seq
 
 	def gff(self):
@@ -141,7 +141,7 @@ class mRNA:
 			
 		# translation checks
 		cds = self.cds()
-		pro = toolbox.dna.translate(cds)
+		pro = toolbox.translate(cds)
 		start = cds[0:3]
 		stop = cds[-3:len(cds)]
 		if start not in starts: self.issues.append('start:' + start)
@@ -162,7 +162,7 @@ class mRNA:
 		return ''.join(seq)
 
 	def protein(self):
-		return toolbox.dna.translate(self.cds())
+		return toolbox.translate(self.cds())
 
 	def overlaps(self, list):
 		if len(list) > 1:
@@ -226,8 +226,8 @@ class Genome:
 	def __init__(self, species=None, fasta=None, gff=None):
 		self.species = species
 		self.chromosomes = []
-		gf = toolbox.gff.Gff(gff)
-		ff = toolbox.fasta.FastaFile(fasta)
+		gf = toolbox.GFF_file(gff)
+		ff = toolbox.FASTA_file(fasta)
 		for id in ff.ids:
 			entry = ff.get(id)
 			self.chromosomes.append(Chromosome(fasta=entry, gff=gf))
