@@ -8,6 +8,80 @@ import toolbox.fasta
 import toolbox.gff
 import hmm
 
+
+# def InputError(Exception):
+# 	pass
+# 	
+# class Viterbi:
+# 	def __init__(self, model):
+# 		self.states = model.states
+# 		self.transitions = {}
+# 		for state in self.states:
+# 			for next in state.next:
+# 				if next not in self.transitions:
+# 					self.transitions[next] = {}
+# 				self.transitions[next][state.name] = state.next[next]
+# 	def initialize(self, seq):
+# 		matrix = []
+# 		for i in range(len(seq)):
+# 			matrix.append{}
+# 			for state in self.states:
+# 				matrix[i][state.name] = {'score' : None, 'trace' : None, 'traces' : {}}
+# 		emit = seq[0:1]
+# 		for this in self.states:
+# 			max_score = 0
+# 			max_state = None
+# 			cumulative = 0
+# 			traces = {}
+# 			for prev in self.states:
+# 				pp = prev.init
+# 				tp = self.transitions[this.name][prev.name]
+# 				ep = None
+# 				if this.ctxt == 0 and emit in this.emit:
+# 					ep = this.emit
+# 				else:
+# 					ep = 0.25
+# 				score = pp * tp * ep
+# 				traces[prev.name] = score
+# 				cumulative += score
+# 				if score > max_score:
+# 					max_score = score
+# 					max_state = prev.name
+# 			matrix[0][this.name]['score'] = max_score
+# 			matrix[0][this.name]['trace'] = max_state
+# 			for trace in traces:
+# 				try:
+# 					traces[trace] /= cumulative
+# 				except ZeroDivisionError:
+# 					traces[trace] = 0
+# 			matrix[0][this.name]['traces'] = traces
+# 		self.matrix = matrix
+# 	def compute(self, seq):
+# 		
+# 	def inspect(self, beg=0, end=len(self.matrix), display='score'):
+# 		""""displays Viterbi matrix property 'score' or 'trace' from beg to end"""
+# 		if display != 'score' and display != 'trace':
+# 			raise InputError()
+# 		print('{:<6s}'.format(''), end='')
+# 		for i in range(beg, end):
+# 			print('{:<10d}'.format(i), end='')
+# 		for state in self.states:
+# 			print('{:<6s}'.format(state.name), end='')
+# 			for i in range(beg, end):
+# 				if display == 'score':
+# 					try:
+# 						print('{:<10.3g}'.format(matrix[i][state.name]['score']), end='')
+# 					except TypeError:
+# 						print('{:<10s}'.format('None'), end='')
+# 				else:
+# 					try:
+# 						print('{:<10s}'.format(matrix[i][state.name]['trace']), end='')
+# 					except TypeError:
+# 						print('{:<10s}'.format('None'), end='')
+# 			print()
+# 			
+# 		
+			
 def safe_log(n):
 	r = None
 	try:
@@ -16,7 +90,7 @@ def safe_log(n):
 		r = -math.inf
 	return(r)	
 
-def inspector(model, matrix, beg, end, display='score'):
+def inspect_matrix(model, matrix, beg, end, display='score'):
 	print('{:<6s}'.format(''), end='')
 	for col in range(beg, end):
 		print('{:<10d}'.format(col), end='')
@@ -57,6 +131,8 @@ def log_space(model):
 def get_transitions(model):
 	tm = {}
 	for state in model.states:
+		tm[state.name] = {}
+	for state in model.states:
 		for next in state.next:
 			if next not in tm:
 				tm[next] ={}
@@ -65,6 +141,7 @@ def get_transitions(model):
 		
 def initialize_matrix(model, seq):
 	tm = get_transitions(model)
+	print(json.dumps(tm, indent=4))
 	matrix = []
 	for i in range(len(seq)):
 		matrix.append({})
@@ -77,6 +154,7 @@ def initialize_matrix(model, seq):
 		cumulative = 0
 		traces = {}
 		for prev in model.states:
+			if prev.name not in tm[this.name]: continue
 			pp = prev.init
 			tp = tm[this.name][prev.name]
 			ep = None
@@ -98,7 +176,7 @@ def initialize_matrix(model, seq):
 			except ZeroDivisionError:
 				traces[trace] = 0
 		matrix[0][this.name]['traces'] = traces
-# 	inspector(model, matrix, 0, len(seq))
+	inspect_matrix(model, matrix, 0, len(seq))
 	return(matrix)
 
 def fill_matrix(model, seq):
@@ -110,6 +188,7 @@ def fill_matrix(model, seq):
 			max_score = 0
 			max_state = None
 			for prev in model.states:
+				if prev.name not in tm[this.name]: continue
 				tp = tm[this.name][prev.name]
 				pp = matrix[pos - 1][prev.name]['score']
 				ep = None
@@ -132,10 +211,14 @@ def fill_matrix(model, seq):
 		max_score = 0
 		max_state = None
 		for final in model.states:
-			score = tm[final.name][this.name] * final.term
-			if score > max_score:
-				max_score = score
-				max_state = final.name
+			score = None
+			if this.name in tm[final.name]:
+				score = tm[final.name][this.name] * final.term
+				if score > max_score:
+					max_score = score
+					max_state = final.name
+			else:
+				score = 0
 		matrix[-1][this.name]['score'] *= max_score
 	return(matrix)
 
@@ -148,6 +231,7 @@ def traceback(matrix):
 		if matrix[pos][state]['score'] > max_score:
 			max_score = matrix[pos][state]['score']
 			max_state = matrix[pos][state]['trace']
+		print(pos, state, matrix[pos][state]['score'], matrix[pos][state]['trace'])
 	prev = matrix[pos][max_state]['trace']
 	# begin traceback from maximum scoring state in final column
 	path = []
@@ -167,6 +251,8 @@ def decode(model=None, seq=None, null_state=None, inspect=None):
 	tm = get_transitions(model)
 	# fill in matrix
 	viterbi = fill_matrix(model, seq)
+	inspect_matrix(model, viterbi, 0, len(seq) - 1)
+
 	# for verbose output
 	if inspect:
 		inspector(model, viterbi, 0, len(seq), display=inspect)

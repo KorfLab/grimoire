@@ -65,6 +65,7 @@ if arg.model == 'internal_exon':
 	acc_seqs = []
 	don_seqs = []
 	exon_seqs = []
+	txa = []
 	exon_len = 0
 	splices = 0
 	for chr in gen.chromosomes:
@@ -74,13 +75,29 @@ if arg.model == 'internal_exon':
 			if len(gene.transcripts) > 1: continue
 			if len(tx.exons) < 3: continue
 			for i in range(1, len(tx.exons) -1):
+				iprev = tx.introns[i-1].seq()
+				acc_seqs.append(iprev[-arg.acc_len:len(iprev)])
 				exon_seqs.append(tx.exons[i].seq())
 				exon_len += tx.exons[i].end - tx.exons[i].beg + 1
+				inext = tx.introns[i].seq()
+				don_seqs.append(inext[0:arg.don_len])
 				splices += 1
-			for intron in tx.introns:
-				iseq = intron.seq()
-				acc_seqs.append(iseq[-arg.acc_len:len(iseq)])
-				don_seqs.append(iseq[0:arg.don_len])
+				if arg.sources:
+					txid = 'model-' + str(splices)
+					parent = genome.Feature(chr, tx.introns[i-1].end - arg.acc_len + 1,
+						tx.introns[i].beg + arg.don_len - 1, tx.strand, 'model', id=txid)
+					parent.add_child(genome.Feature(chr, tx.introns[i-1].end - arg.acc_len + 1,
+						tx.introns[i-1].end, tx.introns[i-1].strand, 'ACC', parent=txid))
+					parent.add_child(genome.Feature(chr, tx.exons[i].beg, tx.exons[i].end,
+						tx.exons[i].strand, 'E', parent=txid))
+					parent.add_child(genome.Feature(chr, tx.introns[i].beg,
+						tx.introns[i].beg + arg.don_len - 1, tx.introns[i].strand, 'DON',
+						parent=txid))
+					txa.append(parent)
+			# for intron in tx.introns:
+# 				iseq = intron.seq()
+# 				acc_seqs.append(iseq[-arg.acc_len:len(iseq)])
+# 				don_seqs.append(iseq[0:arg.don_len])
 	
 	acc_emits = hmm.state.train_emissions(acc_seqs, context=arg.acc_ctx)
 	don_emits = hmm.state.train_emissions(don_seqs, context=arg.don_ctx)
@@ -100,7 +117,13 @@ if arg.model == 'internal_exon':
 	
 	model = HMM(name=arg.hmm, states=acc_states + [exon_state] + don_states)
 	model.write(arg.hmm)
-
+	
+	if arg.sources:
+		features = []
+		for feature in txa:
+			features.append(feature.gff())
+		sources = open(arg.sources, 'w+')
+		sources.write(''.join(features))
 
 elif arg.model == 'splicing':
 	gen = genome.Genome(gff=arg.gff, fasta=arg.fasta)
@@ -109,6 +132,7 @@ elif arg.model == 'splicing':
 	don_seqs = []
 	acc_seqs = []
 	intron_seqs = []
+	txa = []
 	exon_len = 0
 	splices = 0
 	intron_len = 0
@@ -120,15 +144,38 @@ elif arg.model == 'splicing':
 			if len(tx.exons) < 2: continue
 			for i in range(len(tx.exons) - 1):
 				ep_seqs.append(tx.exons[i].seq())
+				iseq = tx.introns[i].seq()
+				don_seqs.append(iseq[0:arg.don_len])
+				intron_seqs.append(iseq[arg.don_len:-arg.acc_len])
+				intron_len += len(iseq) - arg.don_len - arg.acc_len
 				en_seqs.append(tx.exons[i + 1].seq())
+				acc_seqs.append(iseq[-arg.acc_len:len(iseq)])
 				exon_len += tx.exons[i].end - tx.exons[i].beg + 1
 				splices += 1
-			for intron in tx.introns:
-				iseq = intron.seq()
-				intron_len += len(iseq) - arg.don_len - arg.acc_len
-				don_seqs.append(iseq[0:arg.don_len])
-				acc_seqs.append(iseq[-arg.acc_len:len(iseq)])
-				intron_seqs.append(iseq[arg.don_len:-arg.acc_len])
+				txid = 'model-' + str(splices)
+				
+				if arg.sources:
+					# create feature object for source sequence
+					parent = genome.Feature(chr, tx.exons[i].beg, tx.exons[i + 1].end, tx.strand,
+							'model', id=txid)
+					exp = genome.Feature(chr, tx.exons[i].beg, tx.exons[i].end,
+							tx.exons[i].strand, 'EXP', parent=txid)
+					parent.add_child(exp)
+					don = genome.Feature(chr, tx.introns[i].beg, tx.introns[i].beg + arg.don_len - 1,
+							tx.introns[i].strand, 'DON', parent=txid)
+					parent.add_child(don)
+					int = genome.Feature(chr, tx.introns[i].beg + arg.don_len,
+							tx.introns[i].end - arg.acc_len, tx.introns[i].strand,
+							'INT', parent=txid)
+					parent.add_child(int)
+					acc = genome.Feature(chr, tx.introns[i].end - arg.acc_len + 1,
+							tx.introns[i].end, tx.introns[i].strand, 'ACC', parent=txid)
+					parent.add_child(acc)
+					exn = genome.Feature(chr, tx.exons[i + 1].beg, tx.exons[i + 1].end,
+							tx.exons[i + 1].strand, 'EXN', parent=txid)
+					parent.add_child(exn)
+				
+					txa.append(parent)				
 	
 	ep_emits = hmm.state.train_emission(ep_seqs, context=arg.exon_ctx)
 	don_emits = hmm.state.train_emissions(don_seqs, context=arg.don_ctx)
@@ -156,6 +203,12 @@ elif arg.model == 'splicing':
 	
 	model = HMM(name=arg.hmm, states=[ep_state] + don_states + [intron_state] + acc_states + [en_state])
 	model.write(arg.hmm)
+	if arg.sources:
+		features = []
+		for feature in txa:
+			features.append(feature.gff())
+		sources = open(arg.sources, 'w+')
+		sources.write(''.join(features))
 
 elif arg.model == 'mRNA':
 	gen = genome.Genome(gff=arg.gff, fasta=arg.fasta)
@@ -164,6 +217,7 @@ elif arg.model == 'mRNA':
 	atg_seqs = []
 	cds_seqs = []
 	u3_seqs = []
+	txa = []
 	u5_len = 0
 	mRNAs = 0
 	cds_len = 0
@@ -188,7 +242,22 @@ elif arg.model == 'mRNA':
 			u5_len += beg - arg.koz_len
 			cds_len += len(cds) - 3
 			mRNAs += 1
-						
+			
+			if arg.sources:
+				txid = 'model-' + str(mRNAs)
+				parent = genome.Feature(chr, tx.beg, tx.end, tx.strand, 'model', id=txid)
+				parent.add_child(genome.Feature(chr, tx.beg,
+					tx.beg + (beg - arg.koz_len) - 1, tx.strand, 'UTR5', parent=txid))
+				parent.add_child(genome.Feature(chr, tx.beg + (beg - arg.koz_len),
+					tx.beg + beg - 1, tx.strand, 'KOZ', parent=txid))
+				parent.add_child(genome.Feature(chr, tx.beg + beg, tx.beg + beg + 2,
+					tx.strand, 'ATG', parent=txid))
+				parent.add_child(genome.Feature(chr, tx.beg + beg + 3, tx.beg + end, tx.strand, 'CDS',
+					parent=txid))
+				parent.add_child(genome.Feature(chr, tx.beg + end + 1, tx.end, tx.strand, 'UTR3',
+					parent=txid))
+				txa.append(parent)
+					
 	u5_emits = hmm.state.train_emission(u5_seqs, context=arg.u5_ctx)
 	koz_emits = hmm.state.train_emissions(koz_seqs, context=arg.koz_ctx)
 	atg_emits = hmm.state.train_emissions(atg_seqs, context=arg.atg_ctx)
@@ -217,4 +286,11 @@ elif arg.model == 'mRNA':
 	model = HMM(name=arg.hmm, states=[u5_state] + koz_states + atg_states
 		+ cds_states + [u3_state])
 	model.write(arg.hmm)
+	
+	if arg.sources:
+		features = []
+		for feature in txa:
+			features.append(feature.gff())
+		sources = open(arg.sources, 'w+')
+		sources.write(''.join(features))
 
