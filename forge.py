@@ -20,6 +20,8 @@ parser.add_argument('--hmm', required=True, type=str,
 	metavar='<path>', help='path to output HMM file (%(type)s)')
 parser.add_argument('--sources', required=False, type=str,
 	metavar='<path>', help='path to sources GFF (%(type)s)')
+parser.add_argument('--replicant', required=False, type=str,
+	metavar='<path>', help='path to replicant report (%(type)s), req --sources')
 parser.add_argument('--model', required=True, type=str,
 	metavar='<model>', help='exon|cds')
 parser.add_argument('--acc_len', required=False, type=int, default=5,
@@ -58,8 +60,20 @@ arg = parser.parse_args()
 ff = toolbox.fasta.FastaFile('data/TAIR10_1.fasta')
 gf = toolbox.gff.Gff('data/TAIR10_1.gff3')
 
+def output_sources(features, filename):
+	fp = open(filename, 'w+')
+	for feature in features:
+		fp.write(feature.gff())
 
-	
+def output_replicant(model, features, filename):
+#	perf = hmm.Performance()
+	for feature in features:
+		pass
+#		decode = model.decode(algorithm='viterbi', transform='log',
+#			sequence=feature.seq())
+#		perf.add_run(decode)
+
+
 if arg.model == 'internal_exon':
 	gen = genome.Genome(gff=arg.gff, fasta=arg.fasta)
 	acc_seqs = []
@@ -82,7 +96,7 @@ if arg.model == 'internal_exon':
 				inext = tx.introns[i].seq()
 				don_seqs.append(inext[0:arg.don_len])
 				splices += 1
-				if arg.sources:
+				if arg.sources or arg.replicant:
 					txid = 'model-' + str(splices)
 					parent = genome.Feature(chr, tx.introns[i-1].end - arg.acc_len + 1,
 						tx.introns[i].beg + arg.don_len - 1, tx.strand, 'model', id=txid)
@@ -94,10 +108,6 @@ if arg.model == 'internal_exon':
 						tx.introns[i].beg + arg.don_len - 1, tx.introns[i].strand, 'DON',
 						parent=txid))
 					txa.append(parent)
-			# for intron in tx.introns:
-# 				iseq = intron.seq()
-# 				acc_seqs.append(iseq[-arg.acc_len:len(iseq)])
-# 				don_seqs.append(iseq[0:arg.don_len])
 	
 	acc_emits = hmm.state.train_emissions(acc_seqs, context=arg.acc_ctx)
 	don_emits = hmm.state.train_emissions(don_seqs, context=arg.don_ctx)
@@ -118,12 +128,9 @@ if arg.model == 'internal_exon':
 	model = HMM(name=arg.hmm, states=acc_states + [exon_state] + don_states)
 	model.write(arg.hmm)
 	
-	if arg.sources:
-		features = []
-		for feature in txa:
-			features.append(feature.gff())
-		sources = open(arg.sources, 'w+')
-		sources.write(''.join(features))
+	if arg.sources: output_sources(txa, arg.sources)
+	if arg.replicant: output_replicant(model, txa, arg.replicant)
+		
 
 elif arg.model == 'splicing':
 	gen = genome.Genome(gff=arg.gff, fasta=arg.fasta)
@@ -154,7 +161,7 @@ elif arg.model == 'splicing':
 				splices += 1
 				txid = 'model-' + str(splices)
 				
-				if arg.sources:
+				if arg.sources or arg.replicant:
 					# create feature object for source sequence
 					parent = genome.Feature(chr, tx.exons[i].beg, tx.exons[i + 1].end, tx.strand,
 							'model', id=txid)
@@ -203,12 +210,9 @@ elif arg.model == 'splicing':
 	
 	model = HMM(name=arg.hmm, states=[ep_state] + don_states + [intron_state] + acc_states + [en_state])
 	model.write(arg.hmm)
-	if arg.sources:
-		features = []
-		for feature in txa:
-			features.append(feature.gff())
-		sources = open(arg.sources, 'w+')
-		sources.write(''.join(features))
+	if arg.sources: output_sources(txa, arg.sources)
+	if arg.replicant: output_replicant(model, txa, arg.replicant)
+	
 
 elif arg.model == 'mRNA':
 	gen = genome.Genome(gff=arg.gff, fasta=arg.fasta)
@@ -243,7 +247,7 @@ elif arg.model == 'mRNA':
 			cds_len += len(cds) - 3
 			mRNAs += 1
 			
-			if arg.sources:
+			if arg.sources or arg.replicant:
 				txid = 'model-' + str(mRNAs)
 				parent = genome.Feature(chr, tx.beg, tx.end, tx.strand, 'model', id=txid)
 				parent.add_child(genome.Feature(chr, tx.beg,
@@ -287,10 +291,9 @@ elif arg.model == 'mRNA':
 		+ cds_states + [u3_state])
 	model.write(arg.hmm)
 	
-	if arg.sources:
-		features = []
-		for feature in txa:
-			features.append(feature.gff())
-		sources = open(arg.sources, 'w+')
-		sources.write(''.join(features))
+	if arg.sources: output_sources(txa, arg.sources)
+	if arg.replicant: output_replicant(model, txa, arg.replicant)
 
+else:
+	print('unrecognized model name')
+	sys.exit(1)
