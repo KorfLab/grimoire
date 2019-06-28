@@ -4,6 +4,8 @@ import argparse
 import sys
 import re
 import json
+import numpy
+import matplotlib.pyplot as plt
 
 import toolbox
 import genome
@@ -13,7 +15,7 @@ import genome
 parser = argparse.ArgumentParser(description='Genome annotation tool')
 parser.add_argument('--fasta', required=True, type=str,
 	metavar='<path>', help='path to fasta file (%(type)s)')
-parser.add_argument('--gff', required=True, type=str,
+parser.add_argument('--gff3', required=True, type=str,
 	metavar='<path>', help='path to GFF file (%(type)s)')
 parser.add_argument('--stats', action='store_true')
 parser.add_argument('--split', type=int, metavar='<int>',
@@ -30,8 +32,9 @@ if arg.stats:
 	elen = [] # exon lengths
 	u5len = [] # 5'utr lengths
 	u3len = [] # 3'utr lengths
+	clen = [] # cds lengths (complete)
 
-	gen = genome.Genome(fasta=arg.fasta, gff=arg.gff)
+	gen = genome.Genome(fasta=arg.fasta, gff3=arg.gff3)
 	for chr in gen.chromosomes:
 		for gene in chr.genes:
 			tpg.append(len(gene.transcripts))
@@ -47,9 +50,11 @@ if arg.stats:
 				for u in tx.utr5s: u5len.append(u.end - u.beg + 1)
 				for u in tx.utr3s: u3len.append(u.end - u.beg + 1)
 				for i in tx.introns: ilen.append(i.end - i.beg + 1)
+				clen.append(len(tx.cds()))
 	
 	
-	# do stuff...
+	plt.hist(clen, bins='auto')
+	plt.title('length')
+	plt.show()
+	
 
-elif arg.split:
-	print('splitting soon')

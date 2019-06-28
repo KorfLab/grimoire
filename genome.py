@@ -6,10 +6,12 @@ import operator
 
 import toolbox
 
-class AnnotationError(Exception):
+class GenomeError(Exception):
 	pass
 
+
 class Feature:
+	"""Class representing a sequence feature, which may have children"""
 
 	def __init__(self, chrom, beg, end, strand, type,
 			id=None, score='.', source='.', parent=None):
@@ -30,7 +32,7 @@ class Feature:
 
 	def add_child(self, child):
 		if not self.id:
-			raise AnnotationError('parent feature without ID')
+			raise GenomeError('parent feature without ID')
 		else:
 			self.children.append(child)
 
@@ -56,6 +58,7 @@ class Feature:
 		return string
 
 class mRNA:
+	"""Class representing a mRNA, contains exons and such"""
 
 	def __init__(self, id=None, features=None, rules='std'):
 			
@@ -87,7 +90,7 @@ class mRNA:
 			elif f.type == 'three_prime_UTR': self.utr3s.append(
 				Feature(f.chrom, f.beg, f.end, f.strand, f.type))
 			else:
-				raise AnnotationError('unknown type in feature table')
+				raise GenomeError('unknown type in feature table')
 				
 		# sort lists
 		self.exons.sort(key = operator.attrgetter('beg'))
@@ -169,9 +172,13 @@ class mRNA:
 			for i in range(len(list)- 1):
 				if list[i].end >= list[i+1].beg: return True
 		return False
-			
+
+class ncRNA:
+	"""Class representing non-coding RNAs"""
+	pass
 
 class Gene:
+	"""Class representing a gene, which contains transcripts"""
 
 	def __init__(self, id=None, transcripts=None):
 		self.id = id
@@ -191,45 +198,48 @@ class Gene:
 			if tx.issues: self.issues.append('tx issue')
 
 class Chromosome:
+	"""Class representing a chromosome, which contains genes"""
 	
-	def __init__(self, fasta=None, gff=None):
-		self.id = fasta.id
-		self.seq = fasta.seq
+	def __init__(self, id=None, seq=None):
+		self.id = id
+		self.seq = seq
+		self.length = len(seq)
+		self.features = []
 		self.genes = []
-		self.length = len(self.seq)
-		ft = {}
-		parts = ['CDS', 'exon', 'five_prime_UTR', 'three_prime_UTR']
-		for part in parts:
-			for entry in gff.get(type=part, chrom=self.id):
-				pid = re.search('Parent=([\w\.]+)', entry.attr)[1]
-				if pid not in ft: ft[pid] = []
-				ft[pid].append(Feature(self, entry.beg, entry.end,
-					entry.strand, entry.type))
-		gt = {}
-		for entry in gff.get(type='mRNA', chrom=self.id):
-			tid = re.search('ID=([\w\.]+)', entry.attr)[1]
-			gid = re.search('Parent=([\w\.]+)', entry.attr)[1]
-			if gid not in gt: gt[gid] = {}
-			gt[gid][tid] = entry
-				
-		for gid in gt:
-			txs = []
-			for tid in gt[gid]:
-				tx = mRNA(id=tid, features=ft[tid])
-				txs.append(tx)
-			gene = Gene(id=gid, transcripts=txs)
-			self.genes.append(gene)
-
 
 class Genome:
+	"""Class representing a genome, which has chromosomes"""
 
-	def __init__(self, species=None, fasta=None, gff=None):
+	def __init__(self, species=None, fasta=None, gff3=None):
 		self.species = species
 		self.chromosomes = []
-		gf = toolbox.GFF_file(gff)
 		ff = toolbox.FASTA_file(fasta)
+		gf = toolbox.GFF_file(gff3)
+		gene_parts = ['CDS', 'exon', 'five_prime_UTR', 'three_prime_UTR']
 		for id in ff.ids:
 			entry = ff.get(id)
-			self.chromosomes.append(Chromosome(fasta=entry, gff=gf))
-	
-	
+			chrom = Chromosome(id=entry.id, seq=entry.seq)			
+			ft = {}	
+			for part in gene_parts:
+				for entry in gf.get(type=part, chrom=chrom.id):
+					pid = re.search('Parent=([\w\.]+)', entry.attr)[1]
+					if pid not in ft: ft[pid] = []
+					ft[pid].append(Feature(chrom, entry.beg, entry.end,
+						entry.strand, entry.type))
+			gt = {}
+			for entry in gf.get(type='mRNA', chrom=chrom.id):
+				tid = re.search('ID=([\w\.]+)', entry.attr)[1]
+				gid = re.search('Parent=([\w\.]+)', entry.attr)[1]
+				if gid not in gt: gt[gid] = {}
+				gt[gid][tid] = entry
+				
+			for gid in gt:
+				txs = []
+				for tid in gt[gid]:
+					tx = mRNA(id=tid, features=ft[tid])
+					txs.append(tx)
+				chrom.genes.append(Gene(id=gid, transcripts=txs))
+			self.chromosomes.append(chrom)
+		
+
+		

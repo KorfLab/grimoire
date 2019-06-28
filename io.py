@@ -1,29 +1,68 @@
+import sys
+import re
+import numpy
 
 import genome
 
-gen = genome.Genome(gff='data/TAIR10_1.gff3', fasta='data/TAIR10_1.fasta')
 
-txn = 0
-txa = []
+sys.exit(1)
+
+
+## convert bed12 to GFF3
+
+fp = open('araport.bed', 'r')
+source = 'ARAPORT11'
+# genes can't be created until all transcripts are created
+genes = {}
+while (1):
+	line = fp.readline()
+	if line == '': break
+	col = line.split('\t')
+	chr_id = col[0]
+	chr_beg = int(col[1]) + 1
+	chr_end = int(col[2])
+	txid = col[3]
+	score = col[4]
+	strand = col[5]
+	cds_beg = int(col[6]) + 1
+	cds_end = int(col[7])
+	rgb = col[8]
+	n = int(col[9])
+	sizes = col[10].split(',')
+	starts = col[11].split(',')
+	gid = re.search('(\w+)\.\d+', txid)[1]
+	attr = 'ID=' + txid + ';Parent=' + gid
+	
+	if gid not in genes:
+		print('\t'.join([chr_id, source, 'gene', str(chr_beg), str(chr_end),
+			score, strand, 'ID='+gid]))
+		genes[gid] = True
+	
+	print('\t'.join([chr_id, source, 'mRNA', str(chr_beg), str(chr_end),
+		score, strand, attr]))
+
+	for i in range(n):
+		beg = chr_beg + int(starts[i])
+		end = beg + int(sizes[i]) -1
+		attr = 'Parent=' + txid
+		print('\t'.join([chr_id, source, 'exon', str(beg), str(end),
+			score, strand, attr]))
+
+sys.exit(1)
+
+
+## build from GFF3
+gen = genome.Genome(fasta='data/TAIR10_1.fasta', gff3='data/TAIR10_1.gff3')
 for chr in gen.chromosomes:
 	for gene in chr.genes:
 		if gene.issues:
-			print(gene.id, 'has issues')
+#			print(gene.id, 'has issues')
 			for tx in gene.transcripts:
 				if tx.issues:
-					print('\t', tx.id, 'has issues')
+#					print('\t', tx.id, 'has issues')
 					for issue in tx.issues:
-						print('\t\t', issue)
-				else:
-					txn += 1
-					txid = 'tx-' + str(txn)
-					parent = genome.Feature(chr, tx.beg, tx.end, tx.strand,
-						'FOO', id=txid)
-					for exon in tx.exons:
-						child = genome.Feature(chr, exon.beg, exon.end,
-							exon.strand, 'BAR', parent=txid)
-						parent.add_child(child)
-					txa.append(parent)
+#						print('\t\t', issue)
+						pass
 
-for tx in txa:
-	print(tx.gff())
+
+

@@ -117,8 +117,9 @@ class GFF_file:
 		self._chroms = {} 
 		self._types = {}
 		self.file = open(filename, 'r')
-		gff = self.file.readlines()
-		for line in gff:
+		while (1):
+			line = self.file.readline()
+			if line == '': break
 			col = line.split('\t')
 			chrom = col[0]
 			type = col[2]
