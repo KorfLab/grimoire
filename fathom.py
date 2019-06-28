@@ -55,6 +55,6 @@ if arg.stats:
 	
 	plt.hist(clen, bins='auto')
 	plt.title('length')
-	plt.show()
+	plt.savefig('plot.png')
 	
 
