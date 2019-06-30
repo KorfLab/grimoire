@@ -129,6 +129,8 @@ if arg.model == 'internal_exon':
 	
 	null_emits = hmm.train_emission(chr.seq, context=arg.null_ctx)	
 	null_state = hmm.State(name='NULL', context=arg.null_ctx, emits=null_emits)
+	null_state.init = 1
+	null-state.term = 1
 	hmm.connect2(null_state, null_state, 1)
 	
 	model = HMM(name=arg.hmm, states=acc_states + [exon_state] + don_states,
@@ -217,6 +219,8 @@ elif arg.model == 'splicing':
 	
 	null_emits = hmm.train_emission(chr.seq, context=arg.null_ctx)	
 	null_state = hmm.State(name='NULL', context=arg.null_ctx, emits=null_emits)
+	null_state.init = 1
+	null-state.term = 1
 	hmm.connect2(null_state, null_state, 1)
 	
 	model = HMM(name=arg.hmm, null=null_state,
@@ -300,6 +304,8 @@ elif arg.model == 'mRNA':
 	
 	null_emits = hmm.train_emission(chr.seq, context=arg.null_ctx)	
 	null_state = hmm.State(name='NULL', context=arg.null_ctx, emits=null_emits)
+	null_state.init = 1
+	null-state.term = 1
 	hmm.connect2(null_state, null_state, 1)
 	
 	model = HMM(name=arg.hmm, states=[u5_state] + koz_states + atg_states
