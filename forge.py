@@ -91,11 +91,11 @@ if arg.model == 'internal_exon':
 			if len(gene.transcripts) > 1: continue
 			if len(tx.exons) < 3: continue
 			for i in range(1, len(tx.exons) -1):
-				iprev = tx.introns[i-1].seq()
+				iprev = tx.introns[i-1].seq_str()
 				acc_seqs.append(iprev[-arg.acc_len:len(iprev)])
-				exon_seqs.append(tx.exons[i].seq())
+				exon_seqs.append(tx.exons[i].seq_str())
 				exon_len += tx.exons[i].end - tx.exons[i].beg + 1
-				inext = tx.introns[i].seq()
+				inext = tx.introns[i].seq_str()
 				don_seqs.append(inext[0:arg.don_len])
 				splices += 1
 				if arg.sources or arg.replicant:
@@ -130,7 +130,7 @@ if arg.model == 'internal_exon':
 	null_emits = hmm.train_emission(chr.seq, context=arg.null_ctx)	
 	null_state = hmm.State(name='NULL', context=arg.null_ctx, emits=null_emits)
 	null_state.init = 1
-	null-state.term = 1
+	null_state.term = 1
 	hmm.connect2(null_state, null_state, 1)
 	
 	model = HMM(name=arg.hmm, states=acc_states + [exon_state] + don_states,
@@ -159,12 +159,12 @@ elif arg.model == 'splicing':
 			if len(gene.transcripts) > 1: continue
 			if len(tx.exons) < 2: continue
 			for i in range(len(tx.exons) - 1):
-				ep_seqs.append(tx.exons[i].seq())
-				iseq = tx.introns[i].seq()
+				ep_seqs.append(tx.exons[i].seq_str())
+				iseq = tx.introns[i].seq_str()
 				don_seqs.append(iseq[0:arg.don_len])
 				intron_seqs.append(iseq[arg.don_len:-arg.acc_len])
 				intron_len += len(iseq) - arg.don_len - arg.acc_len
-				en_seqs.append(tx.exons[i + 1].seq())
+				en_seqs.append(tx.exons[i + 1].seq_str())
 				acc_seqs.append(iseq[-arg.acc_len:len(iseq)])
 				exon_len += tx.exons[i].end - tx.exons[i].beg + 1
 				splices += 1
@@ -220,7 +220,7 @@ elif arg.model == 'splicing':
 	null_emits = hmm.train_emission(chr.seq, context=arg.null_ctx)	
 	null_state = hmm.State(name='NULL', context=arg.null_ctx, emits=null_emits)
 	null_state.init = 1
-	null-state.term = 1
+	null_state.term = 1
 	hmm.connect2(null_state, null_state, 1)
 	
 	model = HMM(name=arg.hmm, null=null_state,
@@ -246,8 +246,8 @@ elif arg.model == 'mRNA':
 			tx = gene.transcripts[0]
 			if gene.issues: continue
 			if len(gene.transcripts) > 1: continue
-			cds = tx.cds()
-			ptx = tx.primary_tx()
+			cds = tx.cds_str()
+			ptx = tx.primary_tx_str()
 			beg = ptx.find(cds)
 			end = beg + len(cds)
 			if beg < arg.u5_ctx + arg.koz_len: continue
@@ -305,7 +305,7 @@ elif arg.model == 'mRNA':
 	null_emits = hmm.train_emission(chr.seq, context=arg.null_ctx)	
 	null_state = hmm.State(name='NULL', context=arg.null_ctx, emits=null_emits)
 	null_state.init = 1
-	null-state.term = 1
+	null_state.term = 1
 	hmm.connect2(null_state, null_state, 1)
 	
 	model = HMM(name=arg.hmm, states=[u5_state] + koz_states + atg_states

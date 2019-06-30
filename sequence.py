@@ -75,6 +75,19 @@ GCODE = {
 	}
 }
 
+def revcomp_str(seq):
+	comp = str.maketrans('ACGTRYMKWSBDHV', 'TGCAYRKMWSVHDB')
+	anti = seq.translate(comp)[::-1]
+	return anti
+
+def translate_str(seq, table='standard'):
+	pro = []
+	for i in range(0, len(seq), 3):
+		codon = seq[i:i+3]
+		if codon in GCODE[table]: pro.append(GCODE[table][codon])
+		else: pro.append('X')
+	return "".join(pro)
+
 ###############
 ### Classes ###
 ###############
@@ -98,31 +111,25 @@ class DNA(BioSequence):
 	canonical = ['A', 'C', 'G', 'T']
 	extended = ['A', 'C', 'G', 'T', 'R', 'Y', 'M', 'K', 'W', 'S', 'B', 'D', 'H', 'V', 'N']
 	
-	def __init__(self, name=None, seq=None, desc=None, species=None, validate=True):
+	def __init__(self, name=None, seq=None, desc=None, species=None):
 		self.name = name
 		self.seq = seq
 		self.desc = desc
 		self.species = species
-		
-		if validate:
-			for i in range(len(self.seq)):
-				nt = self.seq[i:i+1]
-				if nt not in self.extended:
-					raise SequenceError('letter not in DNA alphabet: ' + nt)
+	
+	def check_alphabet(self):
+		for i in range(len(self.seq)):
+			nt = self.seq[i:i+1]
+			if nt not in self.extended:
+				raise SequenceError('letter not in DNA alphabet: ' + nt)
 	
 	def revcomp(self):
-		comp = str.maketrans('ACGTRYMKWSBDHV', 'TGCAYRKMWSVHDB')
-		anti = self.seq.translate(comp)[::-1]
-		dna = DNA(seq=anti, validate=False)
-		return dna
+		anti = revcomp_str(self.seq)
+		return DNA(seq=anti)
 
 	def translate(self, table='standard'):
-		pro = []
-		for i in range(0, len(self.seq), 3):
-			codon = self.seq[i:i+3]
-			if codon in GCODE[table]: pro.append(GCODE[table][codon])
-			else: pro.append('X')
-		return Protein(seq="".join(pro))
+		pro = translate_str(self.seq)
+		return Protein(seq=pro)
 
 class Protein(BioSequence):
 	"""Class for protein sequences. Uppercase only. 20 aa + X and *"""
@@ -132,16 +139,15 @@ class Protein(BioSequence):
 	extended = ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N',
 		'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y', 'X', '*']
 
-	def __init__(self, name=None, seq=None, desc=None, species=None, validate=True):
+	def __init__(self, name=None, seq=None, desc=None, species=None):
 		self.name = name
 		self.seq = seq
 		self.desc = desc
 		self.species = species
 		
-		if validate:
-			for i in range(len(self.seq)):
-				aa = self.seq[i:i+1]
-				if aa not in self.extended:
-					raise SequenceError('letter not in protein alphabet: ' + aa)
-
+	def check_alphabet(self):
+		for i in range(len(self.seq)):
+			aa = self.seq[i:i+1]
+			if aa not in self.extended:
+				raise SequenceError('letter not in protein alphabet: ' + aa)
 

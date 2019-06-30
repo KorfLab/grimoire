@@ -1,43 +1,48 @@
 
 import json
 
-import toolbox
+import sequence
 
 def HMMError(Exception):
 	pass
 
-def emission_model(context=1, alphabet='nt') :
-	if (context > 0) :
-		table = toolbox.generate_kmers(alphabet=alphabet, k=context)
-		for k in table :
+def emission_model(context=1, alphabet='nt'):
+	letters = None
+	if alphabet == 'nt': letters = sequence.DNA.canonical
+	elif alphabet == 'aa': letters = sequence.Protein.canonical
+	else: raise HMMError('alphabet error: ', alphabet)
+	
+	if (context > 0):
+		table = sequence.generate_kmers(alphabet=alphabet, k=context)
+		for k in table:
 			table[k] = {}
-			for a in kmer.ALPHABET[alphabet] :
+			for a in letters:
 				table[k][a] = 0
 	elif (context == 0) :
-		table = toolbox.generate_kmers(alphabet=alphabet, k=1, pseudo=0)
+		table = sequence.generate_kmers(alphabet=alphabet, k=1, pseudo=0)
 	else :
 		raise HMMError('negative context')
 	
 	return table
 
-def train_emissions(seqs, context=0) :
+def train_emissions(seqs, context=0):
 	counts = []
 	freqs = []
 	for i in range(len(seqs[0])):
 		counts.append(emission_model(context=context))
 	
-	if (context == 0) :
+	if (context == 0):
 		for seq in seqs:	
-			for i in range(len(seq)) :
+			for i in range(len(seq)):
 				nt = seq[i:i+1]
-				if (nt in counts[i]) : counts[i][nt] += 1
+				if (nt in counts[i]): counts[i][nt] += 1
 		for count in counts:
 			total = 0
 			freq = {}
 			for nt in count: total += count[nt]
 			for nt in count: freq[nt] = round(count[nt] / total	, 4)
 			freqs.append(freq)
-	else :
+	else:
 		for i in range(context):
 			for ctx in counts[i]:
 				for nt in counts[i][ctx]:
@@ -62,13 +67,13 @@ def train_emissions(seqs, context=0) :
 						freqs[i][ctx][nt] = 0
 	return freqs
 
-def train_cds(seqs, context=0) :
+def train_cds(seqs, context=0):
 	counts = []
 	freqs = []
 	for i in range(3):
 		counts.append(emission_model(context=context))
 	
-	if (context == 0) :
+	if (context == 0):
 		for seq in seqs:	
 			for i in range(0, len(seq) -3, 3):
 				for j in range(3):
@@ -80,7 +85,7 @@ def train_cds(seqs, context=0) :
 			for nt in count: total += count[nt]
 			for nt in count: freq[nt] = round(count[nt] / total	, 4)
 			freqs.append(freq)
-	else :
+	else:
 		for seq in seqs:
 			#print(seq[0:10])
 			for i in range(0, len(seq) -context -3, 3):

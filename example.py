@@ -28,11 +28,11 @@ for id in ff.ids:
 
 gf = toolbox.GFF_file('data/TAIR10_1.gff3')
 for f in gf.get(chrom='Chr1', beg=7500, end=8500):
-	type = f.type
+	print(f.type)
 
 ## HMM ##
 model = hmm.HMM.read('toy.hmm')
 ff = toolbox.FASTA_file('toy.fasta')
 
 ## Genome ##
-
+gen = genome.Genome(fasta='data/TAIR10_1.fasta', gff3='data/TAIR10_1.gff3', check_alphabet=False)

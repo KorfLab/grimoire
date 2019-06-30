@@ -50,7 +50,7 @@ if arg.stats:
 				for u in tx.utr5s: u5len.append(u.end - u.beg + 1)
 				for u in tx.utr3s: u3len.append(u.end - u.beg + 1)
 				for i in tx.introns: ilen.append(i.end - i.beg + 1)
-				clen.append(len(tx.cds()))
+				clen.append(len(tx.cds_str()))
 	
 	
 	plt.hist(clen, bins='auto')
