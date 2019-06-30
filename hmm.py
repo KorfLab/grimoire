@@ -198,7 +198,6 @@ class HMM:
 		d = json.loads(fp.read())
 		hmm = HMM()
 		hmm.name = d['name']
-		hmm.null = d['null']
 		hmm.states = []
 		for s in d['states']:
 			st = State()
@@ -209,6 +208,13 @@ class HMM:
 			st.emit = s['emit']
 			st.next = s['next']
 			hmm.states.append(st)
+		hmm.null = State()
+		hmm.null.name = d['null']['name']
+		hmm.null.init = d['null']['init']
+		hmm.null.term = d['null']['term']
+		hmm.null.ctxt = d['null']['ctxt']
+		hmm.null.emit = d['null']['emit']
+		hmm.null.next = d['null']['next']
 		return hmm
 	
 	def write(self, filename):

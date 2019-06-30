@@ -1,5 +1,7 @@
 import math
 import copy
+import sys
+import json
 
 import hmm
 import toolbox
@@ -79,64 +81,70 @@ import toolbox
 # 			print()
 # 			
 # 		
-			
-def safe_log(n):
-	r = None
-	try:
-		r = math.log(n)
-	except ValueError:
-		r = -math.inf
-	return(r)	
 
-def inspect_matrix(model, matrix, beg, end, display='score'):
+#def log_space(model):
+#	hmm = hmm.HMM(name=model.name, states=model.states)
+#	for state in model.states:
+#		new_state = hmm.state.State(name=state.name, ctxt=state.ctxt,
+#									emit=hmm.state.emission_model(context=state.ctxt),
+#									init=safe_log(state.init),
+#									term=safe_log(state.init))
+#		
+#		if new_state.ctxt == 0:
+#			for nt in new_state.emit:
+#				new_state.emit[nt] = safe_log(state.emit[nt])
+#		else:
+#			for ctx in new_state.emit:
+#				for nt in new_state.emit[ctx]:
+#					new_state.emit[ctx][nt] = safe_log(state.emit[ctx][nt])
+#		for next in state.next:
+#			new_state.next[next] = safe_log(state.next[next])
+
+#def safe_log(n):
+#	r = None
+#	try:
+#		r = math.log(n)
+#	except ValueError:
+#		r = -math.inf
+#	return(r)	
+
+def DecodingError(Exception):
+	pass
+
+def inspect_matrix(model, fasta, matrix, beg, end):
+	
+	# print numbers
 	print('{:<6s}'.format(''), end='')
 	for col in range(beg, end):
 		print('{:<10d}'.format(col), end='')
 	print()
+	
+	# print letters
+	print('{:<6s}'.format(''), end='')
+	for col in range(beg, end):
+		nt = None
+		if col == 0: nt = '_'
+		else: nt = fasta.seq[col-1:col]
+		print('{:<10s}'.format(nt), end='')
+	print()
+	
+	# print scores
 	for state in model.states:
 		print('{:<6s}'.format(state.name), end='')
 		for i in range(beg, end):
-			if display == 'score':
-				try:
-					print('{:<10.3g}'.format(matrix[i][state.name]['score']), end='')
-				except TypeError:
-					print('{:<10s}'.format('None'), end='')
-			if display == 'trace':
-				try:
-					print('{:<10s}'.format(matrix[i][state.name]['trace']), end='')
-				except TypeError:
-					print('{:<10s}'.format('None'), end='')
+			#if display == 'score':
+			try:
+				print('{:<10.3g}'.format(matrix[i][state.name]['score']), end='')
+			except TypeError:
+				print('{:<10s}'.format('None'), end='')
+			#if display == 'trace':
+			#	try:
+			#		print('{:<10s}'.format(matrix[i][state.name]['trace']), end='')
+			#	except TypeError:
+			#		print('{:<10s}'.format('None'), end='')
 		print()
 
-def log_space(model):
-	hmm = hmm.HMM(name=model.name, states=model.states)
-	for state in model.states:
-		new_state = hmm.state.State(name=state.name, ctxt=state.ctxt,
-									emit=hmm.state.emission_model(context=state.ctxt),
-									init=safe_log(state.init),
-									term=safe_log(state.init))
-		
-		if new_state.ctxt == 0:
-			for nt in new_state.emit:
-				new_state.emit[nt] = safe_log(state.emit[nt])
-		else:
-			for ctx in new_state.emit:
-				for nt in new_state.emit[ctx]:
-					new_state.emit[ctx][nt] = safe_log(state.emit[ctx][nt])
-		for next in state.next:
-			new_state.next[next] = safe_log(state.next[next])
 
-def get_transitions(model):
-	tm = {}
-	for state in model.states:
-		tm[state.name] = {}
-	for state in model.states:
-		for next in state.next:
-			if next not in tm:
-				tm[next] ={}
-			tm[next][state.name] = state.next[next]
-	return(tm)
-		
 def initialize_matrix(model, seq):
 	tm = get_transitions(model)
 	print(json.dumps(tm, indent=4))
@@ -240,9 +248,6 @@ def traceback(matrix):
 		pos -= 1
 	path.reverse()
 	return(path, max_score)
-
-def null_decode(model=None, seq=None, null_state=None):
-	pass
 		
 def decode(model=None, seq=None, null_state=None, inspect=None):
 	# transition matrix
@@ -369,9 +374,100 @@ def stochastic(model=None, seq=None, null_state=None, n=1):
 		corrected_paths.append(path[1:len(path)])
 	return(corrected_paths, corrected_scores)
 	
+def emissionP(model, fa, i):
+	nt = fa.seq[i:i+1]
+	
+	if i < 0: raise DecodingError('position less than 0')
+	if i < model.ctxt: return 0.25
+	
+	if model.ctxt == 0:
+		if nt in model.emit: return model.emit[nt]
+		else: return 0.25
+	else:
+		ctx = fa.seq[i-model.ctxt:i]
+		if nt in model.emit[ctx]: return model.emit[ctx][nt]
+		else: return 0.25
+	
+	raise DecodingError('not possible')
+
+def map_transitions(model):
+	map = {}
+	for state in model.states:
+		map[state.name] = {}
+	for state in model.states:
+		for next in state.next:
+			if next not in map:
+				map[next] = {}
+			map[next][state.name] = state.next[next]
+	return map
+
+def map_states(model):
+	map = {}
+	for state in model.states:
+		map[state.name] = state
+	return map
 
 def decodeP(model, fasta):
-	print('decoding', model.name, fasta.seq)
+	print('decoding as probabilities', fasta.id, fasta.seq, model.name)
+	
+	# null model probability
+	null_prob = 1
+	for i in range(len(fasta.seq)):
+		ep = emissionP(model.null, fasta, i)
+		null_prob *= ep
+	
+	# initialize viterbi matrix
+	v = []
+	for i in range(len(fasta.seq)+1):
+		v.append({})
+		for s in model.states:
+			v[i][s.name] = {'score' : None, 'trace' : None}
+			
+	# set initial probabilities
+	for s in model.states: v[0][s.name]['score'] = s.init
+	
+	# conveniences
+	tm = map_transitions(model)
+	sm = map_states(model)
+	
+	# fill
+	for i in range(1, len(fasta.seq)+1):
+		for here in tm:
+			ep = emissionP(sm[here], fasta, i-1)
+			max = -math.inf
+			trace = None
+			for prev in tm[here]:
+				tp = tm[prev][here]
+				pp = v[i-1][prev]['score']
+				p = ep * tp * pp
+				if p > max:
+					max = p
+					trace = prev
+			v[i][here]['score'] = max
+			v[i][here]['trace'] = trace
+	
+	# set terminal probabilities
+	for s in model.states: v[-1][s.name]['score'] *= s.term
+	
+	# find maximum ending state
+	max = -math.inf
+	sid = None
+	for s in model.states:
+		if v[-1][s.name]['score'] > max:
+			max = v[-1][s.name]['score']
+			sid = s.name
+	
+	# trace back
+	path = []
+	for i in range(len(fasta.seq), 0, -1):
+		path.append(sid)
+		sid = v[i][sid]['trace']
+	
+	#inspect_matrix(model, fasta, v, 0, len(fasta.seq) +1)
+	return max, null_prob, path
+	
+def decodeL(model, fasta):
+	print('decoding in log space', fasta.id, fasta.seq, model.name)
 
 def mylog(p):
 	if p < 0: raise ValueError
@@ -400,6 +496,6 @@ hmm2 = convert2log(hmm1)
 
 fasta = toolbox.FASTA_stream('toy.fasta')
 for entry in fasta:
-	decodeP(hmm1, entry)
-
+	max, null, path = decodeP(hmm1, entry)
+	print(max, null, path)
 
