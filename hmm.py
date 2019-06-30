@@ -1,11 +1,10 @@
 
-import sys
-import re
 import json
-import operator
-import random
 
 import toolbox
+
+def HMMError(Exception):
+	pass
 
 def emission_model(context=1, alphabet='nt') :
 	if (context > 0) :
@@ -17,7 +16,7 @@ def emission_model(context=1, alphabet='nt') :
 	elif (context == 0) :
 		table = toolbox.generate_kmers(alphabet=alphabet, k=1, pseudo=0)
 	else :
-		sys.exit("negative context not allowed")
+		raise HMMError('negative context')
 	
 	return table
 
