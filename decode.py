@@ -430,6 +430,13 @@ class Viterbi(HMM_NT_decoder):
 		self.model = model
 		self.dna = dna
 		self.log = log
+		self.null_score = None
+		self.max_score = None
+		self.score = None
+		self.path = None
+		self.matrix = None
+		
+		# log-space munging
 		if log:
 			for state in model.states + [model.null]:
 				state.init = mylog(state.init)
@@ -446,78 +453,13 @@ class Viterbi(HMM_NT_decoder):
 		self.tmap = self.transition_map()
 		self.smap = self.state_map()
 		
-		if log:
-			self.viterbiL()
-		else:
-			self.viterbiP()
-		
-	def viterbiP(self):
-		
 		# null model probability
-		null = 1
+		self.null_score = 0 if log else 1
 		for i in range(len(self.dna.seq)):
 			ep = self.emission(self.model.null.name, i)
-			null *= ep
-	
-		# initialize viterbi matrix
-		v = []
-		for i in range(len(self.dna.seq)+1):
-			v.append({})
-			for s in self.model.states:
-				v[i][s.name] = {'score' : None, 'trace' : None}
-			
-		# set initial probabilities
-		for s in self.model.states: v[0][s.name]['score'] = s.init
-	
-		# fill
-		for i in range(1, len(self.dna.seq)+1):
-			for here in self.tmap:
-				ep = self.emission(here, i-1)
-				max = -math.inf
-				trace = None
-				for prev in self.tmap[here]:
-					tp = self.tmap[prev][here]
-					pp = v[i-1][prev]['score']
-					p = ep * tp * pp
-					if p > max:
-						max = p
-						trace = prev
-				v[i][here]['score'] = max
-				v[i][here]['trace'] = trace
-	
-		# set terminal probabilities
-		for s in self.model.states: v[-1][s.name]['score'] *= s.term
-	
-		# find maximum ending state
-		max = -math.inf
-		sid = None
-		for s in self.model.states:
-			if v[-1][s.name]['score'] > max:
-				max = v[-1][s.name]['score']
-				sid = s.name
-	
-		# trace back
-		path = []
-		for i in range(len(self.dna.seq), 0, -1):
-			path.append(sid)
-			sid = v[i][sid]['trace']
-		
-		self.null_score = null
-		self.max_score = max
-		self.score = max / null
-		self.matrix = v
-		self.path = path
-		
-		inspect_matrix(self, v, 0, len(self.dna.seq) +1)
+			if self.log: self.null_score += ep
+			else:        self.null_score *= ep
 
-	def viterbiL(self):
-		
-		# null model score
-		null = 0
-		for i in range(len(self.dna.seq)):
-			ep = self.emission(self.model.null.name, i)
-			null += ep
-	
 		# initialize viterbi matrix
 		v = []
 		for i in range(len(self.dna.seq)+1):
@@ -537,7 +479,9 @@ class Viterbi(HMM_NT_decoder):
 				for prev in self.tmap[here]:
 					tp = self.tmap[prev][here]
 					pp = v[i-1][prev]['score']
-					p = ep + tp + pp
+					p = None
+					if self.log: p = ep + tp + pp
+					else:        p = ep * tp * pp
 					if p > max:
 						max = p
 						trace = prev
@@ -545,14 +489,16 @@ class Viterbi(HMM_NT_decoder):
 				v[i][here]['trace'] = trace
 	
 		# set terminal probabilities
-		for s in self.model.states: v[-1][s.name]['score'] += s.term
-	
-		# find maximum ending state
-		max = -math.inf
+		for s in self.model.states:
+			if self.log: v[-1][s.name]['score'] += s.term
+			else:        v[-1][s.name]['score'] *= s.term
+
+		# find maximum score and maximum ending state (sid)
+		self.max_score = -math.inf
 		sid = None
 		for s in self.model.states:
-			if v[-1][s.name]['score'] > max:
-				max = v[-1][s.name]['score']
+			if v[-1][s.name]['score'] > self.max_score:
+				self.max_score = v[-1][s.name]['score']
 				sid = s.name
 	
 		# trace back
@@ -560,13 +506,13 @@ class Viterbi(HMM_NT_decoder):
 		for i in range(len(self.dna.seq), 0, -1):
 			path.append(sid)
 			sid = v[i][sid]['trace']
+		path.reverse()
 		
-		self.null_score = null
-		self.max_score = max
-		self.score = max - null
-		self.matrix = v
+		self.score = self.max_score - self.null_score if log else self.max_score / self.null_score
 		self.path = path
+		self.matrix = v
 		
-		inspect_matrix(self, v, 0, len(self.dna.seq) +1)
+
+
 
 
