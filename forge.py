@@ -14,7 +14,7 @@ from hmm import HMM
 parser = argparse.ArgumentParser(description='HMM trainer for genes')
 parser.add_argument('--fasta', required=True, type=str,
 	metavar='<path>', help='path to fasta file (%(type)s)')
-parser.add_argument('--gff', required=True, type=str,
+parser.add_argument('--gff3', required=True, type=str,
 	metavar='<path>', help='path to GFF3 file (%(type)s)')
 parser.add_argument('--hmm', required=True, type=str,
 	metavar='<path>', help='path to output HMM file (%(type)s)')
@@ -24,6 +24,8 @@ parser.add_argument('--replicant', required=False, type=str,
 	metavar='<path>', help='path to replicant report (%(type)s), req --sources')
 parser.add_argument('--model', required=True, type=str,
 	metavar='<model>', help='exon|cds')
+parser.add_argument('--null_ctx', required=False, type=int, default=0,
+	metavar='<int>', help='null model context [%(default)d]')
 parser.add_argument('--acc_len', required=False, type=int, default=5,
 	metavar='<int>', help='acceptor length [%(default)d]')
 parser.add_argument('--acc_ctx', required=False, type=int, default=0,
@@ -75,7 +77,7 @@ def output_replicant(model, features, filename):
 
 
 if arg.model == 'internal_exon':
-	gen = genome.Genome(gff=arg.gff, fasta=arg.fasta)
+	gen = genome.Genome(gff3=arg.gff3, fasta=arg.fasta)
 	acc_seqs = []
 	don_seqs = []
 	exon_seqs = []
@@ -125,7 +127,12 @@ if arg.model == 'internal_exon':
 	hmm.connect2(exon_state, don_states[0], splices/exon_len)
 	hmm.connect_all(don_states)
 	
-	model = HMM(name=arg.hmm, states=acc_states + [exon_state] + don_states)
+	null_emits = hmm.train_emission(chr.seq, context=arg.null_ctx)	
+	null_state = hmm.State(name='NULL', context=arg.null_ctx, emits=null_emits)
+	hmm.connect2(null_state, null_state, 1)
+	
+	model = HMM(name=arg.hmm, states=acc_states + [exon_state] + don_states,
+		null = null_state)
 	model.write(arg.hmm)
 	
 	if arg.sources: output_sources(txa, arg.sources)
@@ -133,7 +140,7 @@ if arg.model == 'internal_exon':
 		
 
 elif arg.model == 'splicing':
-	gen = genome.Genome(gff=arg.gff, fasta=arg.fasta)
+	gen = genome.Genome(gff3=arg.gff3, fasta=arg.fasta)
 	ep_seqs = []
 	en_seqs = []
 	don_seqs = []
@@ -208,14 +215,19 @@ elif arg.model == 'splicing':
 	hmm.connect2(acc_states[arg.acc_len-1], en_state, 1)
 	hmm.connect2(en_state, en_state, 1)
 	
-	model = HMM(name=arg.hmm, states=[ep_state] + don_states + [intron_state] + acc_states + [en_state])
+	null_emits = hmm.train_emission(chr.seq, context=arg.null_ctx)	
+	null_state = hmm.State(name='NULL', context=arg.null_ctx, emits=null_emits)
+	hmm.connect2(null_state, null_state, 1)
+	
+	model = HMM(name=arg.hmm, null=null_state,
+		states=[ep_state] + don_states + [intron_state] + acc_states + [en_state])
 	model.write(arg.hmm)
 	if arg.sources: output_sources(txa, arg.sources)
 	if arg.replicant: output_replicant(model, txa, arg.replicant)
 	
 
 elif arg.model == 'mRNA':
-	gen = genome.Genome(gff=arg.gff, fasta=arg.fasta)
+	gen = genome.Genome(gff3=arg.gff3, fasta=arg.fasta)
 	u5_seqs = []
 	koz_seqs = []
 	atg_seqs = []
@@ -268,7 +280,6 @@ elif arg.model == 'mRNA':
 	cds_emits = hmm.train_cds(cds_seqs, context=arg.cds_ctx)
 	u3_emits = hmm.train_emission(u3_seqs, context=arg.u3_ctx)
 	
-	
 	u5_state = hmm.State(name='UTR5', context=arg.u5_ctx, emits=u5_emits)
 	koz_states = hmm.state_factory('KOZ', koz_emits)
 	atg_states = hmm.state_factory('ATG', atg_emits)
@@ -287,8 +298,12 @@ elif arg.model == 'mRNA':
 	hmm.connect2(cds_states[2], cds_states[0], 1 - mRNAs / (cds_len/3))
 	hmm.connect2(cds_states[2], u3_state, mRNAs / (cds_len/3))
 	
+	null_emits = hmm.train_emission(chr.seq, context=arg.null_ctx)	
+	null_state = hmm.State(name='NULL', context=arg.null_ctx, emits=null_emits)
+	hmm.connect2(null_state, null_state, 1)
+	
 	model = HMM(name=arg.hmm, states=[u5_state] + koz_states + atg_states
-		+ cds_states + [u3_state])
+		+ cds_states + [u3_state], null=null_state)
 	model.write(arg.hmm)
 	
 	if arg.sources: output_sources(txa, arg.sources)
