@@ -1,9 +1,30 @@
-import os
-import sys
-import re
-from operator import itemgetter
+"""Sequence module"""
 
-class SequenceError(Exception): pass
+class SequenceError(Exception):
+	pass
+
+##########################
+### naked definiitions ###
+##########################
+
+def _kmers(alphabet, table, key, n, k, v):
+	if (k == 0) :
+		if key not in table:
+			table[key] = v
+			return
+
+	for i in range(n):
+		t = key + alphabet[i]
+		_kmers(alphabet, table, t, n, k - 1, v)
+
+def generate_kmers(alphabet='nt', k=1, pseudo=0):
+	"""Creates a dictionary of all kmers of either nt or aa alphabet."""
+	table = {}
+	if (alphabet == 'nt') :
+		_kmers(DNA.canonical, table, '', 4, k, pseudo)
+	elif (alphabet == 'aa') :
+		_kmers(Protein.canonical, table, '', 20, k, pseudo)
+	return table
 
 GCODE = {
 	'standard': {		
@@ -54,6 +75,10 @@ GCODE = {
 	}
 }
 
+###############
+### Classes ###
+###############
+
 class BioSequence:
 	"""Generic parent class of biological sequences"""
 
@@ -73,16 +98,17 @@ class DNA(BioSequence):
 	canonical = ['A', 'C', 'G', 'T']
 	extended = ['A', 'C', 'G', 'T', 'R', 'Y', 'M', 'K', 'W', 'S', 'B', 'D', 'H', 'V', 'N']
 	
-	def __init__(self, name=None, seq=None, desc=None, species=None):
+	def __init__(self, name=None, seq=None, desc=None, species=None, validate=True):
 		self.name = name
 		self.seq = seq
 		self.desc = desc
 		self.species = species
 		
-		for i in range(len(self.seq)):
-			nt = self.seq[i:i+1]
-			if nt not in self.extended:
-				raise SequenceError('letter not in DNA alphabet: ' + nt)
+		if validate:
+			for i in range(len(self.seq)):
+				nt = self.seq[i:i+1]
+				if nt not in self.extended:
+					raise SequenceError('letter not in DNA alphabet: ' + nt)
 	
 	def revcomp(self):
 		dna = DNA()
@@ -102,7 +128,6 @@ class DNA(BioSequence):
 			else: pro.append('X')
 		return Protein(seq="".join(pro))
 
-
 class Protein(BioSequence):
 	"""Class for protein sequences. Uppercase only. 20 aa + X and *"""
 
@@ -111,15 +136,16 @@ class Protein(BioSequence):
 	extended = ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N',
 		'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y', 'X', '*']
 
-	def __init__(self, name=None, seq=None, desc=None, species=None):
+	def __init__(self, name=None, seq=None, desc=None, species=None, validate=True):
 		self.name = name
 		self.seq = seq
 		self.desc = desc
 		self.species = species
 		
-		for i in range(len(self.seq)):
-			aa = self.seq[i:i+1]
-			if aa not in self.extended:
-				raise SequenceError('letter not in protein alphabet: ' + aa)
+		if validate:
+			for i in range(len(self.seq)):
+				aa = self.seq[i:i+1]
+				if aa not in self.extended:
+					raise SequenceError('letter not in protein alphabet: ' + aa)
 
 
