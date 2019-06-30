@@ -111,13 +111,9 @@ class DNA(BioSequence):
 					raise SequenceError('letter not in DNA alphabet: ' + nt)
 	
 	def revcomp(self):
-		dna = DNA()
 		comp = str.maketrans('ACGTRYMKWSBDHV', 'TGCAYRKMWSVHDB')
 		anti = self.seq.translate(comp)[::-1]
-		dna.name = self.name
-		dna.seq = anti
-		dna.desc = 'revcomp ' + self.desc
-		dna.species = self.species
+		dna = DNA(seq=anti, validate=False)
 		return dna
 
 	def translate(self, table='standard'):
