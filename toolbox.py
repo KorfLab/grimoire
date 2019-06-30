@@ -245,7 +245,7 @@ class FASTA_stream:
 			line = line.replace(' ', '')
 			seq.append(line.strip())
 
-		return Entry(id, desc, "".join(seq))
+		return FASTA_entry(id, desc, "".join(seq))
 
 
 
