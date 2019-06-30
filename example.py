@@ -3,12 +3,29 @@
 """test harness for grimoire"""
 
 import sys
-
+import math
 
 import sequence
 import toolbox
 import hmm
 import genome
+import decode
+
+model = hmm.HMM.read('toy.hmm')
+fasta = toolbox.FASTA_stream('toy.fasta')
+for entry in fasta:
+	dna = sequence.DNA(name=entry.id, seq=entry.seq)
+	dna.check_alphabet()
+	v1 = decode.Viterbi(model=model, dna=dna, log=False)
+	print(v1.score, v1.path)
+	v1.model.write('foo')
+	v2 = decode.Viterbi(model=model, dna=dna, log=True)
+	print(math.exp(v2.score), v2.path)
+	v2.model.write('bar')
+	sys.exit(1)
+
+
+sys.exit(1)
 
 ## Sequence ##
 s1 = sequence.DNA(name='foo', seq='ACGTAAACCCGGGTTT')

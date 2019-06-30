@@ -1,5 +1,4 @@
 import math
-import copy
 import sys
 import json
 
@@ -111,7 +110,7 @@ import toolbox
 def DecodingError(Exception):
 	pass
 
-def inspect_matrix(model, fasta, matrix, beg, end):
+def inspect_matrix(decoder, matrix, beg, end):
 	
 	# print numbers
 	print('{:<6s}'.format(''), end='')
@@ -124,12 +123,12 @@ def inspect_matrix(model, fasta, matrix, beg, end):
 	for col in range(beg, end):
 		nt = None
 		if col == 0: nt = '_'
-		else: nt = fasta.seq[col-1:col]
+		else: nt = decoder.dna.seq[col-1:col]
 		print('{:<10s}'.format(nt), end='')
 	print()
 	
 	# print scores
-	for state in model.states:
+	for state in decoder.model.states:
 		print('{:<6s}'.format(state.name), end='')
 		for i in range(beg, end):
 			#if display == 'score':
@@ -373,129 +372,201 @@ def stochastic(model=None, seq=None, null_state=None, n=1):
 		corrected_scores.append(corrected_score)
 		corrected_paths.append(path[1:len(path)])
 	return(corrected_paths, corrected_scores)
-	
-def emissionP(model, fa, i):
-	nt = fa.seq[i:i+1]
-	
-	if i < 0: raise DecodingError('position less than 0')
-	if i < model.ctxt: return 0.25
-	
-	if model.ctxt == 0:
-		if nt in model.emit: return model.emit[nt]
-		else: return 0.25
-	else:
-		ctx = fa.seq[i-model.ctxt:i]
-		if nt in model.emit[ctx]: return model.emit[ctx][nt]
-		else: return 0.25
-	
-	raise DecodingError('not possible')
-
-def map_transitions(model):
-	map = {}
-	for state in model.states:
-		map[state.name] = {}
-	for state in model.states:
-		for next in state.next:
-			if next not in map:
-				map[next] = {}
-			map[next][state.name] = state.next[next]
-	return map
-
-def map_states(model):
-	map = {}
-	for state in model.states:
-		map[state.name] = state
-	return map
-
-def decodeP(model, fasta):
-	print('decoding as probabilities', fasta.id, fasta.seq, model.name)
-	
-	# null model probability
-	null_prob = 1
-	for i in range(len(fasta.seq)):
-		ep = emissionP(model.null, fasta, i)
-		null_prob *= ep
-	
-	# initialize viterbi matrix
-	v = []
-	for i in range(len(fasta.seq)+1):
-		v.append({})
-		for s in model.states:
-			v[i][s.name] = {'score' : None, 'trace' : None}
-			
-	# set initial probabilities
-	for s in model.states: v[0][s.name]['score'] = s.init
-	
-	# conveniences
-	tm = map_transitions(model)
-	sm = map_states(model)
-	
-	# fill
-	for i in range(1, len(fasta.seq)+1):
-		for here in tm:
-			ep = emissionP(sm[here], fasta, i-1)
-			max = -math.inf
-			trace = None
-			for prev in tm[here]:
-				tp = tm[prev][here]
-				pp = v[i-1][prev]['score']
-				p = ep * tp * pp
-				if p > max:
-					max = p
-					trace = prev
-			v[i][here]['score'] = max
-			v[i][here]['trace'] = trace
-	
-	# set terminal probabilities
-	for s in model.states: v[-1][s.name]['score'] *= s.term
-	
-	# find maximum ending state
-	max = -math.inf
-	sid = None
-	for s in model.states:
-		if v[-1][s.name]['score'] > max:
-			max = v[-1][s.name]['score']
-			sid = s.name
-	
-	# trace back
-	path = []
-	for i in range(len(fasta.seq), 0, -1):
-		path.append(sid)
-		sid = v[i][sid]['trace']
-	
-	#inspect_matrix(model, fasta, v, 0, len(fasta.seq) +1)
-	return max, null_prob, path
-	
-def decodeL(model, fasta):
-	print('decoding in log space', fasta.id, fasta.seq, model.name)
 
 def mylog(p):
-	if p < 0: raise ValueError
+	if p < 0: raise ValueError('p < 0')
 	if p == 0: return -999
 	else:      return math.log(p)
 
-def convert2log(m1):
-	m2 = copy.deepcopy(m1)
-	for state in m2.states:
-		state.init = mylog(state.init)
-		state.term = mylog(state.term)
-		if state.ctxt == 0:
-			for nt in state.emit:
-				state.emit[nt] = mylog(state.emit[nt])
+class HMM_NT_decoder:
+
+	def state_map(self):
+		map = {}
+		for state in self.model.states + [self.model.null]:
+			map[state.name] = state
+		return map
+
+	def transition_map(self):
+		map = {}
+		for state in self.model.states:
+			map[state.name] = {}
+		for state in self.model.states:
+			for next in state.next:
+				if next not in map:
+					map[next] = {}
+				map[next][state.name] = state.next[next]
+		return map
+
+	def emission(self, state_name, i):
+		nt = self.dna.seq[i:i+1]
+		state = self.smap[state_name]
+	
+		if i < 0: raise DecodingError('position less than 0')
+		
+		if self.log:
+			if i < state.ctxt: return math.log(0.25)
+			if state.ctxt == 0:
+				if nt in state.emit: return state.emit[nt]
+				else: return math.log(0.25)
+			else:
+				ctx = self.dna.seq[i-state.ctxt:i]
+				if nt in state.emit[ctx]: return state.emit[ctx][nt]
+				else: return math.log(0.25)
 		else:
-			for ctx in state.emit:
-				for nt in state.emit[ctx]:
-					state.emit[ctx][nt] = mylog(state.emit[ctx][nt])
-		for next in state.next:
-			state.next[next] = mylog(state.next[next])
+			if i < state.ctxt: return 0.25
+			if state.ctxt == 0:
+				if nt in state.emit: return state.emit[nt]
+				else: return 0.25
+			else:
+				ctx = self.dna.seq[i-state.ctxt:i]
+				if nt in state.emit[ctx]: return state.emit[ctx][nt]
+				else: return 0.25
+		raise DecodingError('not possible')
+
+
+class Viterbi(HMM_NT_decoder):
+	
+	def __init__(self, model=None, dna=None, log=False):
+		self.model = model
+		self.dna = dna
+		self.log = log
+		if log:
+			for state in model.states + [model.null]:
+				state.init = mylog(state.init)
+				state.term = mylog(state.term)
+				if state.ctxt == 0:
+					for nt in state.emit:
+						state.emit[nt] = mylog(state.emit[nt])
+				else:
+					for ctx in state.emit:
+						for nt in state.emit[ctx]:
+							state.emit[ctx][nt] = mylog(state.emit[ctx][nt])
+				for next in state.next:
+					state.next[next] = mylog(state.next[next])
+		self.tmap = self.transition_map()
+		self.smap = self.state_map()
+		
+		if log:
+			self.viterbiL()
+		else:
+			self.viterbiP()
+		
+	def viterbiP(self):
+		
+		# null model probability
+		null = 1
+		for i in range(len(self.dna.seq)):
+			ep = self.emission(self.model.null.name, i)
+			null *= ep
+	
+		# initialize viterbi matrix
+		v = []
+		for i in range(len(self.dna.seq)+1):
+			v.append({})
+			for s in self.model.states:
+				v[i][s.name] = {'score' : None, 'trace' : None}
 			
-	return m2
+		# set initial probabilities
+		for s in self.model.states: v[0][s.name]['score'] = s.init
+	
+		# fill
+		for i in range(1, len(self.dna.seq)+1):
+			for here in self.tmap:
+				ep = self.emission(here, i-1)
+				max = -math.inf
+				trace = None
+				for prev in self.tmap[here]:
+					tp = self.tmap[prev][here]
+					pp = v[i-1][prev]['score']
+					p = ep * tp * pp
+					if p > max:
+						max = p
+						trace = prev
+				v[i][here]['score'] = max
+				v[i][here]['trace'] = trace
+	
+		# set terminal probabilities
+		for s in self.model.states: v[-1][s.name]['score'] *= s.term
+	
+		# find maximum ending state
+		max = -math.inf
+		sid = None
+		for s in self.model.states:
+			if v[-1][s.name]['score'] > max:
+				max = v[-1][s.name]['score']
+				sid = s.name
+	
+		# trace back
+		path = []
+		for i in range(len(self.dna.seq), 0, -1):
+			path.append(sid)
+			sid = v[i][sid]['trace']
+		
+		self.null_score = null
+		self.max_score = max
+		self.score = max / null
+		self.matrix = v
+		self.path = path
+		
+		inspect_matrix(self, v, 0, len(self.dna.seq) +1)
 
-hmm1 = hmm.HMM.read('toy.hmm')
-hmm2 = convert2log(hmm1)
+	def viterbiL(self):
+		
+		# null model score
+		null = 0
+		for i in range(len(self.dna.seq)):
+			ep = self.emission(self.model.null.name, i)
+			null += ep
+	
+		# initialize viterbi matrix
+		v = []
+		for i in range(len(self.dna.seq)+1):
+			v.append({})
+			for s in self.model.states:
+				v[i][s.name] = {'score' : None, 'trace' : None}
+			
+		# set initial probabilities
+		for s in self.model.states: v[0][s.name]['score'] = s.init
+	
+		# fill
+		for i in range(1, len(self.dna.seq)+1):
+			for here in self.tmap:
+				ep = self.emission(here, i-1)
+				max = -math.inf
+				trace = None
+				for prev in self.tmap[here]:
+					tp = self.tmap[prev][here]
+					pp = v[i-1][prev]['score']
+					p = ep + tp + pp
+					if p > max:
+						max = p
+						trace = prev
+				v[i][here]['score'] = max
+				v[i][here]['trace'] = trace
+	
+		# set terminal probabilities
+		for s in self.model.states: v[-1][s.name]['score'] += s.term
+	
+		# find maximum ending state
+		max = -math.inf
+		sid = None
+		for s in self.model.states:
+			if v[-1][s.name]['score'] > max:
+				max = v[-1][s.name]['score']
+				sid = s.name
+	
+		# trace back
+		path = []
+		for i in range(len(self.dna.seq), 0, -1):
+			path.append(sid)
+			sid = v[i][sid]['trace']
+		
+		self.null_score = null
+		self.max_score = max
+		self.score = max - null
+		self.matrix = v
+		self.path = path
+		
+		inspect_matrix(self, v, 0, len(self.dna.seq) +1)
 
-fasta = toolbox.FASTA_stream('toy.fasta')
-for entry in fasta:
-	max, null, path = decodeP(hmm1, entry)
-	print(max, null, path)
 
