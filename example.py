@@ -18,8 +18,11 @@ for entry in fasta:
 	dna.check_alphabet()
 	v1 = decode.Viterbi(model=model, dna=dna, log=False)
 	print(v1.score, v1.path)
+	decode.inspect_matrix(v1, v1.matrix, 0, 9)
+	
 	v2 = decode.Viterbi(model=model, dna=dna, log=True)
 	print(math.exp(v2.score), v2.path)
+	decode.inspect_matrix(v2, v2.matrix, 0, 9)
 	v2.model.write('foo')
 	sys.exit(1)
 

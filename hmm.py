@@ -231,7 +231,6 @@ class HMM:
 	def convert2log(self):
 		if self.logspace:
 			raise HMMError('attempt to re-convert to logs, make a copy first')
-		self.logspace = True
 		
 		for state in self.states + [self.null]:
 			state.init = toolbox.mylog(state.init)
@@ -245,5 +244,4 @@ class HMM:
 						state.emit[ctx][nt] = toolbox.mylog(state.emit[ctx][nt])
 			for next in state.next:
 				state.next[next] = toolbox.mylog(state.next[next])
-
-	
+		self.logspace = True

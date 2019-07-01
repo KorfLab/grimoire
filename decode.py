@@ -320,6 +320,7 @@ class HMM_NT_decoder:
 
 
 class Viterbi(HMM_NT_decoder):
+	"""Standard Viterbi in probabilty or log space"""
 	
 	def __init__(self, model=None, dna=None, log=False):
 		self.model = model
@@ -332,13 +333,14 @@ class Viterbi(HMM_NT_decoder):
 		self.matrix = None
 		
 		# log-space munging
-		if log: self.model.convert2log()
+		if self.log and self.model.logspace == False:
+			self.model.convert2log()
 
 		self.tmap = self.transition_map()
 		self.smap = self.state_map()
 		
 		# null model probability
-		self.null_score = 0 if log else 1
+		self.null_score = 0 if self.log else 1
 		for i in range(len(self.dna.seq)):
 			ep = self.emission(self.model.null.name, i)
 			if self.log: self.null_score += ep
@@ -392,11 +394,28 @@ class Viterbi(HMM_NT_decoder):
 			sid = v[i][sid]['trace']
 		path.reverse()
 		
-		self.score = self.max_score - self.null_score if log else self.max_score / self.null_score
+		self.score = self.max_score - self.null_score if self.log else self.max_score / self.null_score
 		self.path = path
 		self.matrix = v
 		
 
+class StochasticViterbi(HMM_NT_decoder):
+	"""Viterbi supporting multiple sub-optimal trace-backs"""
+	
+	def __init__(self, model=None, dna=None, log=False):
+		self.model = model
+		self.dna = dna
+		self.log = log
+		self.null_score = None
+		self.max_score = None
+		self.score = None
+		self.path = None
+		self.matrix = None
+	
+	def generate_paths(self, n):
+		pass
+		# make a lot of trace-backs
+		# organize them somehow or is that the job for another class?
 
-
-
+class ViterbiXD(HMM_NT_decoder):
+	"""Viterbi supporting states with explicit durations"""
