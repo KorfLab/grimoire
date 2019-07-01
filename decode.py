@@ -1,111 +1,10 @@
 import math
 import sys
 import json
+import copy
 
 import hmm
 import toolbox
-
-
-
-
-# def InputError(Exception):
-# 	pass
-# 	
-# class Viterbi:
-# 	def __init__(self, model):
-# 		self.states = model.states
-# 		self.transitions = {}
-# 		for state in self.states:
-# 			for next in state.next:
-# 				if next not in self.transitions:
-# 					self.transitions[next] = {}
-# 				self.transitions[next][state.name] = state.next[next]
-# 	def initialize(self, seq):
-# 		matrix = []
-# 		for i in range(len(seq)):
-# 			matrix.append{}
-# 			for state in self.states:
-# 				matrix[i][state.name] = {'score' : None, 'trace' : None, 'traces' : {}}
-# 		emit = seq[0:1]
-# 		for this in self.states:
-# 			max_score = 0
-# 			max_state = None
-# 			cumulative = 0
-# 			traces = {}
-# 			for prev in self.states:
-# 				pp = prev.init
-# 				tp = self.transitions[this.name][prev.name]
-# 				ep = None
-# 				if this.ctxt == 0 and emit in this.emit:
-# 					ep = this.emit
-# 				else:
-# 					ep = 0.25
-# 				score = pp * tp * ep
-# 				traces[prev.name] = score
-# 				cumulative += score
-# 				if score > max_score:
-# 					max_score = score
-# 					max_state = prev.name
-# 			matrix[0][this.name]['score'] = max_score
-# 			matrix[0][this.name]['trace'] = max_state
-# 			for trace in traces:
-# 				try:
-# 					traces[trace] /= cumulative
-# 				except ZeroDivisionError:
-# 					traces[trace] = 0
-# 			matrix[0][this.name]['traces'] = traces
-# 		self.matrix = matrix
-# 	def compute(self, seq):
-# 		
-# 	def inspect(self, beg=0, end=len(self.matrix), display='score'):
-# 		""""displays Viterbi matrix property 'score' or 'trace' from beg to end"""
-# 		if display != 'score' and display != 'trace':
-# 			raise InputError()
-# 		print('{:<6s}'.format(''), end='')
-# 		for i in range(beg, end):
-# 			print('{:<10d}'.format(i), end='')
-# 		for state in self.states:
-# 			print('{:<6s}'.format(state.name), end='')
-# 			for i in range(beg, end):
-# 				if display == 'score':
-# 					try:
-# 						print('{:<10.3g}'.format(matrix[i][state.name]['score']), end='')
-# 					except TypeError:
-# 						print('{:<10s}'.format('None'), end='')
-# 				else:
-# 					try:
-# 						print('{:<10s}'.format(matrix[i][state.name]['trace']), end='')
-# 					except TypeError:
-# 						print('{:<10s}'.format('None'), end='')
-# 			print()
-# 			
-# 		
-
-#def log_space(model):
-#	hmm = hmm.HMM(name=model.name, states=model.states)
-#	for state in model.states:
-#		new_state = hmm.state.State(name=state.name, ctxt=state.ctxt,
-#									emit=hmm.state.emission_model(context=state.ctxt),
-#									init=safe_log(state.init),
-#									term=safe_log(state.init))
-#		
-#		if new_state.ctxt == 0:
-#			for nt in new_state.emit:
-#				new_state.emit[nt] = safe_log(state.emit[nt])
-#		else:
-#			for ctx in new_state.emit:
-#				for nt in new_state.emit[ctx]:
-#					new_state.emit[ctx][nt] = safe_log(state.emit[ctx][nt])
-#		for next in state.next:
-#			new_state.next[next] = safe_log(state.next[next])
-
-#def safe_log(n):
-#	r = None
-#	try:
-#		r = math.log(n)
-#	except ValueError:
-#		r = -math.inf
-#	return(r)	
 
 def DecodingError(Exception):
 	pass
@@ -142,7 +41,6 @@ def inspect_matrix(decoder, matrix, beg, end):
 			#	except TypeError:
 			#		print('{:<10s}'.format('None'), end='')
 		print()
-
 
 def initialize_matrix(model, seq):
 	tm = get_transitions(model)
@@ -373,10 +271,7 @@ def stochastic(model=None, seq=None, null_state=None, n=1):
 		corrected_paths.append(path[1:len(path)])
 	return(corrected_paths, corrected_scores)
 
-def mylog(p):
-	if p < 0: raise ValueError('p < 0')
-	if p == 0: return -999
-	else:      return math.log(p)
+
 
 class HMM_NT_decoder:
 
@@ -437,19 +332,8 @@ class Viterbi(HMM_NT_decoder):
 		self.matrix = None
 		
 		# log-space munging
-		if log:
-			for state in model.states + [model.null]:
-				state.init = mylog(state.init)
-				state.term = mylog(state.term)
-				if state.ctxt == 0:
-					for nt in state.emit:
-						state.emit[nt] = mylog(state.emit[nt])
-				else:
-					for ctx in state.emit:
-						for nt in state.emit[ctx]:
-							state.emit[ctx][nt] = mylog(state.emit[ctx][nt])
-				for next in state.next:
-					state.next[next] = mylog(state.next[next])
+		if log: self.model.convert2log()
+
 		self.tmap = self.transition_map()
 		self.smap = self.state_map()
 		

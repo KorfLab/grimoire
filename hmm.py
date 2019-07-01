@@ -2,8 +2,9 @@
 import json
 
 import sequence
+import toolbox
 
-def HMMError(Exception):
+class HMMError(Exception):
 	pass
 
 def emission_model(context=1, alphabet='nt'):
@@ -191,8 +192,9 @@ class HMMdecoder(json.JSONEncoder):
 class HMM:
 	"""Class for HMMs"""
 	
-	def __init__(self, name=None, states=None, null=None):
+	def __init__(self, name=None, logspace=False, states=None, null=None):
 		self.name = name
+		self.logspace = logspace
 		self.states = states
 		self.null = null
 	
@@ -202,6 +204,7 @@ class HMM:
 		d = json.loads(fp.read())
 		hmm = HMM()
 		hmm.name = d['name']
+		hmm.logspace = d['logspace']
 		hmm.states = []
 		for s in d['states']:
 			st = State()
@@ -225,6 +228,22 @@ class HMM:
 		fp = open(filename, 'w+')
 		fp.write(json.dumps(self.__dict__, indent=4, cls=HMMdecoder))
 
-
+	def convert2log(self):
+		if self.logspace:
+			raise HMMError('attempt to re-convert to logs, make a copy first')
+		self.logspace = True
+		
+		for state in self.states + [self.null]:
+			state.init = toolbox.mylog(state.init)
+			state.term = toolbox.mylog(state.term)
+			if state.ctxt == 0:
+				for nt in state.emit:
+					state.emit[nt] = toolbox.mylog(state.emit[nt])
+			else:
+				for ctx in state.emit:
+					for nt in state.emit[ctx]:
+						state.emit[ctx][nt] = toolbox.mylog(state.emit[ctx][nt])
+			for next in state.next:
+				state.next[next] = toolbox.mylog(state.next[next])
 
 	

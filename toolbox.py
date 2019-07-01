@@ -1,6 +1,12 @@
 """Mostly IO functions for standard interchange formats"""
 
+import math
 import re
+
+def mylog(p):
+	if p < 0: raise ValueError('p < 0')
+	if p == 0: return -999
+	else:      return math.log(p)
 
 class IOError(Exception):
 	pass

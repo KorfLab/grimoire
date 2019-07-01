@@ -20,6 +20,7 @@ for entry in fasta:
 	print(v1.score, v1.path)
 	v2 = decode.Viterbi(model=model, dna=dna, log=True)
 	print(math.exp(v2.score), v2.path)
+	v2.model.write('foo')
 	sys.exit(1)
 
 

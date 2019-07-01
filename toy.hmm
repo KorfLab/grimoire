@@ -1,5 +1,6 @@
 {
     "name": "toy",
+	"logspace": false,
     "states": [
         {
             "name": "S1",
