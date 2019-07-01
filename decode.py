@@ -394,7 +394,8 @@ class Viterbi(HMM_NT_decoder):
 			sid = v[i][sid]['trace']
 		path.reverse()
 		
-		self.score = self.max_score - self.null_score if self.log else self.max_score / self.null_score
+		self.score = self.max_score - self.null_score if self.log
+			else self.max_score / self.null_score
 		self.path = path
 		self.matrix = v
 		

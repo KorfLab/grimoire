@@ -16,6 +16,7 @@ fasta = toolbox.FASTA_stream('toy.fasta')
 for entry in fasta:
 	dna = sequence.DNA(name=entry.id, seq=entry.seq)
 	dna.check_alphabet()
+	
 	v1 = decode.Viterbi(model=model, dna=dna, log=False)
 	print(v1.score, v1.path)
 	decode.inspect_matrix(v1, v1.matrix, 0, 9)

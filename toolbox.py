@@ -8,7 +8,7 @@ def mylog(p):
 	if p == 0: return -999
 	else:      return math.log(p)
 
-class IOError(Exception):
+class ToolboxError(Exception):
 	pass
 
 class GFF_entry:
@@ -50,7 +50,7 @@ class GFF_file:
 		type_search = {}
 		if type:
 			if type not in self._types:
-				raise IOError('type not defined: ' + type)
+				raise ToolboxError('type not defined: ' + type)
 			type_search[type] = True
 		else:
 			for t in self.types: type_search[t] = True
@@ -58,7 +58,7 @@ class GFF_file:
 		chrom_search = []
 		if chrom:
 			if chrom not in self._chroms:
-				raise IOError('chrom not defined: ' + chrom)
+				raise ToolboxError('chrom not defined: ' + chrom)
 			chrom_search.append(chrom)
 		else:
 			chrom_search = self.chroms
@@ -66,7 +66,7 @@ class GFF_file:
 		beg = 0 if not beg else beg
 		end = 1e300 if not end else end
 		if beg > end:
-			raise IOError('beg > end: ' + beg + '-' + end)
+			raise ToolboxError('beg > end: ' + beg + '-' + end)
 
 
 		found = []
@@ -100,7 +100,7 @@ class FASTA_file:
 			if line[0:1] == '>':
 				m = re.search('>\s*(\S+)', line)
 				if m[1] in self.offset:
-					raise IOError('duplicate id: ' + m[1])
+					raise ToolboxError('duplicate id: ' + m[1])
 				self.ids.append(m[1])
 				self.offset[m[1]] = self.file.tell() - len(line)
 	
@@ -124,7 +124,7 @@ class FASTA_stream:
 		self.fp = None
 		if   filename    != None: self.fp = open(filename, 'r')
 		elif filepointer != None: self.fp = filepointer
-		else: raise IOError('no file or filepointer given')
+		else: raise ToolboxError('no file or filepointer given')
 		self.lastline = ''
 		self.done = False
 
