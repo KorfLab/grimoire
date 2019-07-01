@@ -1,12 +1,12 @@
 import math
 import sys
 import json
-import copy
+from operator import itemgetter
 
 import hmm
 import toolbox
 
-class DecodingError(Exception):
+class DecodeError(Exception):
 	pass
 
 def inspect_matrix(decoder, matrix, beg, end):
@@ -271,7 +271,13 @@ def stochastic(model=None, seq=None, null_state=None, n=1):
 		corrected_paths.append(path[1:len(path)])
 	return(corrected_paths, corrected_scores)
 
-
+class Parse:
+	def __init__(self, score=None, path=None):
+		self.score = score
+		self.path = path
+	
+	def features(self):
+		pass
 
 class HMM_NT_decoder:
 
@@ -291,12 +297,19 @@ class HMM_NT_decoder:
 					map[next] = {}
 				map[next][state.name] = state.next[next]
 		return map
+	
+	def set_null_score(self):
+		self.null_score = 0 if self.log else 1
+		for i in range(len(self.dna.seq)):
+			ep = self.emission(self.model.null.name, i)
+			if self.log: self.null_score += ep
+			else:        self.null_score *= ep
 
 	def emission(self, state_name, i):
 		nt = self.dna.seq[i:i+1]
 		state = self.smap[state_name]
 	
-		if i < 0: raise DecodingError('position less than 0')
+		if i < 0: raise DecodeError('position less than 0')
 		
 		if self.log:
 			if i < state.ctxt: return math.log(0.25)
@@ -316,7 +329,7 @@ class HMM_NT_decoder:
 				ctx = self.dna.seq[i-state.ctxt:i]
 				if nt in state.emit[ctx]: return state.emit[ctx][nt]
 				else: return 0.25
-		raise DecodingError('not possible')
+		raise DecodeError('not possible')
 
 
 class Viterbi(HMM_NT_decoder):
@@ -331,20 +344,11 @@ class Viterbi(HMM_NT_decoder):
 		self.score = None
 		self.path = None
 		self.matrix = None
-		
-		# log-space munging
 		if self.log and self.model.logspace == False:
 			self.model.convert2log()
-
 		self.tmap = self.transition_map()
 		self.smap = self.state_map()
-		
-		# null model probability
-		self.null_score = 0 if self.log else 1
-		for i in range(len(self.dna.seq)):
-			ep = self.emission(self.model.null.name, i)
-			if self.log: self.null_score += ep
-			else:        self.null_score *= ep
+		self.set_null_score()
 
 		# initialize viterbi matrix
 		v = []
@@ -394,15 +398,16 @@ class Viterbi(HMM_NT_decoder):
 			sid = v[i][sid]['trace']
 		path.reverse()
 		
-		self.score = self.max_score - self.null_score if self.log
-			else self.max_score / self.null_score
+		self.score = self.max_score - self.null_score if self.log else self.max_score / self.null_score
 		self.path = path
 		self.matrix = v
 		
+	def generate_path(self):
+		return(Parse(path=self.path, score=self.score))
 
 class StochasticViterbi(HMM_NT_decoder):
 	"""Viterbi supporting multiple sub-optimal trace-backs"""
-	
+		
 	def __init__(self, model=None, dna=None, log=False):
 		self.model = model
 		self.dna = dna
@@ -412,11 +417,55 @@ class StochasticViterbi(HMM_NT_decoder):
 		self.score = None
 		self.path = None
 		self.matrix = None
+		if self.log and self.model.logspace == False:
+			self.model.convert2log()
+		self.tmap = self.transition_map()
+		self.smap = self.state_map()
+		self.set_null_score()
+
+		if self.log:
+			raise DecodeError('stochastic decoding in log space not yet supported')
+		# initialize viterbi matrix
+		v = []
+		for i in range(len(self.dna.seq)+1):
+			v.append({})
+			for s in self.model.states:
+				v[i][s.name] = {'score' : None, 'traces' : []}
+			
+		# set initial probabilities
+		for s in self.model.states: v[0][s.name]['score'] = s.init
 	
+		# fill
+		for i in range(1, len(self.dna.seq)+1):
+			for here in self.tmap:
+				ep = self.emission(here, i-1)
+				fwd = 0
+				traces = []
+				for prev in self.tmap[here]:
+					tp = self.tmap[prev][here]
+					pp = v[i-1][prev]['score']
+					p = ep * tp * pp
+					fwd += p
+					traces.append({'name' : prev, 'score' : p})
+				v[i][here]['score'] = fwd
+				
+				rsum = 0
+				sum = []
+				for trace in traces:
+					rsum += trace['score'] / fwd
+					v[i][here]['traces'].append({'name' : trace['name'], 'sum' : rsum})
+
+		self.matrix = v
+		
 	def generate_paths(self, n):
+		# choose terminal state by weighted random guessing
+		# make terminal ramp
+		term_ramp = []
+		for s in self.model.states:
+			s.term
+		# traceback n times, creating parse object for each traceback
+		
 		pass
-		# make a lot of trace-backs
-		# organize them somehow or is that the job for another class?
 
 class ViterbiXD(HMM_NT_decoder):
 	"""Viterbi supporting states with explicit durations"""
