@@ -6,7 +6,7 @@ import copy
 import hmm
 import toolbox
 
-def DecodingError(Exception):
+class DecodingError(Exception):
 	pass
 
 def inspect_matrix(decoder, matrix, beg, end):
