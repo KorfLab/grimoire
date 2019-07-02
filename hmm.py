@@ -233,15 +233,15 @@ class HMM:
 			raise HMMError('attempt to re-convert to logs, make a copy first')
 		
 		for state in self.states + [self.null]:
-			state.init = toolbox.mylog(state.init)
-			state.term = toolbox.mylog(state.term)
+			state.init = toolbox.log(state.init)
+			state.term = toolbox.log(state.term)
 			if state.ctxt == 0:
 				for nt in state.emit:
-					state.emit[nt] = toolbox.mylog(state.emit[nt])
+					state.emit[nt] = toolbox.log(state.emit[nt])
 			else:
 				for ctx in state.emit:
 					for nt in state.emit[ctx]:
-						state.emit[ctx][nt] = toolbox.mylog(state.emit[ctx][nt])
+						state.emit[ctx][nt] = toolbox.log(state.emit[ctx][nt])
 			for next in state.next:
-				state.next[next] = toolbox.mylog(state.next[next])
+				state.next[next] = toolbox.log(state.next[next])
 		self.logspace = True

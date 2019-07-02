@@ -3,13 +3,17 @@
 import math
 import re
 
-def mylog(p):
+class ToolboxError(Exception):
+	pass
+	
+def log(p):
 	if p < 0: raise ValueError('p < 0')
 	if p == 0: return -999
 	else:      return math.log(p)
 
-class ToolboxError(Exception):
-	pass
+def sumlog(v1, v2):
+	if v1 < v2: v1, v2 = v2, v1
+	return math.log(1 + math.exp(v2 - v1)) + v1
 
 class GFF_entry:
 	"""Class representing a GFF entry (row)"""

@@ -1,8 +1,12 @@
 
 import sys
+import math
 
 import decode
 import genome
+import toolbox
+
+
 
 chrom = genome.Chromosome(id='test', seq='ACGTAAACCCGGGTTTTTTTTTTTT')
 path = ['INT', 'ACC-0', 'ACC-1', 'E', 'E', 'E', 'DON-0', 'DON-1', 'INT']
