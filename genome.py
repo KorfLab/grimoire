@@ -14,9 +14,9 @@ class GenomeError(Exception):
 class Feature:
 	"""Class representing a sequence feature, which may have children"""
 
-	def __init__(self, chrom, beg, end, strand, type,
-			id=None, score='.', source='.', parent=None):
-		self.chrom = chrom
+	def __init__(self, dna, beg, end, strand, type,
+			id=None, score='.', source='.', parent_id=None):
+		self.dna = dna
 		self.beg = beg
 		self.end = end
 		self.strand = strand
@@ -26,10 +26,10 @@ class Feature:
 		self.source = source
 		self.issues = []
 		self.children = []
-		self.parent_id = parent		
+		self.parent_id = parent_id		
 		if beg < 0: self.issues.append('beg < 0')
 		if beg > end: self.issues.append('beg > end')
-		if end > chrom.length: self.issues.append('end out of range:' + end)
+		if end > len(self.dna.seq): self.issues.append('end out of range:' + end)
 
 	def add_child(self, child):
 		if not self.id:
@@ -38,7 +38,7 @@ class Feature:
 			self.children.append(child)
 
 	def seq_str(self):
-		seq = self.chrom.seq[self.beg-1:self.end]
+		seq = self.dna.seq[self.beg-1:self.end]
 		if self.strand == '-': seq = sequence.revcomp_str(seq)
 		return seq
 
@@ -51,11 +51,15 @@ class Feature:
 		elif self.parent_id:
 			attr = 'Parent=' + self.parent_id
 		
-		string = '\t'.join([self.chrom.id, self.source, self.type,
+		string = '\t'.join([self.dna.name, self.source, self.type,
 			str(self.beg), str(self.end), str(self.score),
-			self.strand, '.', attr]) + '\n'
-		for child in self.children:
-			string += child.gff()
+			self.strand, '.', attr])
+		if self.children:
+			string += '\n'
+			for child in self.children:
+				string += child.gff()
+			string += '\n'
+			
 		return string
 
 class mRNA:
@@ -65,14 +69,14 @@ class mRNA:
 			
 		## sanity checks for chrom, beg, end, strand
 		self.issues = []
-		chrom = features[0].chrom
+		dna = features[0].dna
 		strand = features[0].strand
 		for f in features:
 			if f.issues: self.issues.append('feature issue')
-			if f.chrom != chrom: self.issues.append('mixed chroms')
+			if f.dna != dna: self.issues.append('mixed chroms')
 			if f.strand != strand: self.issues.append('mixed strands')
 			if f.beg > f.end: self.issues.append('beg > end')
-		self.chrom = chrom
+		self.dna = dna
 		self.strand = strand
 		
 		## build mRNA from features
@@ -83,13 +87,13 @@ class mRNA:
 		self.id = id
 		for f in features:
 			if f.type == 'exon': self.exons.append(
-				Feature(f.chrom, f.beg, f.end, f.strand, f.type))
+				Feature(f.dna, f.beg, f.end, f.strand, f.type))
 			elif f.type == 'CDS': self.cdss.append(
-				Feature(f.chrom, f.beg, f.end, f.strand, f.type))
+				Feature(f.dna, f.beg, f.end, f.strand, f.type))
 			elif f.type == 'five_prime_UTR': self.utr5s.append(
-				Feature(f.chrom, f.beg, f.end, f.strand, f.type))
+				Feature(f.dna, f.beg, f.end, f.strand, f.type))
 			elif f.type == 'three_prime_UTR': self.utr3s.append(
-				Feature(f.chrom, f.beg, f.end, f.strand, f.type))
+				Feature(f.dna, f.beg, f.end, f.strand, f.type))
 			else:
 				raise GenomeError('unknown type in feature table')
 				
@@ -115,7 +119,7 @@ class mRNA:
 			beg = self.exons[i].end +1
 			end = self.exons[i+1].beg -1
 			self.introns.append(
-				Feature(self.chrom, beg, end, self.strand, 'intron'))
+				Feature(self.dna, beg, end, self.strand, 'intron'))
 
 		# gene structure warnings
 		min_intron = 30
@@ -198,16 +202,6 @@ class Gene:
 			if tx.strand != self.strand: self.issues.append('mixed strands')
 			if tx.issues: self.issues.append('tx issue')
 
-class Chromosome(sequence.DNA):
-	"""Class representing a chromosome, which contains genes"""
-	
-	def __init__(self, id=None, seq=None):
-		self.id = id
-		self.seq = seq
-		self.length = len(seq)
-		self.features = []
-		self.genes = []
-
 class Genome:
 	"""Class representing a genome, which has chromosomes"""
 
@@ -219,17 +213,17 @@ class Genome:
 		gene_parts = ['CDS', 'exon', 'five_prime_UTR', 'three_prime_UTR']
 		for id in ff.ids:
 			entry = ff.get(id)
-			chrom = Chromosome(id=entry.id, seq=entry.seq)
+			chrom = sequence.DNA(name=entry.id, seq=entry.seq)
 			if check_alphabet: chrom.check_alphabet()
 			ft = {}	
 			for part in gene_parts:
-				for entry in gf.get(type=part, chrom=chrom.id):
+				for entry in gf.get(type=part, chrom=chrom.name):
 					pid = re.search('Parent=([\w\.]+)', entry.attr)[1]
 					if pid not in ft: ft[pid] = []
 					ft[pid].append(Feature(chrom, entry.beg, entry.end,
 						entry.strand, entry.type))
 			gt = {}
-			for entry in gf.get(type='mRNA', chrom=chrom.id):
+			for entry in gf.get(type='mRNA', chrom=chrom.name):
 				tid = re.search('ID=([\w\.]+)', entry.attr)[1]
 				gid = re.search('Parent=([\w\.]+)', entry.attr)[1]
 				if gid not in gt: gt[gid] = {}
@@ -240,7 +234,7 @@ class Genome:
 				for tid in gt[gid]:
 					tx = mRNA(id=tid, features=ft[tid])
 					txs.append(tx)
-				chrom.genes.append(Gene(id=gid, transcripts=txs))
+				chrom.features.append(Gene(id=gid, transcripts=txs))
 			self.chromosomes.append(chrom)
 		
 

@@ -85,7 +85,7 @@ if arg.model == 'internal_exon':
 	exon_len = 0
 	splices = 0
 	for chr in gen.chromosomes:
-		for gene in chr.genes:
+		for gene in chr.features:
 			tx = gene.transcripts[0]
 			if gene.issues: continue
 			if len(gene.transcripts) > 1: continue
@@ -153,7 +153,7 @@ elif arg.model == 'splicing':
 	splices = 0
 	intron_len = 0
 	for chr in gen.chromosomes:
-		for gene in chr.genes:
+		for gene in chr.features:
 			tx = gene.transcripts[0]
 			if gene.issues: continue
 			if len(gene.transcripts) > 1: continue
@@ -242,7 +242,7 @@ elif arg.model == 'mRNA':
 	mRNAs = 0
 	cds_len = 0
 	for chr in gen.chromosomes:
-		for gene in chr.genes:
+		for gene in chr.features:
 			tx = gene.transcripts[0]
 			if gene.issues: continue
 			if len(gene.transcripts) > 1: continue

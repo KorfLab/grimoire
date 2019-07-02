@@ -116,6 +116,7 @@ class DNA(BioSequence):
 		self.seq = seq
 		self.desc = desc
 		self.species = species
+		self.features = []
 	
 	def check_alphabet(self):
 		for i in range(len(self.seq)):

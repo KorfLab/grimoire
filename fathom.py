@@ -36,7 +36,7 @@ if arg.stats:
 
 	gen = genome.Genome(fasta=arg.fasta, gff3=arg.gff3)
 	for chr in gen.chromosomes:
-		for gene in chr.genes:
+		for gene in chr.features:
 			tpg.append(len(gene.transcripts))
 			for tx in gene.transcripts:
 				## count distributions

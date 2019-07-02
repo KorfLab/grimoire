@@ -41,11 +41,13 @@ def inspect_matrix(decoder, beg, end, field):
 		print()
 
 class Parse:
-	def __init__(self, score=None, path=None):
+	def __init__(self, score=None, path=None, freq=None, pid=None):
 		self.score = score
 		self.path = path
+		self.freq = freq
+		self.pid = pid
 	
-	def features(self, labels=None, chrom=None):
+	def features(self, labels=None, dna=None):
 		mypath = []
 		for name in self.path:
 			found = False
@@ -63,13 +65,13 @@ class Parse:
 			for i in range(beg, len(mypath)):
 				if mypath[beg] != mypath[i]:
 					end = i-1
-					features.append(genome.Feature(chrom, beg+1, end+1, '+',
-						mypath[beg]))
+					features.append(genome.Feature(dna, beg+1, end+1, '+',
+						mypath[beg], parent_id=self.pid))
 					beg = end+1
 					break
 				elif i == len(mypath) -1:
-					features.append(genome.Feature(chrom, beg+1, i+1, '+',
-						mypath[beg]))
+					features.append(genome.Feature(dna, beg+1, i+1, '+',
+						mypath[beg], parent_id=self.pid))
 					end = len(mypath) +1
 		return features
 
@@ -281,7 +283,7 @@ class StochasticViterbi(HMM_NT_decoder):
 			term.append({'name' : s.name, 'score' : rsum})
 				
 		# traceback n times, creating parse object for each traceback
-		parses = []
+		tracebacks = []
 
 		for i in range(n):
 			# select terminal state
@@ -313,32 +315,32 @@ class StochasticViterbi(HMM_NT_decoder):
 				score *= tp * ep
 				pid = sid				
 
-			parses.append(Parse(path=path, score=score))
+			tracebacks.append({'path':path, 'score':score})
 		
-		parse_count = {}
-		for parse in parses:
-			if ''.join(parse.path) not in parse_count:
-				parse_count[''.join(parse.path)] = 0
-			parse_count[''.join(parse.path)] += 1
-		parse_freq = {}
-		for parse in parse_count:
-			parse_freq[parse] = parse_count[parse] / n
-		print(json.dumps(parse_freq, indent=4))
-
-		return(parses)			
-				
+		trace_table = {}
+		for trace in tracebacks:
+			sig = '-'.join(trace['path'])
+			if sig not in trace_table:
+				trace_table[sig]= {
+					'path':trace['path'],
+					'score':trace['score'],
+					'count':1
+				}
+			else:
+				trace_table[sig]['count'] += 1
 		
+		parses = []
+		pn = 1
+		for sig in sorted(trace_table,
+				key=lambda x:trace_table[x]['count'], reverse=True):
+			parses.append(Parse(
+				score=trace_table[sig]['score'],
+				path=trace_table[sig]['path'],
+				freq=trace_table[sig]['count'] / n,
+				pid='parse-' + str(pn)))
+			pn += 1
 		
-# 		path = []
-# 		for i in range(len(self.dna.seq), 0, -1):
-# 			path.append(sid)
-# 			sid = v[i][sid]['trace']
-# 		path.reverse()
-# 		
-# 		self.score = (self.max_score - self.null_score if self.log
-# 			else self.max_score / self.null_score)
-# 		self.path = path
-# 		self.matrix = v
+		return parses
 
 class ViterbiXD(HMM_NT_decoder):
 	"""Viterbi supporting states with explicit durations"""

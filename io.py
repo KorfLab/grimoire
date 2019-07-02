@@ -1,20 +1,23 @@
 
 import sys
 import math
+import random
+import re
 
 import decode
 import genome
 import toolbox
+import sequence
 
 
 
-chrom = genome.Chromosome(id='test', seq='ACGTAAACCCGGGTTTTTTTTTTTT')
+dna = sequence.DNA(name='test', seq='ACGTAAACCCGGGTTTTTTTTTTTT')
 path = ['INT', 'ACC-0', 'ACC-1', 'E', 'E', 'E', 'DON-0', 'DON-1', 'INT']
 p = decode.Parse(score=0, path=path)
-features = p.features(chrom=chrom, labels=['INT', 'ACC', 'E', 'DON'])
+features = p.features(dna=dna, labels=['INT', 'ACC', 'E', 'DON'])
 for f in features:
-	print(f.beg, f.end, f.type)
-sys.exit(1)
+	print(f.beg, f.end, f.type, f.seq_str())
+#sys.exit(1)
 
 
 ## convert bed12 to GFF3
