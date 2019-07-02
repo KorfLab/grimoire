@@ -22,9 +22,9 @@ for entry in fasta:
 	decode.inspect_matrix(v1, 0, len(dna.seq), 'score')
 
 	v2 = decode.StochasticViterbi(model=model, dna=dna, log=False)
-	parse_list = v2.generate_paths(100)
-	for parse in parse_list:
-		print(parse.score, parse.path)
+	parse_list = v2.generate_paths(10000)
+# 	for parse in parse_list:
+# 		print(parse.score, parse.path)
 	decode.inspect_matrix(v2, 0, len(dna.seq), 'score')
 	
 	v3 = decode.Posterior(model=model, dna=dna, log=True)

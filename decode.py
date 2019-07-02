@@ -315,6 +315,16 @@ class StochasticViterbi(HMM_NT_decoder):
 
 			parses.append(Parse(path=path, score=score))
 		
+		parse_count = {}
+		for parse in parses:
+			if ''.join(parse.path) not in parse_count:
+				parse_count[''.join(parse.path)] = 0
+			parse_count[''.join(parse.path)] += 1
+		parse_freq = {}
+		for parse in parse_count:
+			parse_freq[parse] = parse_count[parse] / n
+		print(json.dumps(parse_freq, indent=4))
+
 		return(parses)			
 				
 		
