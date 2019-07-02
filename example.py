@@ -19,13 +19,16 @@ for entry in fasta:
 	
 	v1 = decode.Viterbi(model=model, dna=dna, log=False)
 	print(v1.score, v1.path)
-	decode.inspect_matrix(v1, 0, 9, 'score')
+	decode.inspect_matrix(v1, 0, len(dna.seq), 'score')
 
 	v2 = decode.StochasticViterbi(model=model, dna=dna, log=False)
-	decode.inspect_matrix(v2, 0, 9, 'score')
+	parse_list = v2.generate_paths(100)
+	for parse in parse_list:
+		print(parse.score, parse.path)
+	decode.inspect_matrix(v2, 0, len(dna.seq), 'score')
 	
 	v3 = decode.Posterior(model=model, dna=dna, log=True)
-	decode.inspect_matrix(v3, 0, 9, 'fwd')
+	decode.inspect_matrix(v3, 0, len(dna.seq), 'fwd')
 	
 	sys.exit(1)
 
