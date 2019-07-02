@@ -26,10 +26,10 @@ class Feature:
 		self.source = source
 		self.issues = []
 		self.children = []
-		self.parent_id = parent
+		self.parent_id = parent		
 		if beg < 0: self.issues.append('beg < 0')
 		if beg > end: self.issues.append('beg > end')
-		if end > chrom.length: self.issues.append('end out of range')
+		if end > chrom.length: self.issues.append('end out of range:' + end)
 
 	def add_child(self, child):
 		if not self.id:

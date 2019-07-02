@@ -2,8 +2,11 @@ import math
 import sys
 import json
 from operator import itemgetter
+import copy
+import re
 
 import hmm
+import genome
 import toolbox
 
 class DecodeError(Exception):
@@ -276,8 +279,33 @@ class Parse:
 		self.score = score
 		self.path = path
 	
-	def features(self):
-		pass
+	def features(self, labels=None, chrom=None):
+		mypath = []
+		for name in self.path:
+			found = False
+			for label in labels:
+				if re.search(label, name):
+					mypath.append(label)
+					found = True
+					break
+			if not found:
+				raise DecodeError('name not matched to label: ' + name)
+		
+		features = []
+		beg, end = 0, 0
+		while (end < len(mypath)):
+			for i in range(beg, len(mypath)):
+				if mypath[beg] != mypath[i]:
+					end = i-1
+					features.append(genome.Feature(chrom, beg+1, end+1, '+',
+						mypath[beg]))
+					beg = end+1
+					break
+				elif i == len(mypath) -1:
+					features.append(genome.Feature(chrom, beg+1, i+1, '+',
+						mypath[beg]))
+					end = len(mypath) +1
+		return features
 
 class HMM_NT_decoder:
 
