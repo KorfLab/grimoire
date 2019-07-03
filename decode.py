@@ -95,11 +95,11 @@ class HMM_NT_decoder:
 		return map
 	
 	def set_null_score(self):
-		self.null_score = 0 if self.log else 1
+		self.null_score = 0 if self.model.log else 1
 		for i in range(len(self.dna.seq)):
 			ep = self.emission(self.model.null.name, i)
-			if self.log: self.null_score += ep
-			else:        self.null_score *= ep
+			if self.model.log: self.null_score += ep
+			else:              self.null_score *= ep
 
 	def emission(self, state_name, i):
 		nt = self.dna.seq[i:i+1]
@@ -107,7 +107,7 @@ class HMM_NT_decoder:
 	
 		if i < 0: raise DecodeError('position less than 0')
 		
-		if self.log:
+		if self.model.log:
 			if i < state.ctxt: return math.log(0.25)
 			if state.ctxt == 0:
 				if nt in state.emit: return state.emit[nt]
@@ -130,17 +130,14 @@ class HMM_NT_decoder:
 class Viterbi(HMM_NT_decoder):
 	"""Standard Viterbi in probabilty or log space"""
 	
-	def __init__(self, model=None, dna=None, log=False):
+	def __init__(self, model=None, dna=None):
 		self.model = model
 		self.dna = dna
-		self.log = log
 		self.null_score = None
 		self.max_score = None
 		self.score = None
 		self.path = None
 		self.matrix = None
-		if self.log and self.model.logspace == False:
-			self.model.convert2log()
 		self.tmap = self.transition_map()
 		self.smap = self.state_map()
 		self.set_null_score()
@@ -154,7 +151,10 @@ class Viterbi(HMM_NT_decoder):
 			
 		# set initial probabilities
 		for s in self.model.states:
-			v[0][s.name]['score'] = s.init * self.emission(s.name, 0)
+			if self.model.log:
+				v[0][s.name]['score'] = s.init + self.emission(s.name, 0)
+			else:
+				v[0][s.name]['score'] = s.init * self.emission(s.name, 0)
 	
 		# fill
 		for i in range(1, len(self.dna.seq)):
@@ -166,8 +166,8 @@ class Viterbi(HMM_NT_decoder):
 					tp = self.tmap[prev][here]
 					pp = v[i-1][prev]['score']
 					p = None
-					if self.log: p = ep + tp + pp
-					else:        p = ep * tp * pp
+					if self.model.log: p = ep + tp + pp
+					else:              p = ep * tp * pp
 					if p > max:
 						max = p
 						trace = prev
@@ -176,8 +176,8 @@ class Viterbi(HMM_NT_decoder):
 	
 		# set terminal probabilities
 		for s in self.model.states:
-			if self.log: v[-1][s.name]['score'] += s.term
-			else:        v[-1][s.name]['score'] *= s.term
+			if self.model.log: v[-1][s.name]['score'] += s.term
+			else:              v[-1][s.name]['score'] *= s.term
 
 		# find maximum score and maximum ending state (sid)
 		self.max_score = -math.inf
@@ -189,13 +189,16 @@ class Viterbi(HMM_NT_decoder):
 	
 		# trace back
 		path = []
-		for i in range(len(self.dna.seq) - 1, -1, -1):
+		for i in range(len(self.dna.seq) -1, -1, -1):
 			path.append(sid)
 			sid = v[i][sid]['trace']
 		path.reverse()
 		
-		self.score = (self.max_score - self.null_score if self.log
-			else self.max_score / self.null_score)
+		self.score = None
+		if self.model.log:
+			self.score = self.max_score -self.null_score
+		else:
+			self.score = self.max_score / self.null_score		
 		self.path = path
 		self.matrix = v
 		
@@ -205,21 +208,21 @@ class Viterbi(HMM_NT_decoder):
 class StochasticViterbi(HMM_NT_decoder):
 	"""Viterbi supporting multiple sub-optimal trace-backs"""
 		
-	def __init__(self, model=None, dna=None, log=True):
+	def __init__(self, model=None, dna=None, seed=None):
 		self.model = model
 		self.dna = dna
-		self.log = log
+		self.seed = seed
 		self.null_score = None
 		self.max_score = None
 		self.score = None
 		self.path = None
 		self.matrix = None
-		if self.log and self.model.logspace == False:
-			self.model.convert2log()
+		
+		if self.seed: random.seed(self.seed)
 		self.tmap = self.transition_map()
 		self.smap = self.state_map()
 		self.set_null_score()
-		if self.log: raise DecodeError('StochasticViterbi does not support log space')
+		
 		# initialize matrix
 		v = []
 		for i in range(len(self.dna.seq)):
@@ -229,21 +232,25 @@ class StochasticViterbi(HMM_NT_decoder):
 			
 		# set initial probabilities
 		for s in self.model.states:
-			v[0][s.name]['score'] = s.init * self.emission(s.name, 0)
+			if self.model.log:
+				v[0][s.name]['score'] = s.init + self.emission(s.name, 0)
+			else:
+				v[0][s.name]['score'] = s.init * self.emission(s.name, 0)
 	
 		# fill
 		for i in range(1, len(self.dna.seq)):
 			for here in self.tmap:
 				ep = self.emission(here, i)
 				fwd = None
-				if self.log:	fwd = -math.inf
-				else: 			fwd = 0
+				if self.model.log:	fwd = -math.inf
+				else: 			    fwd = 0
+				
 				traces = []
 				for prev in self.tmap[here]:
 					tp = self.tmap[prev][here]
 					pp = v[i-1][prev]['score']
 					p = None
-					if self.log:
+					if self.model.log:
 						p = ep + tp + pp
 						fwd = toolbox.sumlog(fwd, p)
 					else:
@@ -252,83 +259,95 @@ class StochasticViterbi(HMM_NT_decoder):
 					traces.append({'name' : prev, 'score' : p})
 				v[i][here]['score'] = fwd
 				
-				rsum = 0
-				sum = []
-				for trace in traces:
-					rsum += trace['score'] / fwd
-					v[i][here]['traces'].append({
-						'name' : trace['name'],
-						'cdf' : rsum
-					})
-		# terminate matrix
-		if self.log:
-			raise DecodeError('log space not supported')
-		else:
-			for s in self.model.states: v[-1][s.name]['score'] *= s.term
+				if self.model.log:
+					rsum = -math.inf
+					for trace in traces:
+						rsum = toolbox.sumlog(rsum, trace['score'])
+						v[i][here]['traces'].append({
+							'name': trace['name'],
+							'cdf' : math.exp(rsum - fwd)
+						})
+				else:
+					rsum = 0
+					for trace in traces:
+						rsum += trace['score'] / fwd
+						v[i][here]['traces'].append({
+							'name' : trace['name'],
+							'cdf' : rsum
+						})
+				
+		# set terminal probabilities
+		for s in self.model.states:
+			if self.model.log: v[-1][s.name]['score'] += s.term
+			else:              v[-1][s.name]['score'] *= s.term
 		
 		self.matrix = v
 		
 	def generate_paths(self, n):
-		if self.log: raise DecodeError('log space yet not supported in StochasticViterbi')
-		# choose terminal state by weighted random guessing
-		# make terminal ramp
-		sum = 0
-		term = []
-		for s in self.model.states:
-			sum +=  self.matrix[-1][s.name]['score']
-
-		rsum = 0
-		for s in self.model.states:
-			rsum += self.matrix[-1][s.name]['score'] / sum
-			term.append({'name' : s.name, 'score' : rsum})
-				
-		# traceback n times, creating parse object for each traceback
-		tracebacks = []
-
-		for i in range(n):
+		
+		term_cdf = []
+		if self.model.log:
+			sum = -math.inf
+			for s in self.model.states:
+				sum = toolbox.sumlog(sum, self.matrix[-1][s.name]['score'])
+			rsum = -math.inf
+			for s in self.model.states:
+				rsum = toolbox.sumlog(rsum, self.matrix[-1][s.name]['score'])
+				term_cdf.append({'name':s.name, 'cdf':math.exp(rsum-sum)})
+		else:
+			sum = 0
+			for s in self.model.states:
+				sum +=  self.matrix[-1][s.name]['score']
+			rsum = 0
+			for s in self.model.states:
+				rsum += self.matrix[-1][s.name]['score'] / sum
+				term_cdf.append({'name':s.name, 'cdf':rsum})
+		
+		# traceback n times, storing unique paths in table
+		trace_table = {}
+		for _ in range(n):
 			# select terminal state
 			rand = random.random()
 			sid = None
-			for s in term:
-				if rand < s['score']:
-					sid = s['name']
+			for final in term_cdf:
+				if rand < final['cdf']:
+					sid = final['name']
 					break
+			
 			# traceback
 			path = []
-			for j in range(len(self.matrix) - 1, -1, -1):
+			for i in range(len(self.matrix) -1, -1, -1):
 				path.append(sid)
 				rand = random.random()
-				for trace in self.matrix[j][sid]['traces']:
+				for trace in self.matrix[i][sid]['traces']:
 					if rand < trace['cdf']:
 						sid = trace['name']
 						break
-
 			path.reverse()
 			
 			# calculate Viterbi score for path
-			sid = path[0]
-			pid = None
-			score = self.state_map()[sid].init * self.emission(sid, 0)
-			for pos, sid in enumerate(path):
-				tp = self.transition_map()[path[pos]][sid]
-				ep = self.emission(sid, pos)
-				score *= tp * ep
-				pid = sid				
-
-			tracebacks.append({'path':path, 'score':score})
-		
-		trace_table = {}
-		for trace in tracebacks:
-			sig = '-'.join(trace['path'])
+			if self.model.log:
+				pass
+			else:
+				score = self.smap[path[0]].init * self.emission(path[0], 0)
+				for i in range(1, len(path)):
+					ep = self.emission(path[i], i)
+					tp = self.tmap[path[i-1]][path[i]]
+					score *= ep * tp
+				score *= self.smap[path[-1]].term
+			
+			# store path
+			sig = '-'.join(path)
 			if sig not in trace_table:
 				trace_table[sig]= {
-					'path':trace['path'],
-					'score':trace['score'],
+					'path':path,
+					'score':score,
 					'count':1
 				}
 			else:
 				trace_table[sig]['count'] += 1
 		
+		# return parses sorted by frequency
 		parses = []
 		pn = 1
 		for sig in sorted(trace_table,
@@ -342,63 +361,4 @@ class StochasticViterbi(HMM_NT_decoder):
 		
 		return parses
 
-class ViterbiXD(HMM_NT_decoder):
-	"""Viterbi supporting states with explicit durations"""
 
-class Posterior(HMM_NT_decoder):
-	"""Forward-Backward decoding"""
-	
-	def __init__(self, model=None, dna=None, log=False):
-		self.model = model
-		self.dna = dna
-		self.log = log
-		self.null_score = None
-		self.max_score = None
-		self.score = None
-		self.path = None
-		self.matrix = None
-		if self.log and self.model.logspace == False:
-			self.model.convert2log()
-		self.tmap = self.transition_map()
-		self.smap = self.state_map()
-		self.set_null_score()
-
-		# initialize viterbi matrix
-		v = []
-		for i in range(len(self.dna.seq)):
-			v.append({})
-			for s in self.model.states:
-				v[i][s.name] = {'fwd' : None, 'bwd' : None}
-			
-		# set initial probabilities
-		for s in self.model.states: v[0][s.name]['fwd'] = s.init
-	
-		# fill
-		for i in range(1, len(self.dna.seq)):
-			for here in self.tmap:
-				ep = self.emission(here, i)
-				
-				if self.log: fwd = -math.inf
-				else:        fwd = 0
-				
-				for prev in self.tmap[here]:
-					tp = self.tmap[prev][here]
-					pp = v[i-1][prev]['fwd']
-					p = None
-					if self.log:
-						p = ep + tp + pp
-						fwd = toolbox.sumlog(fwd, p)
-					else:
-						p = ep * tp * pp
-						fwd += p
-				v[i][here]['fwd'] = fwd
-	
-		# set terminal probabilities
-		for s in self.model.states:
-			if self.log: v[-1][s.name]['fwd'] += s.term
-			else:        v[-1][s.name]['fwd'] *= s.term
-
-		self.matrix = v
-		
-	def generate_path(self):
-		return(Parse(path=self.path, score=self.score))

@@ -4,6 +4,7 @@
 
 import sys
 import math
+import copy
 
 import sequence
 import toolbox
@@ -11,26 +12,40 @@ import hmm
 import genome
 import decode
 
-model = hmm.HMM.read('toy.hmm')
+modelP = hmm.HMM.read('toy.hmm')
+modelL = copy.deepcopy(modelP)
+modelL.convert2log()
 fasta = toolbox.FASTA_stream('toy.fasta')
+
+
 for entry in fasta:
 	dna = sequence.DNA(name=entry.id, seq=entry.seq)
 	dna.check_alphabet()
 	
-	v1 = decode.Viterbi(model=model, dna=dna, log=False)
-	print(v1.score, v1.path)
-	decode.inspect_matrix(v1, 0, len(dna.seq), 'score')
+	v1P = decode.Viterbi(model=modelP, dna=dna)
+	decode.inspect_matrix(v1P, 0, len(dna.seq), 'score')
+	
+	#v1L = decode.Viterbi(model=modelL, dna=dna)
+	#decode.inspect_matrix(v1L, 0, len(dna.seq), 'score')
 
-	v2 = decode.StochasticViterbi(model=model, dna=dna, log=False)
-	parse_list = v2.generate_paths(40)
+	v2P = decode.StochasticViterbi(model=modelP, dna=dna, seed=1)
+	parse_list = v2P.generate_paths(1)
+	decode.inspect_matrix(v2P, 0, len(dna.seq), 'score')
 	for parse in parse_list:
 		print(parse.score, parse.path, parse.freq)
-		for f in parse.features(dna=dna, labels=['S1', 'S2']):
-			print(f.gff())
-	decode.inspect_matrix(v2, 0, len(dna.seq), 'score')
 	
-	v3 = decode.Posterior(model=model, dna=dna, log=True)
-	decode.inspect_matrix(v3, 0, len(dna.seq), 'fwd')
+	#v2L = decode.StochasticViterbi(model=modelL, dna=dna, seed=1)
+	#parse_list = v2L.generate_paths(20)
+	#decode.inspect_matrix(v2L, 0, len(dna.seq), 'score')
+	#for parse in parse_list:
+	#	print(parse.score, parse.path, parse.freq)
+		
+		#for f in parse.features(dna=dna, labels=['S1', 'S2']):
+		#	print(f.gff())
+	#decode.inspect_matrix(v2, 0, len(dna.seq), 'score')
+	
+	#v3 = decode.Posterior(model=model, dna=dna, log=True)
+	#decode.inspect_matrix(v3, 0, len(dna.seq), 'fwd')
 	
 	sys.exit(1)
 

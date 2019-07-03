@@ -192,9 +192,9 @@ class HMMdecoder(json.JSONEncoder):
 class HMM:
 	"""Class for HMMs"""
 	
-	def __init__(self, name=None, logspace=False, states=None, null=None):
+	def __init__(self, name=None, log=False, states=None, null=None):
 		self.name = name
-		self.logspace = logspace
+		self.log = log
 		self.states = states
 		self.null = null
 	
@@ -204,7 +204,7 @@ class HMM:
 		d = json.loads(fp.read())
 		hmm = HMM()
 		hmm.name = d['name']
-		hmm.logspace = d['logspace']
+		hmm.log = d['log']
 		hmm.states = []
 		for s in d['states']:
 			st = State()
@@ -229,8 +229,8 @@ class HMM:
 		fp.write(json.dumps(self.__dict__, indent=4, cls=HMMdecoder))
 
 	def convert2log(self):
-		if self.logspace:
-			raise HMMError('attempt to re-convert to logs, make a copy first')
+		if self.log:
+			raise HMMError('model already in log space')
 		
 		for state in self.states + [self.null]:
 			state.init = toolbox.log(state.init)
@@ -244,4 +244,4 @@ class HMM:
 						state.emit[ctx][nt] = toolbox.log(state.emit[ctx][nt])
 			for next in state.next:
 				state.next[next] = toolbox.log(state.next[next])
-		self.logspace = True
+		self.log = True
