@@ -82,6 +82,27 @@ class GFF_file:
 		
 		return found
 
+class GFF_stream:
+
+	def __init__(self, filename=None, filepointer=None):
+		self.fp = None
+		if   filename    != None: self.fp = open(filename, 'r')
+		elif filepointer != None: self.fp = filepointer
+		else: raise ToolboxError('no file or filepointer given')
+
+	def __iter__(self):
+		return self
+
+	def __next__(self):
+		return self.next()
+
+	def next(self):
+		line = self.fp.readline()
+		if line == '': raise StopIteration()
+		col = line.split('\t')
+		chrom = col[0]
+		type = col[2]
+		return GFF_entry(col)
 
 class FASTA_entry:
 	"""Class representing a FASTA entry (header, seq)"""
@@ -124,6 +145,7 @@ class FASTA_file:
 		return FASTA_entry(id, desc, "".join(seq))
 
 class FASTA_stream:
+
 	def __init__(self, filename=None, filepointer=None):
 		self.fp = None
 		if   filename    != None: self.fp = open(filename, 'r')

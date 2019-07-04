@@ -10,15 +10,6 @@ import toolbox
 import sequence
 
 
-
-## build up genes with new methods
-
-
-
-#sys.exit(1)
-
-
-
 ## convert bed12 to GFF3
 
 fp = open('araport.bed', 'r')

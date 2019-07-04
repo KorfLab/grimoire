@@ -36,7 +36,7 @@ class Feature:
 		self.children = []
 		self.validated = False
 
-	def _validate(self):
+	def _validate(self, cid='child', pid='parent'):
 		if self.beg < 0: self.issues['beg<0'] = True
 		if self.beg > self.end: self.issues['beg>end'] = True
 		if self.end > len(self.dna.seq): self.issues['end>seq'] = True
@@ -44,13 +44,13 @@ class Feature:
 			for child in self.children:
 				child.validate()	
 				if child.beg < self.beg:
-					self.issues['child.beg<parent.beg'] = True
+					self.issues[cid + '.beg<' + pid + '.beg'] = True
 				if child.end > self.end:
-					self.issues['child.end>parent.end'] = True
+					self.issues[cid + '.end>' + pid + '.end'] = True
 				if child.strand != self.strand:
 					self.issues['mixed_strands'] = True
 				if child.issues:
-					self.issues['child_issues'] = True
+					self.issues[cid + '_issues'] = True
 	
 	def validate(self):
 		if self.validated: return
@@ -219,7 +219,7 @@ class Gene(Feature):
 	def validate(self):
 		if not self.id: raise GenomeError('genes must have ids')
 		if self.parent_id: raise GenomeError('genes have no parent_ids')
-		self._validate()
+		self._validate(cid='mRNA', pid='gene')
 		self.validated = True
 
 class Genome:
