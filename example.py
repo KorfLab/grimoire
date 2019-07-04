@@ -23,24 +23,24 @@ for entry in fasta:
 	dna.check_alphabet()
 	
 	v1P = decode.Viterbi(model=modelP, dna=dna)
-	decode.inspect_matrix(v1P, 0, len(dna.seq), 'score')
+	v1P.inspect(0, len(dna.seq), 'score')
 	parse = v1P.generate_path()
 	print(parse.score, parse.path)
 	
 	v1L = decode.Viterbi(model=modelL, dna=dna)
-	decode.inspect_matrix(v1L, 0, len(dna.seq), 'score')
+	v1L.inspect(0, len(dna.seq), 'score')
 	parse = v1L.generate_path()
 	print(parse.score, parse.path)
 	
 	v2P = decode.StochasticViterbi(model=modelP, dna=dna, seed=1)
 	parse_list = v2P.generate_paths(10)
-	decode.inspect_matrix(v2P, 0, len(dna.seq), 'score')
+	v2P.inspect(0, len(dna.seq), 'score')
 	for parse in parse_list:
 		print(parse.score, parse.path, parse.freq)
 	
 	v2L = decode.StochasticViterbi(model=modelL, dna=dna, seed=1)
 	parse_list = v2L.generate_paths(10)
-	decode.inspect_matrix(v2L, 0, len(dna.seq), 'score')
+	v2L.inspect(0, len(dna.seq), 'score')
 	for parse in parse_list:
 		print(parse.score, parse.path, parse.freq)
 		

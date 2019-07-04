@@ -37,8 +37,11 @@ if arg.stats:
 	gen = genome.Genome(fasta=arg.fasta, gff3=arg.gff3)
 	for chr in gen.chromosomes:
 		for gene in chr.features:
-			tpg.append(len(gene.transcripts))
-			for tx in gene.transcripts:
+			#tpg.append(len(gene.children))
+			for tx in gene.children:
+				print(gene.id, tx.id)
+				
+				"""
 				## count distributions
 				ept.append(len(tx.exons))
 				ipt.append(len(tx.introns))
@@ -51,10 +54,11 @@ if arg.stats:
 				for u in tx.utr3s: u3len.append(u.end - u.beg + 1)
 				for i in tx.introns: ilen.append(i.end - i.beg + 1)
 				clen.append(len(tx.cds_str()))
+				"""
 	
 	
-	plt.hist(clen, bins='auto')
-	plt.title('length')
-	plt.savefig('plot.png')
+#	plt.hist(clen, bins='auto')
+#	plt.title('length')
+#	plt.savefig('plot.png')
 	
 

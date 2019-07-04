@@ -13,33 +13,6 @@ import toolbox
 class DecodeError(Exception):
 	pass
 
-def inspect_matrix(decoder, beg, end, field):
-	matrix = decoder.matrix
-	
-	# print numbers
-	print('{:<6s}'.format(''), end='')
-	for col in range(beg, end):
-		print('{:<10d}'.format(col), end='')
-	print()
-	
-	# print letters
-	print('{:<6s}'.format(''), end='')
-	for col in range(beg, end):
-		nt = decoder.dna.seq[col:col+1]
-		print('{:<10s}'.format(nt), end='')
-	print()
-	
-	# print scores
-	for state in decoder.model.states:
-		print('{:<6s}'.format(state.name), end='')
-		for i in range(beg, end):
-			#if display == 'score':
-			try:
-				print('{:<10.3g}'.format(matrix[i][state.name][field]), end='')
-			except TypeError:
-				print('{:<10s}'.format('None'), end='')
-		print()
-
 class Parse:
 	def __init__(self, score=None, path=None, freq=None, pid=None):
 		self.score = score
@@ -126,6 +99,33 @@ class HMM_NT_decoder:
 				if nt in state.emit[ctx]: return state.emit[ctx][nt]
 				else: return 0.25
 		raise DecodeError('not possible')
+
+	def inspect(self, beg, end, field):
+	
+		# print numbers
+		print('{:<6s}'.format(''), end='')
+		for col in range(beg, end):
+			print('{:<10d}'.format(col), end='')
+		print()
+	
+		# print letters
+		print('{:<6s}'.format(''), end='')
+		for col in range(beg, end):
+			nt = self.dna.seq[col:col+1]
+			print('{:<10s}'.format(nt), end='')
+		print()
+	
+		# print scores
+		for state in self.model.states:
+			print('{:<6s}'.format(state.name), end='')
+			for i in range(beg, end):
+				#if display == 'score':
+				try:
+					print('{:<10.3g}'.format(self.matrix[i][state.name][field]), end='')
+				except TypeError:
+					print('{:<10s}'.format('None'), end='')
+			print()
+
 
 class Viterbi(HMM_NT_decoder):
 	"""Standard Viterbi in probabilty or log space"""

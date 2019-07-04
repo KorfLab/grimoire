@@ -10,7 +10,6 @@ import sequence
 class GenomeError(Exception):
 	pass
 
-
 class Feature:
 	"""Class representing a sequence feature, which may have children"""
 
@@ -25,19 +24,22 @@ class Feature:
 		self.parent_id = parent_id
 		self.score = score
 		self.source = source
-		self.issues = []
+		self.issues = {}
 		self.children = []
-		
-		if beg < 0: self.issues.append('beg < 0')
-		if beg > end: self.issues.append('beg > end')
-		if end > len(self.dna.seq): self.issues.append('end out of range:' + end)
 
+	def _validate(self):
+		if self.beg < 0: self.issues['beg < 0'] = True
+		if self.beg > self.end: self.issues['beg > end'] = True
+		if self.end > len(self.dna.seq): self.issues['end out of range'] = True
+	
+	def validate(self):
+		self._validate()
+	
 	def add_child(self, child):
 		if not self.id:
 			raise GenomeError('parent feature without ID')
 		else:
 			self.children.append(child)
-			# make sure children are inside parent?
 
 	def seq_str(self):
 		seq = self.dna.seq[self.beg-1:self.end]
@@ -64,8 +66,84 @@ class Feature:
 			
 		return string
 
+class mRNA(Feature):
+	
+	def exons(self):
+		pass
+		
+	def validate(self):
+		self._validate()
+
+
+class Gene(Feature):
+	pass
+	
+	#def validate(self):
+	#	for tx in self.children:			
+	#		if tx.beg < self.beg:
+	#			self.issues['tx beg < gene beg'] = True
+	#		if tx.end > self.end:
+	#			self.issues['tx end > gene end'] = True
+	#		if tx.strand != self.strand:
+	#			self.issues['tx strand != gene strand'] = True
+	#		if tx.issues:
+	#			self.issues['tx issues'] = True
+
+class Genome:
+	"""Class representing a genome, which has chromosomes (DNA objects)"""
+
+	def __init__(self, species=None, fasta=None, gff3=None, check_alphabet=False):
+		self.species = species
+		self.chromosomes = []
+		ff = toolbox.FASTA_file(fasta)
+		gf = toolbox.GFF_file(gff3)
+		mRNA_parts = ['CDS', 'exon', 'five_prime_UTR', 'three_prime_UTR']
+		
+		for id in ff.ids:
+			entry = ff.get(id)
+			chrom = sequence.DNA(name=entry.id, seq=entry.seq)
+			if check_alphabet: chrom.check_alphabet()
+
+			# convert protein-coding gene-based GFF to Features
+			genes = {}
+			mRNAs = {}
+			parts = []
+			for g in gf.get(chrom=chrom.name):
+				id, pid = None, None
+				im = re.search('ID=([\w\.]+)', g.attr)
+				pm = re.search('Parent=([\w\.]+)', g.attr)
+				if im: id = im[1]
+				if pm: pid = pm[1]
+				if g.type == 'gene':
+					genes[id] = Gene(chrom, g.beg, g.end, g.strand, g.type, id=id, parent_id=pid)
+				elif g.type == 'mRNA':
+					mRNAs[id] = mRNA(chrom, g.beg, g.end, g.strand, g.type, id=id, parent_id=pid)
+				elif g.type in mRNA_parts:
+					parts.append(Feature(chrom, g.beg, g.end, g.strand, g.type, id=id, parent_id=pid))
+			
+			# add parts to mRNAs
+			for f in parts:
+				f.validate()
+				if f.parent_id in mRNAs:
+					mRNAs[f.parent_id].add_child(f)
+			
+			# add mRNAs to genes
+			for txid in mRNAs:
+				f = mRNAs[txid]
+				if f.parent_id in genes:
+					genes[f.parent_id].add_child(f)
+			
+			# add genes to chromosome
+			for gid in genes:
+				chrom.features.append(genes[gid])
+		
+			# add chromosom to genome
+			self.chromosomes.append(chrom)
+			
+
+"""
+
 class mRNA:
-	"""Class representing a mRNA, contains exons and such"""
 
 	def __init__(self, id=None, features=None, rules='std'):
 			
@@ -180,12 +258,12 @@ class mRNA:
 				if list[i].end >= list[i+1].beg: return True
 		return False
 
-class ncRNA:
-	"""Class representing non-coding RNAs"""
-	pass
 
+"""
+
+
+"""
 class Gene:
-	"""Class representing a gene, which contains mRNA children"""
 
 	def __init__(self, id=None, transcripts=None):
 		self.id = id
@@ -203,75 +281,4 @@ class Gene:
 			if tx.end > self.end: self.end = tx.end
 			if tx.strand != self.strand: self.issues.append('mixed strands')
 			if tx.issues: self.issues.append('tx issue')
-
-class Genome:
-	"""Class representing a genome, which has chromosomes"""
-
-	def __init__(self, species=None, fasta=None, gff3=None, check_alphabet=False):
-		self.species = species
-		self.chromosomes = []
-		ff = toolbox.FASTA_file(fasta)
-		gf = toolbox.GFF_file(gff3)
-		mRNA_parts = ['CDS', 'exon', 'five_prime_UTR', 'three_prime_UTR']
-		
-		for id in ff.ids:
-			entry = ff.get(id)
-			chrom = sequence.DNA(name=entry.id, seq=entry.seq)
-			if check_alphabet: chrom.check_alphabet()
-
-			# convert all GFF to features
-			genes = {}
-			mRNAs = {}
-			parts = []
-			for g in gf.get(chrom=chrom.name):
-				id, pid = None, None
-				im = re.search('ID=([\w\.]+)', g.attr)
-				pm = re.search('Parent=([\w\.]+)', g.attr)
-				if im: id = im[1]
-				if pm: pid = pm[1]
-				if g.type == 'gene':
-					genes[id] = Feature(chrom, g.beg, g.end, g.strand, g.type, id=id, parent_id=pid)
-				elif g.type == 'mRNA':
-					mRNAs[id] = Feature(chrom, g.beg, g.end, g.strand, g.type, id=id, parent_id=pid)
-				elif g.type in mRNA_parts:
-					parts.append(Feature(chrom, g.beg, g.end, g.strand, g.type, id=id, parent_id=pid))
-			
-			# add parts to mRNAs
-			for f in parts:
-				if f.parent_id in mRNAs:
-					mRNAs[f.parent_id].add_child(f)
-			
-			# add mRNAs to genes
-			for txid in mRNAs:
-				f = mRNAs[txid]
-				if f.parent_id in genes:
-					genes[f.parent_id].add_child(f)
-			
-			# add genes to chromosome
-			for gid in genes:
-				chrom.features.append(genes[gid])
 """
-			ft = {}	
-			for part in gene_parts:
-				for entry in gf.get(type=part, chrom=chrom.name):
-					pid = re.search('Parent=([\w\.]+)', entry.attr)[1]
-					if pid not in ft: ft[pid] = []
-					ft[pid].append(Feature(chrom, entry.beg, entry.end,
-						entry.strand, entry.type))
-			gt = {}
-			for entry in gf.get(type='mRNA', chrom=chrom.name):
-				tid = re.search('ID=([\w\.]+)', entry.attr)[1]
-				gid = re.search('Parent=([\w\.]+)', entry.attr)[1]
-				if gid not in gt: gt[gid] = {}
-				gt[gid][tid] = entry
-				
-			for gid in gt:
-				txs = []
-				for tid in gt[gid]:
-					tx = mRNA(id=tid, features=ft[tid])
-					txs.append(tx)
-				chrom.features.append(Gene(id=gid, transcripts=txs))
-			self.chromosomes.append(chrom)
-"""
-
-		
