@@ -24,6 +24,8 @@ parser.add_argument('--html', required=True, type=str,
 	metavar='<path>', help='path to html output file (%(type)s)')
 parser.add_argument('--json', required=False, type=str,
 	metavar='<path>', help='path to json output file (%(type)s)')
+parser.add_argument('--chrmap', required=False, type=str,
+	metavar='<path>', help='path to file of chr name mappings (%(type)s)')
 arg = parser.parse_args()
 
 ## needs a bunch of formatting options for the figures
@@ -34,6 +36,17 @@ arg = parser.parse_args()
 ####################
 
 FigureNumber = 0 # used for enumerating each figure in the document
+
+ChrMap = None # used when GFF and FASTA chromosomes have different names
+if arg.chrmap:
+	ChrMap = {}
+	with open(arg.chrmap, 'r') as file:
+		for line in file:
+			if line[0:1] == '#': continue
+			line = line.rstrip()
+			col = line.split('\t')
+			if len(col) == 2:
+				ChrMap[col[0]] = col[1]
 
 ########################
 ## Graphical Routines ##
@@ -135,11 +148,11 @@ u3len = [] # 3'utr lengths
 tlen = [] # tx lengths
 clen = [] # cds lengths
 
-gen = genome.Genome(fasta=arg.fasta, gff3=arg.gff3)
+gen = genome.Genome(fasta=arg.fasta, gff3=arg.gff3, chr_map=ChrMap)
 for chr in gen.chromosomes:
 	for gene in chr.features:
 		tpg.append(len(gene.children))
-		for tx in gene.transcripts():
+		for tx in gene.mRNAs():
 				
 			## count distributions
 			ept.append(len(tx.exons))
@@ -193,7 +206,7 @@ for chr in gen.chromosomes:
 				gene_issues[issue] += 1
 		
 		# transcript level
-		for tx in gene.transcripts():
+		for tx in gene.mRNAs():
 			if not tx.issues:
 				tx_ok += 1
 			else:
@@ -237,7 +250,7 @@ for chr in gen.chromosomes:
 		for eg in gene.issues.keys():
 			if eg not in errors: errors[eg] = True 
 		
-		for tx in gene.transcripts():
+		for tx in gene.mRNAs():
 			if not tx.issues: continue
 
 			for et in tx.issues.keys():

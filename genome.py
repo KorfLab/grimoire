@@ -225,7 +225,9 @@ class ProteinCodingGene(Feature):
 class Genome:
 	"""Class representing a genome, which has chromosomes (DNA objects)"""
 
-	def __init__(self, species=None, fasta=None, gff3=None, check_alphabet=False):
+	def __init__(self, species=None, fasta=None, gff3=None, chr_map=None,
+			check_alphabet=False):
+		
 		self.species = species
 		self.chromosomes = []
 		ff = toolbox.FASTA_file(fasta)
@@ -234,7 +236,11 @@ class Genome:
 		
 		for id in ff.ids:
 			entry = ff.get(id)
-			chrom = sequence.DNA(name=entry.id, seq=entry.seq)
+			gff_id = None
+			if chr_map: gff_id = chr_map[id]
+			else:       gff_id = id
+			
+			chrom = sequence.DNA(name=gff_id, seq=entry.seq)
 			if check_alphabet: chrom.check_alphabet()
 
 			# convert protein-coding gene-based GFF to Features

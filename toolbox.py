@@ -39,6 +39,7 @@ class GFF_file:
 			while (1):
 				line = self.file.readline()
 				if line == '': break
+				if line[0:1] == '#': continue
 				col = line.split('\t')
 				chrom = col[0]
 				type = col[2]
@@ -99,6 +100,7 @@ class GFF_stream:
 	def next(self):
 		line = self.fp.readline()
 		if line == '': raise StopIteration()
+		if line[0:1] == '#': return self.next()
 		col = line.split('\t')
 		chrom = col[0]
 		type = col[2]
