@@ -86,10 +86,10 @@ if arg.model == 'internal_exon':
 	splices = 0
 	for chr in gen.chromosomes:
 		for gene in chr.features:
-			if not gene.transcripts(): continue # some tx are miRNA etc
-			tx = gene.transcripts()[0]
+			if not gene.mRNAs(): continue # some tx are miRNA etc
+			tx = gene.mRNAs()[0]
 			if gene.issues: continue
-			if len(gene.transcripts()) > 1: continue
+			if len(gene.mRNAs()) > 1: continue
 			if len(tx.exons) < 3: continue
 			for i in range(1, len(tx.exons) -1):
 				iprev = tx.introns[i-1].seq_str()
@@ -155,10 +155,10 @@ elif arg.model == 'splicing':
 	intron_len = 0
 	for chr in gen.chromosomes:
 		for gene in chr.features:
-			if not gene.transcripts(): continue # some tx are miRNA etc
-			tx = gene.transcripts()[0]
+			if not gene.mRNAs(): continue # some tx are miRNA etc
+			tx = gene.mRNAs()[0]
 			if gene.issues: continue
-			if len(gene.transcripts()) > 1: continue
+			if len(gene.mRNAs()) > 1: continue
 			if len(tx.exons) < 2: continue
 			for i in range(len(tx.exons) - 1):
 				ep_seqs.append(tx.exons[i].seq_str())
@@ -245,10 +245,10 @@ elif arg.model == 'mRNA':
 	cds_len = 0
 	for chr in gen.chromosomes:
 		for gene in chr.features:
-			if not gene.transcripts(): continue # some tx are miRNA etc
-			tx = gene.transcripts()[0]
+			if not gene.mRNAs(): continue # some tx are miRNA etc
+			tx = gene.mRNAs()[0]
 			if gene.issues: continue
-			if len(gene.transcripts()) > 1: continue
+			if len(gene.mRNAs()) > 1: continue
 			cds = tx.cds_str()
 			ptx = tx.tx_str()
 			beg = ptx.find(cds)

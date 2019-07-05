@@ -209,9 +209,9 @@ class mRNA(Feature):
 		if not self.validated: self.validate()
 		return sequence.translate_str(self.cds_str())
 
-class Gene(Feature):
+class ProteinCodingGene(Feature):
 	
-	def transcripts(self):
+	def mRNAs(self):
 		if not self.validated:
 			self.validate()
 		return self.children
@@ -248,7 +248,7 @@ class Genome:
 				if im: id = im[1]
 				if pm: pid = pm[1]
 				if g.type == 'gene':
-					genes[id] = Gene(chrom, g.beg, g.end, g.strand, g.type, id=id, parent_id=pid)
+					genes[id] = ProteinCodingGene(chrom, g.beg, g.end, g.strand, g.type, id=id, parent_id=pid)
 				elif g.type == 'mRNA':
 					mRNAs[id] = mRNA(chrom, g.beg, g.end, g.strand, g.type, id=id, parent_id=pid)
 				elif g.type in mRNA_parts:

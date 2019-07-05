@@ -20,7 +20,7 @@ parser.add_argument('--gff3', required=True, type=str,
 	metavar='<path>', help='path to GFF file (%(type)s)')
 parser.add_argument('--title', required=True, type=str,
 	metavar='<path>', help='title of report (%(type)s)')
-parser.add_argument('--html', required=False, type=str,
+parser.add_argument('--html', required=True, type=str,
 	metavar='<path>', help='path to html output file (%(type)s)')
 parser.add_argument('--json', required=False, type=str,
 	metavar='<path>', help='path to json output file (%(type)s)')
