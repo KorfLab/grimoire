@@ -35,20 +35,20 @@ class GFF_file:
 	def __init__(self, filename):
 		self._chroms = {} 
 		self._types = {}
-		self.file = open(filename, 'r')
-		while (1):
-			line = self.file.readline()
-			if line == '': break
-			col = line.split('\t')
-			chrom = col[0]
-			type = col[2]
-			entry = GFF_entry(col)
-			if chrom not in self._chroms: self._chroms[chrom] = []
-			self._chroms[chrom].append(entry)
-			if type not in self._types: self._types[type] = []
-			self._types[type].append(entry)
-		self.chroms = list(self._chroms.keys())
-		self.types = list(self._types.keys())
+		with open(filename, 'r') as self.file:
+			while (1):
+				line = self.file.readline()
+				if line == '': break
+				col = line.split('\t')
+				chrom = col[0]
+				type = col[2]
+				entry = GFF_entry(col)
+				if chrom not in self._chroms: self._chroms[chrom] = []
+				self._chroms[chrom].append(entry)
+				if type not in self._types: self._types[type] = []
+				self._types[type].append(entry)
+				self.chroms = list(self._chroms.keys())
+				self.types = list(self._types.keys())
 	
 	def get(self, type=None, chrom=None, beg=None, end=None):
 		type_search = {}

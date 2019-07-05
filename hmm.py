@@ -200,8 +200,8 @@ class HMM:
 	
 	@classmethod
 	def read(cls, filename):
-		fp = open(filename, 'r')
-		d = json.loads(fp.read())
+		with open(filename, 'r') as fp:
+			d = json.loads(fp.read())
 		hmm = HMM()
 		hmm.name = d['name']
 		hmm.log = d['log']
@@ -225,8 +225,8 @@ class HMM:
 		return hmm
 	
 	def write(self, filename):
-		fp = open(filename, 'w+')
-		fp.write(json.dumps(self.__dict__, indent=4, cls=HMMdecoder))
+		with open(filename, 'w+') as fp:
+			fp.write(json.dumps(self.__dict__, indent=4, cls=HMMdecoder))
 
 	def convert2log(self):
 		if self.log:

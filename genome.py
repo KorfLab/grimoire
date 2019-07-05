@@ -104,7 +104,7 @@ class mRNA(Feature):
 	starts = {'ATG':True}
 	stops = {'TAA':True, 'TGA':True, 'TAG':True}
 	
-	def set_mRNA_rules(self, clade):
+	def set_rules(self, clade='std'):
 		if clade == 'std':
 			pass # the defaults are considered standard
 		elif clade == 'mammal':
