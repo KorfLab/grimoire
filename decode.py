@@ -357,8 +357,13 @@ class StochasticViterbi(HMM_NT_decoder):
 		pn = 1
 		for sig in sorted(trace_table,
 				key=lambda x:trace_table[x]['count'], reverse=True):
+			score = None
+			if self.model.log:
+				score = trace_table[sig]['score'] - self.null_score
+			else:
+				score = trace_table[sig]['score'] / self.null_score
 			parses.append(Parse(
-				score=trace_table[sig]['score'],
+				score=score,
 				path=trace_table[sig]['path'],
 				freq=trace_table[sig]['count'] / n,
 				pid='parse-' + str(pn)))
