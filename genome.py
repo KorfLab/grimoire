@@ -249,8 +249,8 @@ class Genome:
 			parts = []
 			for g in gf.get(chrom=chrom.name):
 				id, pid = None, None
-				im = re.search('ID=([\w\.]+)', g.attr)
-				pm = re.search('Parent=([\w\.]+)', g.attr)
+				im = re.search('ID=([\w\.\:]+)', g.attr)
+				pm = re.search('Parent=([\w\.:]+)', g.attr)
 				if im: id = im[1]
 				if pm: pid = pm[1]
 				if g.type == 'gene':

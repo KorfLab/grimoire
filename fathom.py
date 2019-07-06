@@ -52,6 +52,20 @@ if arg.chrmap:
 ## Graphical Routines ##
 ########################
 
+def stats(values):
+	if values:
+		return {
+			'count' : str(len(values)),
+			'min' : str(min(values)),
+			'max' : str(max(values)),
+			'med' : str(round(statistics.median(values))),
+			'mean' : str(round(statistics.mean(values), 3)),
+			'stdev' : str(round(statistics.stdev(values), 3)),
+		}
+	else:
+		return {'count':0, 'min':'0', 'max':'0', 'med':'0', 'mean':'0', 'stdev':'0'}
+		
+
 def encode_fig(fig):
 	buff = io.BytesIO()
 	fig.savefig(buff, format='png', bbox_inches='tight')
@@ -66,14 +80,11 @@ def histogram(data, title, bins):
 	fig, ax = plt.subplots()
 	ax.hist(data, bins=bins)
 	ax.set(title='Figure ' + str(FigureNumber) + ': ' + title)
-	
+		
 	text = encode_fig(fig)
 	text += '<br><b>Figure ' + str(FigureNumber) + '</b>: '
-	text += 'min '    + str(min(data)) + ', '
-	text += 'max '    + str(max(data)) + ', '
-	text += 'mean '   + str(round(statistics.mean(data), 3)) + ', '
-	text += 'stdev '  + str(round(statistics.stdev(data), 3)) + ', '
-	text += 'median ' + str(statistics.median(data)) + '.<p>'
+	text += str(stats(data))
+	
 	return text
 
 def bar_chart(data, title):

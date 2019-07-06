@@ -62,9 +62,8 @@ class GFF_file:
 
 		chrom_search = []
 		if chrom:
-			if chrom not in self._chroms:
-				raise ToolboxError('chrom not defined: ' + chrom)
-			chrom_search.append(chrom)
+			if chrom in self._chroms:
+				chrom_search.append(chrom)			
 		else:
 			chrom_search = self.chroms
 		
