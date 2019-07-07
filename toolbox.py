@@ -30,7 +30,7 @@ class GFF_entry:
 		self.attr = column[8]
 
 class GFF_file:
-	"""Class representing a GFF file"""
+	"""Class for reading and searching GFF files (slurps all into memory)."""
 	
 	def __init__(self, filename):
 		self._chroms = {} 
@@ -83,7 +83,8 @@ class GFF_file:
 		return found
 
 class GFF_stream:
-
+	"""Class for reading GFF records one at a time"""
+	
 	def __init__(self, filename=None, filepointer=None):
 		self.fp = None
 		if   filename    != None: self.fp = open(filename, 'r')
@@ -98,7 +99,9 @@ class GFF_stream:
 
 	def next(self):
 		line = self.fp.readline()
-		if line == '': raise StopIteration()
+		if line == '':
+			self.fp.close()
+			raise StopIteration()
 		if line[0:1] == '#': return self.next()
 		col = line.split('\t')
 		chrom = col[0]
@@ -106,7 +109,7 @@ class GFF_stream:
 		return GFF_entry(col)
 
 class FASTA_entry:
-	"""Class representing a FASTA entry (header, seq)"""
+	"""Class representing a FASTA entry (id, desc, seq)"""
 
 	def __init__(self, id, desc, seq):
 		self.id = id
@@ -114,12 +117,13 @@ class FASTA_entry:
 		self.seq = seq
 
 class FASTA_file:
-	"""Class representing a FASTA file"""
+	"""Class for reading a FASTA file with random acess"""
 	
 	def __init__(self, filename):
+		self.filename = filename
 		self.offset = {} # indexes identifiers to file offsets
 		self.ids = []
-		self.file = open(filename, 'r')
+		self.file = open(self.filename, 'r')
 		while (True):
 			line = self.file.readline()
 			if line == '': break
@@ -129,8 +133,10 @@ class FASTA_file:
 					raise ToolboxError('duplicate id: ' + m[1])
 				self.ids.append(m[1])
 				self.offset[m[1]] = self.file.tell() - len(line)
+		self.file.close()
 	
 	def get(self, id):
+		self.file = open(self.filename, 'r')
 		self.file.seek(self.offset[id])
 		header = self.file.readline()
 		m = re.search('>\s*(\S+)\s*(.*)', header)
@@ -143,10 +149,12 @@ class FASTA_file:
 			if line == '': break
 			line = line.replace(' ', '')
 			seq.append(line.strip())
+		self.file.close()
 		return FASTA_entry(id, desc, "".join(seq))
 
 class FASTA_stream:
-
+	"""Class for reading FASTA records in a stream"""
+	
 	def __init__(self, filename=None, filepointer=None):
 		self.fp = None
 		if   filename    != None: self.fp = open(filename, 'r')
@@ -179,6 +187,7 @@ class FASTA_stream:
 				break
 			if line == '':
 				self.done = True
+				self.fp.close()
 				break
 
 			line = line.replace(' ', '')
