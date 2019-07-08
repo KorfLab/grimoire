@@ -203,9 +203,9 @@ elif arg.model == 'splicing':
 	
 	ep_state = hmm.State(name='EXP', context=arg.exon_ctx, emits=ep_emits)
 	ep_state.init = 1
-	don_states = hmm.state_factory('DON', acc_emits)
+	don_states = hmm.state_factory('DON', don_emits)
 	intron_state = hmm.State(name='INT', context=arg.int_ctx, emits=intron_emits)
-	acc_states = hmm.state_factory('ACC', don_emits)
+	acc_states = hmm.state_factory('ACC', acc_emits)
 	en_state = hmm.State(name='EXN', context=arg.exon_ctx, emits=en_emits)
 	en_state.term = 1
 	

@@ -163,7 +163,7 @@ class Viterbi(HMM_NT_decoder):
 				max = -math.inf
 				trace = None
 				for prev in self.tmap[here]:
-					tp = self.tmap[prev][here]
+					tp = self.tmap[here][prev]
 					pp = v[i-1][prev]['score']
 					p = None
 					if self.model.log: p = ep + tp + pp
@@ -247,7 +247,7 @@ class StochasticViterbi(HMM_NT_decoder):
 
 				traces = []
 				for prev in self.tmap[here]:
-					tp = self.tmap[prev][here]
+					tp = self.tmap[here][prev]
 					pp = v[i-1][prev]['score']
 					p = None
 					if self.model.log:
