@@ -21,33 +21,37 @@ fasta = toolbox.FASTA_stream('toy.fasta')
 for entry in fasta:
 	dna = sequence.DNA(name=entry.id, seq=entry.seq)
 	dna.check_alphabet()
-	
+
 	v1P = decode.Viterbi(model=modelP, dna=dna)
 	v1P.inspect(0, len(dna.seq), 'score')
 	parse = v1P.generate_path()
 	print(parse.score, parse.path)
-	
+
 	v1L = decode.Viterbi(model=modelL, dna=dna)
 	v1L.inspect(0, len(dna.seq), 'score')
 	parse = v1L.generate_path()
 	print(parse.score, parse.path)
-	
+
 	v2P = decode.StochasticViterbi(model=modelP, dna=dna, seed=1)
 	parse_list = v2P.generate_paths(10)
 	v2P.inspect(0, len(dna.seq), 'score')
 	for parse in parse_list:
 		print(parse.score, parse.path, parse.freq)
-	
+
 	v2L = decode.StochasticViterbi(model=modelL, dna=dna, seed=1)
 	parse_list = v2L.generate_paths(10)
 	v2L.inspect(0, len(dna.seq), 'score')
 	for parse in parse_list:
 		print(parse.score, parse.path, parse.freq)
-		
+
 		#for f in parse.features(dna=dna, labels=['S1', 'S2']):
 		#	print(f.gff())
-	
-	
+
+
+	fb = decode.ForwardBackward(model=modelP, dna=dna)
+	print(fb.find_best_state(3))
+	print(fb.get_prob('S2', 2))
+
 	sys.exit(1)
 
 
