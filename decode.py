@@ -2,7 +2,6 @@ import math
 import sys
 import json
 from operator import itemgetter
-from functools import reduce
 import copy
 import re
 import random
@@ -374,7 +373,7 @@ class StochasticViterbi(HMM_NT_decoder):
 
 class ForwardBackward(HMM_NT_decoder):
 	"""Forward Backward algorithm generating a matrix of posterior probabilities"""
-	
+
 	def __init__(self, model=None, dna=None):
 		self.model = model
 		self.dna = dna

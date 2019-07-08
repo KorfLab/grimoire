@@ -2,10 +2,12 @@
 
 import math
 import re
+from functools import reduce
+
 
 class ToolboxError(Exception):
 	pass
-	
+
 def log(p):
 	if p < 0: raise ValueError('p < 0')
 	if p == 0: return -999
@@ -14,6 +16,9 @@ def log(p):
 def sumlog(v1, v2):
 	if v1 < v2: v1, v2 = v2, v1
 	return math.log(1 + math.exp(v2 - v1)) + v1
+
+def prod(iterable):
+	return reduce(operator.mul, iterable, 1)
 
 class GFF_entry:
 	"""Class representing a GFF entry (row)"""
@@ -31,9 +36,9 @@ class GFF_entry:
 
 class GFF_file:
 	"""Class for reading and searching GFF files (slurps all into memory)."""
-	
+
 	def __init__(self, filename):
-		self._chroms = {} 
+		self._chroms = {}
 		self._types = {}
 		with open(filename, 'r') as self.file:
 			while (1):
@@ -50,7 +55,7 @@ class GFF_file:
 				self._types[type].append(entry)
 				self.chroms = list(self._chroms.keys())
 				self.types = list(self._types.keys())
-	
+
 	def get(self, type=None, chrom=None, beg=None, end=None):
 		type_search = {}
 		if type:
@@ -63,10 +68,10 @@ class GFF_file:
 		chrom_search = []
 		if chrom:
 			if chrom in self._chroms:
-				chrom_search.append(chrom)			
+				chrom_search.append(chrom)
 		else:
 			chrom_search = self.chroms
-		
+
 		beg = 0 if not beg else beg
 		end = 1e300 if not end else end
 		if beg > end:
@@ -79,12 +84,12 @@ class GFF_file:
 				if entry.type in type_search:
 					if entry.beg >= beg and entry.end <= end:
 						found.append(entry)
-		
+
 		return found
 
 class GFF_stream:
 	"""Class for reading GFF records one at a time"""
-	
+
 	def __init__(self, filename=None, filepointer=None):
 		self.fp = None
 		if   filename    != None: self.fp = open(filename, 'r')
@@ -118,7 +123,7 @@ class FASTA_entry:
 
 class FASTA_file:
 	"""Class for reading a FASTA file with random acess"""
-	
+
 	def __init__(self, filename):
 		self.filename = filename
 		self.offset = {} # indexes identifiers to file offsets
@@ -134,7 +139,7 @@ class FASTA_file:
 				self.ids.append(m[1])
 				self.offset[m[1]] = self.file.tell() - len(line)
 		self.file.close()
-	
+
 	def get(self, id):
 		self.file = open(self.filename, 'r')
 		self.file.seek(self.offset[id])
@@ -154,7 +159,7 @@ class FASTA_file:
 
 class FASTA_stream:
 	"""Class for reading FASTA records in a stream"""
-	
+
 	def __init__(self, filename=None, filepointer=None):
 		self.fp = None
 		if   filename    != None: self.fp = open(filename, 'r')
@@ -174,12 +179,12 @@ class FASTA_stream:
 		header = None
 		if self.lastline[0:1] == '>': header = self.lastline
 		else:                         header = self.fp.readline()
-		
+
 		m = re.search('>\s*(\S+)\s*(.*)', header)
 		id = m[1]
 		desc = m[2]
 		seq = []
-		
+
 		while (True):
 			line = self.fp.readline()
 			if line[0:1] == '>':
@@ -194,4 +199,3 @@ class FASTA_stream:
 			seq.append(line.strip())
 
 		return FASTA_entry(id, desc, "".join(seq))
-
