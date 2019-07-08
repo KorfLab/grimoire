@@ -1,5 +1,6 @@
 
 import unittest
+import copy
 
 import toolbox
 import sequence
@@ -122,10 +123,34 @@ class TestHMM(unittest.TestCase):
 		dna = sequence.DNA(name='test', seq='AAAAGTAAGTTTTT')
 		v = decode.Viterbi(model=self.hmm, dna=dna)
 		p = v.generate_path()
+		self.assertEqual(p.score, 4.401452575029605)
 		ft = p.features(labels=['DON', 'GEN'], dna=dna)
 		self.assertEqual(ft[1].type, 'DON')
 		self.assertEqual(ft[1].beg, 5)
+	
+	def test_Decode_Viterbi_logspace(self):
+		dna = sequence.DNA(name='test', seq='AAAAGTAAGTTTTT')
+		m = copy.deepcopy(self.hmm)
+		m.convert2log()
+		v = decode.Viterbi(model=m, dna=dna)
+		p = v.generate_path()
+		self.assertEqual(p.score, 1.481934617131616)
 
+	def test_Decode_StochasticViterbi(self):
+		dna = sequence.DNA(name='test', seq='TTTTTGTAAGTAAGTTTTT')
+		v = decode.StochasticViterbi(model=self.hmm, dna=dna, seed=1)
+		ps = v.generate_paths(1000)
+		self.assertEqual(ps[0].score, 0.8980462178059174)
+		self.assertEqual(ps[0].freq, 0.524)
+	
+	def test_Decode_StochasticViterbi_logspace(self):
+		dna = sequence.DNA(name='test', seq='TTTTTGTAAGTAAGTTTTT')
+		m = copy.deepcopy(self.hmm)
+		m.convert2log()
+		v = decode.StochasticViterbi(model=m, dna=dna, seed=1)
+		ps = v.generate_paths(1000)
+		self.assertEqual(ps[0].score, -0.10753374451446263)
+		self.assertEqual(ps[0].freq, 0.524)
 
 
 if __name__ == '__main__':

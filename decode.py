@@ -268,6 +268,7 @@ class StochasticViterbi(HMM_NT_decoder):
 							'cdf' : math.exp(rsum - fwd)
 						})
 				else:
+					if fwd == 0: continue # is this the right thing to do?
 					rsum = 0
 					for trace in traces:
 						rsum += trace['score'] / fwd
@@ -330,14 +331,14 @@ class StochasticViterbi(HMM_NT_decoder):
 				score = self.smap[path[0]].init + self.emission(path[0], 0)
 				for i in range(1, len(path)):
 					ep = self.emission(path[i], i)
-					tp = self.tmap[path[i-1]][path[i]]
+					tp = self.tmap[path[i]][path[i-1]]
 					score += ep + tp
 				score += self.smap[path[-1]].term
 			else:
 				score = self.smap[path[0]].init * self.emission(path[0], 0)
 				for i in range(1, len(path)):
 					ep = self.emission(path[i], i)
-					tp = self.tmap[path[i-1]][path[i]]
+					tp = self.tmap[path[i]][path[i-1]]
 					score *= ep * tp
 				score *= self.smap[path[-1]].term
 
