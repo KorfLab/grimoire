@@ -1,8 +1,8 @@
 
 import json
 
-import sequence
-import toolbox
+import grimoire.sequence as sequence
+import grimoire.toolbox as toolbox
 
 class HMMError(Exception):
 	pass

@@ -2,11 +2,11 @@
 import unittest
 import copy
 
-import toolbox
-import sequence
-import genome
-import hmm
-import decode
+import grimoire.toolbox as toolbox
+import grimoire.sequence as sequence
+import grimoire.genome as genome
+import grimoire.hmm as hmm
+import grimoire.decode as decode
 
 class TestToolbox(unittest.TestCase):
 

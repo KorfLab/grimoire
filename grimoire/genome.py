@@ -4,8 +4,8 @@ import json
 import sys
 import operator
 
-import toolbox
-import sequence
+import grimoire.toolbox as toolbox
+import grimoire.sequence as sequence
 
 class GenomeError(Exception):
 	pass

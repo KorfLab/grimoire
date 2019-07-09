@@ -6,9 +6,9 @@ import copy
 import re
 import random
 
-import hmm
-import genome
-import toolbox
+import grimoire.hmm as hmm
+import grimoire.genome as genome
+import grimoire.toolbox as toolbox
 
 class DecodeError(Exception):
 	pass
