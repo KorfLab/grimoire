@@ -1,4 +1,3 @@
-========
 grimoire
 ========
 
@@ -18,11 +17,11 @@ The code is designed with the folllowing analyses in mind:
 + Genome annotation quality control
 
 Contributors
-============
+------------
 
-Ian Korf
-Hannah Lyman
-Alex Kramer
-Jack Yu
++ Ian Korf
++ Hannah Lyman
++ Alex Kramer
++ Jack Yu
 
 
