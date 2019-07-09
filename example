@@ -6,16 +6,16 @@ import sys
 import math
 import copy
 
-import sequence
-import toolbox
-import hmm
-import genome
-import decode
+import grimoire.sequence as sequence
+import grimoire.toolbox as toolbox
+import grimoire.hmm as hmm
+import grimoire.genome as genome
+import grimoire.decode as decode
 
-modelP = hmm.HMM.read('toy.hmm')
+modelP = hmm.HMM.read('data/toy.hmm')
 modelL = copy.deepcopy(modelP)
 modelL.convert2log()
-fasta = toolbox.FASTA_stream('toy.fasta')
+fasta = toolbox.FASTA_stream('data/toy.fasta')
 
 
 for entry in fasta:

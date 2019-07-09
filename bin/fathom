@@ -8,8 +8,8 @@ import sys
 
 import matplotlib.pyplot as plt
 
-import genome
-import toolbox
+import grimoire.genome as genome
+import grimoire.toolbox as toolbox
 
 ## Command Line ##
 
