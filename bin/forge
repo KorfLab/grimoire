@@ -7,7 +7,7 @@ import json
 import grimoire.toolbox as toolbox
 import grimoire.hmm as hmm
 import grimoire.genome as genome
-from hmm import HMM
+from grimoire.hmm import HMM
 
 ## Command line stuff ##
 
