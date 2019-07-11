@@ -53,7 +53,7 @@ def train_emissions(seqs, context=0):
 				pos = i + context
 				ctx = seq[i:i+context]
 				nt = seq[i + context : i + context + 1]
-				if (ctx in counts[pos] and nt in counts[pos][ctx]) :
+				if (ctx in counts[pos] and nt in counts[pos][ctx]):
 					counts[pos][ctx][nt] += 1
 		for i in range(len(counts)):
 			freqs.append({})
