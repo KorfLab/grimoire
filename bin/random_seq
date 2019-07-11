@@ -6,7 +6,9 @@ import random
 import sys
 
 from grimoire.hmm import HMM
-
+from grimoire.sequence import DNA
+from grimoire.genome import Feature
+from grimoire.decode import Parse
 ## Command Line ##
 
 parser = argparse.ArgumentParser(description='Random sequence generator')
@@ -14,8 +16,14 @@ parser.add_argument('--alphabet', required=True, type=str, metavar='<str>',
     help='alphabet of desiring sequences: nt | aa')
 parser.add_argument('--alp_type', required=False, type=str, metavar='<str>',
     default="canonical", help='canonical | extended')
+parser.add_argument('--count', required=True, type=int,
+	metavar='<int>', help='number of sequences to generate (%(type)s)')
 parser.add_argument('--end_state', required=False, type=str, default="none",
 	metavar='<str>', help='the specific state to end with')
+parser.add_argument('--fasta', required=True, type=str,
+	metavar='<path>', help='path to output FASTA file (%(type)s)')
+parser.add_argument('--gff', required=True, type=str,
+	metavar='<path>', help='path to output GFF file (%(type)s)')
 parser.add_argument('--length', required=True, type=int,
 	metavar='<int>', help='length of desiring sequences')
 parser.add_argument('--source', required=True, type=str,
@@ -24,6 +32,8 @@ parser.add_argument('--start_state', required=False, type=str, default="none",
 	metavar='<str>', help='the specific state to begin with')
 parser.add_argument('--trial', required=False, type=int, default=1,
 	metavar='<int>', help='amount of trials acceptable to generate sequence')
+parser.add_argument('--null_model', action='store_true',
+	help='emit sequence from the null model')
 arg = parser.parse_args()
 
 ####################
@@ -162,11 +172,33 @@ class Random_Seq:
 ####### Main #######
 ####################
 
-Seq = Random_Seq(model = Model, alphabet = Alphabet, length = arg.length,
+# output files
+fasta = open(arg.fasta, 'w+')
+gff = open(arg.gff, 'w+')
+
+Generator = Random_Seq(model = Model, alphabet = Alphabet, length = arg.length,
     starter = arg.start_state, ender = arg.end_state)
-q = Seq.generate_null()
-print("null:")
-print(q)
-q,b = Seq.generate(trial = arg.trial)
-print("state:")
-print(q,b)
+
+for i in range(arg.count):
+    dna = None
+    features = []
+    name = 'emitted-' + str(i)
+
+    if arg.null_model:
+        seq = Generator.generate_null()
+        dna = DNA(seq=seq, name=name)
+        features.append(Feature(dna, 1, arg.length, '.', 'chromosome'))
+
+    else:
+        path, seq = q,b = Generator.generate(trial = arg.trial)
+        dna = DNA(seq=seq, name=name)
+        parse = Parse(path=path)
+        features += parse.features(labels=['GEN', 'DON'], dna=dna)
+
+    # write files
+    fasta.write(dna.fasta())
+    for f in features: gff.write(f.gff() + '\n')
+
+# close files
+fasta.close()
+gff.close()
