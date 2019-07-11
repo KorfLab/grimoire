@@ -42,7 +42,7 @@ elif arg.alphabet == 'aa':
     elif arg.alp_type == 'extended':
         Alphabet =  ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N',
             'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y', 'X', '*']
-Model = HMM.read(arg.source)
+Model = HMM.read(filename = arg.source)
 
 
 ####################
