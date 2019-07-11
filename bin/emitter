@@ -1,0 +1,162 @@
+#!/usr/bin/env python3
+
+import argparse
+import random
+
+from grimoire.hmm import HMM
+from grimoire.sequence import DNA
+from grimoire.genome import Feature
+from grimoire.decode import Parse
+
+class EmitterError(Exception): pass
+
+def convert_to_cdf(state):
+	if state.ctxt == 0:
+		sum = 0
+		for nt in ['A', 'C', 'G', 'T']:
+			sum += state.emit[nt]
+			state.emit[nt] = sum
+	else:
+		for ctx in state.emit:
+			sum = 0
+			for nt in ['A', 'C', 'G', 'T']:
+				sum += state.emit[ctx][nt]
+				state.emit[ctx][nt] = sum
+
+def null_generator(model, length):
+	if (model.null.ctxt > 0):
+		raise EmitterError('null model context > 0')
+	seq = ''
+	while (len(seq) < length):
+		r = random.random()
+		for nt in ['A', 'C', 'G', 'T']:
+			if r < model.null.emit[nt]:
+				seq += nt
+				break
+	return seq
+
+def state_generator(model, init, map, length):
+	padding = 10 # in case there is context
+	seq = null_generator(model, padding)
+	path = []
+	
+	while len(seq) + padding < length:
+		r = random.random()
+		state = map[init]
+		found = None
+		
+		if state.ctxt == 0:
+			r = random.random()
+			for nt in ['A', 'C', 'G', 'T']:
+				if r < state.emit[nt]:
+					found = nt
+					break
+		else:
+			ctx = seq[len(seq) - state.ctxt : len(seq)]
+			r = random.random()
+			for nt in ['A', 'C', 'G', 'T']:
+				if r < state.emit[ctx][nt]:
+					found = nt
+					break
+		
+		if found:
+			seq += found
+			path.append(state.name)
+			next = None
+			
+			# choose next state (inefficient)
+			r = random.random()
+			sum = 0
+			for name in state.next:
+				sum += state.next[name]
+				if r < sum:
+					next = name
+					break
+
+		init = name
+	
+	return seq[padding:], path
+
+##################
+## Command Line ##
+##################
+
+parser = argparse.ArgumentParser(description='HMM sequence generator')
+parser.add_argument('--hmm', required=True, type=str,
+	metavar='<path>', help='path to HMM file (%(type)s)')
+parser.add_argument('--fasta', required=True, type=str,
+	metavar='<path>', help='path to output FASTA file (%(type)s)')
+parser.add_argument('--gff', required=True, type=str,
+	metavar='<path>', help='path to output GFF file (%(type)s)')
+parser.add_argument('--count', required=True, type=int,
+	metavar='<int>', help='number of sequences to generate (%(type)s)')
+parser.add_argument('--length', required=True, type=int, metavar='<int>',
+	help='length of sequences to generate (%(type)s)')
+parser.add_argument('--seed', required=False, type=int,
+	metavar='<int>', help='random seed (%(type)s)')
+parser.add_argument('--null_model', action='store_true',
+	help='emit sequence from the null model')
+arg = parser.parse_args()
+
+###########
+## Setup ##
+###########
+
+if arg.seed: random.seed(arg.seed)
+
+model = HMM.read(filename=arg.hmm)
+if model.log: raise EmitterError('log-space models not supported')
+
+# convert all state emissions to cumulative distributions
+for s in model.states: convert_to_cdf(s)
+convert_to_cdf(model.null)
+
+# initial state cdf
+init_cdf = []
+sum = 0
+for s in model.states:
+	sum += s.init
+	init_cdf.append({'name':s.name, 'prob':sum})
+if sum < 0: raise EmitterError('sum needs to be at least 1.0')
+
+# mapping of state array to state dictionary needed later
+map = {}
+for s in model.states:
+	map[s.name] = s
+
+# output files
+fasta = open(arg.fasta, 'w+')
+gff = open(arg.gff, 'w+')
+
+##############
+## Generate ##
+##############
+
+for i in range(arg.count):
+	dna = None
+	features = []
+	name = 'emitted-' + str(i)
+	
+	if arg.null_model:
+		seq = null_generator(model, arg.length)
+		dna = DNA(seq=seq, name=name)
+		features.append(Feature(dna, 1, arg.length, '.', 'chromosome'))
+	else:	
+		init = None
+		r = random.random()
+		for v in init_cdf:
+			if r < v['prob']:
+				init = v['name']
+				break
+		seq, path = state_generator(model, init, map, arg.length)
+		dna = DNA(seq=seq, name=name)
+		parse = Parse(path=path)
+		features += parse.features(labels=['GEN', 'DON'], dna=dna)
+	
+	# write files
+	fasta.write(dna.fasta())
+	for f in features: gff.write(f.gff() + '\n')
+	
+
+fasta.close()
+gff.close()
