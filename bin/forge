@@ -56,7 +56,6 @@ parser.add_argument('--atg_ctx', required=False, type=int, default=0,
 	metavar='<int>', help='ATG context [%(default)d]')
 parser.add_argument('--cds_ctx', required=False, type=int, default=0,
 	metavar='<int>', help='CDS context [%(default)d]')
-parser.add_argument('--test', action='store_true')
 arg = parser.parse_args()
 
 ff = toolbox.FASTA_file('data/TAIR10_1.fasta')

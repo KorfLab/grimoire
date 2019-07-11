@@ -1,7 +1,6 @@
 import math
 import sys
 import json
-from operator import itemgetter
 import copy
 import re
 import random
@@ -298,7 +297,7 @@ class StochasticViterbi(HMM_NT_decoder):
 		else:
 			sum = 0
 			for s in self.model.states:
-				sum +=  self.matrix[-1][s.name]['score']
+				sum += self.matrix[-1][s.name]['score']
 			rsum = 0
 			for s in self.model.states:
 				rsum += self.matrix[-1][s.name]['score'] / sum
