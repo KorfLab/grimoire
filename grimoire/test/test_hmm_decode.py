@@ -1,6 +1,7 @@
 
 import unittest
 import copy
+import os
 
 import grimoire.sequence as sequence
 import grimoire.genome as genome
@@ -48,6 +49,16 @@ class TestHMM(unittest.TestCase):
 
 	def test_HMM_emit(self):
 		self.assertEqual(self.hmm.null.emit['A'], 0.3504)
+
+	def test_HMM_write(self):
+		self.hmm.write('data/donor.hmm')
+		self.assertEqual(os.path.getsize('data/donor.hmm'), 3257)
+
+	def test_HMM_read(self):
+		model = hmm.HMM.read('data/donor.hmm')
+		self.assertEqual(len(model.states), 7)
+		self.assertEqual(model.name, 'test')
+		self.assertEqual(model.log, False)
 
 	def test_Decode_Viterbi(self):
 		dna = sequence.DNA(name='test', seq='AAAAGTAAGTTTTT')
