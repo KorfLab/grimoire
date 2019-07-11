@@ -53,19 +53,19 @@ class Random_Seq:
 
     def __init__(self, model, alphabet, length, starter="none", ender="none"):
         self.model = model
-        if self.model["log"] == True:
+        if self.model.log == True:
             print("Error: log == True")
         self.alphabet = alphabet
         self.length = length
         self.start = {}
         self.end = {}
-        for n in range(len(self.model["states"])):
-            if self.model["states"][n]["init"] > 0:
-                v = self.model["states"][n]["init"]
-                self.start[self.model["states"][n]["name"]] = v
-            if self.model["states"][n]["term"] > 0:
-                v = self.model["states"][n]["term"]
-                self.end[self.model["states"][n]["name"]] = v
+        for n in range(len(self.model.states)):
+            if self.model.states[n].init > 0:
+                v = self.model.states[n].init
+                self.start[self.model.states[n].name] = v
+            if self.model.states[n].term > 0:
+                v = self.model.states[n].term
+                self.end[self.model.states[n].name] = v
         self.starter = starter
         self.ender = ender
 
@@ -74,8 +74,8 @@ class Random_Seq:
         return self.alphabet[x]
 
     def _find(self, name):
-        for n in range(len(self.model["states"])):
-            if self.model["states"][n]["name"] == name:
+        for n in range(len(self.model.states)):
+            if self.model.states[n].name == name:
                 return n
 
     def _get(self,dict):
@@ -96,7 +96,7 @@ class Random_Seq:
     def generate_null(self):
         seq = []
         while len(seq) < self.length:
-            seq.append(self._get(self.model["null"]["emit"]))
+            seq.append(self._get(self.model.null.emit))
         seq = ''.join(seq)
         return seq
 
@@ -114,29 +114,29 @@ class Random_Seq:
             start = self._get(self.start)
         cur = self._find(start)
         cur_name = start
-        ctxt = self.model["states"][cur]["ctxt"]
+        ctxt = self.model.states[cur].ctxt
         stat.append(cur_name)
         if ctxt == 0:
-            seq.append(self._get(self.model[cur]["emit"]))
+            seq.append(self._get(self.model[cur].emit))
         else:
             seq.append(self._rand())
 
         while len(stat) < self.length:
-            st = self._get(self.model["states"][cur]["next"])
+            st = self._get(self.model.states[cur].next)
             if st != cur_name:
                 cur =  self._find(st)
-                ctxt = self.model["states"][cur]["ctxt"]
+                ctxt = self.model.states[cur].ctxt
             enough = self._check(stat, st, ctxt)
             stat.append(st)
             if ctxt == 0:
-                seq.append(self._get(self.model["states"][cur]["emit"]))
+                seq.append(self._get(self.model.states[cur].emit))
             elif enough:
                 temp_pre =[]
                 for i in range(-(ctxt),0,1):
                     temp_pre.append(seq[i])
                 prefix = ''.join(temp_pre)
                 try:
-                    seq.append(self._get(self.model["states"][cur]["emit"][prefix]))
+                    seq.append(self._get(self.model.states[cur].emit[prefix]))
                 except:
                     seq.append(self._rand())
             else:
