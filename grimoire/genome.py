@@ -234,8 +234,13 @@ class Genome:
 		self.chromosomes = []
 		ff = toolbox.FASTA_file(fasta)
 		gf = toolbox.GFF_file(gff3)
-		mRNA_parts = ['CDS', 'exon']
 		
+		if not chr_map:
+			for chr in gf._chroms:
+				if chr not in ff.offset:
+					raise GenomeError('GFF3 id not in FASTA (' + chr + ') provide map')
+		
+		mRNA_parts = ['CDS', 'exon']
 		for id in ff.ids:
 			entry = ff.get(id)
 			gff_id = None
