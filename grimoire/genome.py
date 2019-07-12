@@ -142,14 +142,14 @@ class mRNA(Feature):
 		for f in self.children:
 			if   f.type == 'exon': self.exons.append(f)
 			elif f.type == 'CDS': self.cdss.append(f)
-			elif f.type == 'five_prime_UTR': self.utr5s.append(f)
-			elif f.type == 'three_prime_UTR': self.utr3s.append(f)
+#			elif f.type == 'five_prime_UTR': self.utr5s.append(f)
+#			elif f.type == 'three_prime_UTR': self.utr3s.append(f)
 			else: raise GenomeError('unknown type: ' + f.type)
 		
 		self.exons.sort(key = operator.attrgetter('beg'))
 		self.cdss.sort(key = operator.attrgetter('beg'))
-		self.utr5s.sort(key = operator.attrgetter('beg'))
-		self.utr3s.sort(key = operator.attrgetter('beg'))
+#		self.utr5s.sort(key = operator.attrgetter('beg'))
+#		self.utr3s.sort(key = operator.attrgetter('beg'))
 		
 		# create introns from exons
 		for i in range(len(self.exons)-1):
@@ -157,6 +157,8 @@ class mRNA(Feature):
 			end = self.exons[i+1].beg -1
 			self.introns.append(
 				Feature(self.dna, beg, end, self.strand, 'intron'))
+		
+		# create 5' and 3' UTRs from exons and CDSs
 		
 		# check for overlapping features
 		self.check_overlaps(self.exons, 'exon')
@@ -232,7 +234,7 @@ class Genome:
 		self.chromosomes = []
 		ff = toolbox.FASTA_file(fasta)
 		gf = toolbox.GFF_file(gff3)
-		mRNA_parts = ['CDS', 'exon', 'five_prime_UTR', 'three_prime_UTR']
+		mRNA_parts = ['CDS', 'exon']
 		
 		for id in ff.ids:
 			entry = ff.get(id)
