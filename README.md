@@ -23,5 +23,6 @@ Contributors
 + Hannah Lyman
 + Alex Kramer
 + Jack Yu
++ Joy Liu
 
 
