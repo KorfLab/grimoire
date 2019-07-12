@@ -77,20 +77,26 @@ if arg.source == 'ap':
 			# create the gene entry if necessary
 			if gid not in genes:
 				print('\t'.join([chr_id, 'araport', 'gene', str(chr_beg),
-					str(chr_end), score, strand, 'ID='+gid]))
+					str(chr_end), score, strand, '.', 'ID='+gid]))
 				genes[gid] = True
 			
 			# create the mRNA entry
 			print('\t'.join([chr_id, 'araport', 'mRNA', str(chr_beg),
 				str(chr_end), score, strand, attr]))
 
-			# create the exons (also need utrs and cds)
+			# create the exons and CDS
 			for i in range(n):
 				beg = chr_beg + int(starts[i])
 				end = beg + int(sizes[i]) -1
 				attr = 'Parent=' + txid
 				print('\t'.join([chr_id, 'araport', 'exon', str(beg), str(end),
-					score, strand, attr]))
-			
-			
+					score, strand, ',', attr]))
+				if beg <= cds_end and end >= cds_beg:
+					cb, ce = None, None
+					if beg > cds_beg: cb = beg
+					else:             cb = cds_beg
+					if end > cds_end: ce = cds_end
+					else:             ce = end
+					print('\t'.join([chr_id, 'araport', 'CDS', str(cb),
+						str(ce), score, strand, '.', attr]))
 
