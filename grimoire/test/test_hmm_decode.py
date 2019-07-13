@@ -93,7 +93,6 @@ class TestHMM(unittest.TestCase):
 		self.assertEqual(ps[0].score, -0.10753374451446263)
 		self.assertEqual(ps[0].freq, 0.524)
 
-
 if __name__ == '__main__':
 	unittest.main(verbosity=2)
 

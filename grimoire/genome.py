@@ -227,7 +227,7 @@ class ProteinCodingGene(Feature):
 class Genome:
 	"""Class representing a genome, which has chromosomes (DNA objects)"""
 
-	def __init__(self, species=None, fasta=None, gff3=None, chr_map=None,
+	def __init__(self, species=None, fasta=None, gff3=None,
 			check_alphabet=False):
 		
 		self.species = species
@@ -235,19 +235,15 @@ class Genome:
 		ff = toolbox.FASTA_file(fasta)
 		gf = toolbox.GFF_file(gff3)
 		
-		if not chr_map:
-			for chr in gf._chroms:
-				if chr not in ff.offset:
-					raise GenomeError('GFF3 id not in FASTA (' + chr + ') provide map')
+		for chr in gf._chroms:
+			if chr not in ff.offset:
+				raise GenomeError('GFF3 id not in FASTA (' + chr + ')')
 		
 		mRNA_parts = ['CDS', 'exon']
 		for id in ff.ids:
 			entry = ff.get(id)
-			gff_id = None
-			if chr_map: gff_id = chr_map[id]
-			else:       gff_id = id
 			
-			chrom = sequence.DNA(name=gff_id, seq=entry.seq)
+			chrom = sequence.DNA(name=id, seq=entry.seq)
 			if check_alphabet: chrom.check_alphabet()
 
 			# convert protein-coding gene-based GFF to Features

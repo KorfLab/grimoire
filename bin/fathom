@@ -24,8 +24,6 @@ parser.add_argument('--html', required=True, type=str,
 	metavar='<path>', help='path to html output file (%(type)s)')
 parser.add_argument('--json', required=False, type=str,
 	metavar='<path>', help='path to json output file (%(type)s)')
-parser.add_argument('--chrmap', required=False, type=str,
-	metavar='<path>', help='path to file of chr name mappings (%(type)s)')
 arg = parser.parse_args()
 
 ## needs a bunch of formatting options for the figures
@@ -36,17 +34,6 @@ arg = parser.parse_args()
 ####################
 
 FigureNumber = 0 # used for enumerating each figure in the document
-
-ChrMap = None # used when GFF and FASTA chromosomes have different names
-if arg.chrmap:
-	ChrMap = {}
-	with open(arg.chrmap, 'r') as file:
-		for line in file:
-			if line[0:1] == '#': continue
-			line = line.rstrip()
-			col = line.split('\t')
-			if len(col) == 2:
-				ChrMap[col[0]] = col[1]
 
 ########################
 ## Graphical Routines ##
@@ -159,7 +146,7 @@ u3len = [] # 3'utr lengths
 tlen = [] # tx lengths
 clen = [] # cds lengths
 
-gen = genome.Genome(fasta=arg.fasta, gff3=arg.gff3, chr_map=ChrMap)
+gen = genome.Genome(fasta=arg.fasta, gff3=arg.gff3)
 for chr in gen.chromosomes:
 	for gene in chr.features:
 		tpg.append(len(gene.children))

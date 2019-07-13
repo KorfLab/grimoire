@@ -16,8 +16,6 @@ parser.add_argument('--fasta', required=True, type=str,
 	metavar='<path>', help='path to fasta file (%(type)s)')
 parser.add_argument('--gff3', required=True, type=str,
 	metavar='<path>', help='path to GFF3 file (%(type)s)')
-parser.add_argument('--chrmap', required=False, type=str,
-	metavar='<path>', help='path to mismatched id map (%(type)s)')
 parser.add_argument('--hmm', required=True, type=str,
 	metavar='<path>', help='path to output HMM file (%(type)s)')
 parser.add_argument('--sources', required=False, type=str,
@@ -76,20 +74,8 @@ def output_replicant(model, features, filename):
 #			sequence=feature.seq())
 #		perf.add_run(decode)
 
-ChrMap = None # used when GFF and FASTA chromosomes have different names
-if arg.chrmap:
-	ChrMap = {}
-	with open(arg.chrmap, 'r') as file:
-		for line in file:
-			if line[0:1] == '#': continue
-			line = line.rstrip()
-			col = line.split('\t')
-			if len(col) == 2:
-				ChrMap[col[0]] = col[1]
-	
-
 if arg.model == 'internal_exon':
-	gen = genome.Genome(gff3=arg.gff3, fasta=arg.fasta, chr_map=ChrMap)
+	gen = genome.Genome(gff3=arg.gff3, fasta=arg.fasta)
 	acc_seqs = []
 	don_seqs = []
 	exon_seqs = []
@@ -155,7 +141,7 @@ if arg.model == 'internal_exon':
 		
 
 elif arg.model == 'splicing':
-	gen = genome.Genome(gff3=arg.gff3, fasta=arg.fasta, chr_map=ChrMap)
+	gen = genome.Genome(gff3=arg.gff3, fasta=arg.fasta)
 	ep_seqs = []
 	en_seqs = []
 	don_seqs = []
@@ -245,7 +231,7 @@ elif arg.model == 'splicing':
 	
 
 elif arg.model == 'mRNA':
-	gen = genome.Genome(gff3=arg.gff3, fasta=arg.fasta, chr_map=ChrMap)
+	gen = genome.Genome(gff3=arg.gff3, fasta=arg.fasta)
 	u5_seqs = []
 	koz_seqs = []
 	atg_seqs = []

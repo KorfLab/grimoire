@@ -33,8 +33,7 @@ class TestToolbox(unittest.TestCase):
 		ff = toolbox.FASTA_stream('data/A.thaliana.1percent.fasta')
 		text = ''
 		for e in ff: text += e.id
-		self.assertEqual(text, '12345mitochondriachloroplast')
-
+		self.assertEqual(text, 'Chr1Chr2Chr3Chr4Chr5ChrMChrC')
 
 if __name__ == '__main__':
 	unittest.main(verbosity=2)
