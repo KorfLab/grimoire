@@ -142,14 +142,13 @@ class mRNA(Feature):
 		for f in self.children:
 			if   f.type == 'exon': self.exons.append(f)
 			elif f.type == 'CDS': self.cdss.append(f)
-#			elif f.type == 'five_prime_UTR': self.utr5s.append(f)
-#			elif f.type == 'three_prime_UTR': self.utr3s.append(f)
 			else: raise GenomeError('unknown type: ' + f.type)
+		
+		if len(self.cdss) == 0: 
+			self.issues['no_CDS'] = True
 		
 		self.exons.sort(key = operator.attrgetter('beg'))
 		self.cdss.sort(key = operator.attrgetter('beg'))
-#		self.utr5s.sort(key = operator.attrgetter('beg'))
-#		self.utr3s.sort(key = operator.attrgetter('beg'))
 		
 		# create introns from exons
 		for i in range(len(self.exons)-1):
@@ -159,6 +158,32 @@ class mRNA(Feature):
 				Feature(self.dna, beg, end, self.strand, 'intron'))
 		
 		# create 5' and 3' UTRs from exons and CDSs
+		if len(self.cdss) > 0:
+			cds_beg = self.cdss[0].beg
+			cds_end = self.cdss[-1].end
+			for exon in self.exons:
+				if exon.beg < cds_beg:
+					ub = exon.beg
+					ue = None
+					if exon.end < cds_beg: ue = exon.end
+					else:                  ue = cds_beg -1
+					if exon.strand == '+':
+						self.utr5s.append(Feature(self.dna, ub, ue, self.strand,
+							'five_prime_UTR'))
+					else:
+						self.utr3s.append(Feature(self.dna, ub, ue, self.strand,
+							'three_prime_UTR'))
+				if exon.end > cds_end:
+					ub = None
+					ue = exon.end
+					if exon.beg < cds_end: ub = cds_end + 1
+					else:                  ub = exon.beg
+					if exon.strand == '+':
+						self.utr3s.append(Feature(self.dna, ub, ue, self.strand,
+							'three_prime_UTR'))
+					else:
+						self.utr5s.append(Feature(self.dna, ub, ue, self.strand,
+							'five_prime_UTR'))
 		
 		# check for overlapping features
 		self.check_overlaps(self.exons, 'exon')
