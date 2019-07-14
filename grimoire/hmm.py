@@ -1,5 +1,6 @@
 
 import json
+import re
 
 import grimoire.sequence as sequence
 import grimoire.toolbox as toolbox
@@ -245,3 +246,12 @@ class HMM:
 			for next in state.next:
 				state.next[next] = toolbox.log(state.next[next])
 		self.log = True
+	
+	def macro_labels(self):
+		label = {}
+		for s in self.states:
+			macro = re.search('(\w+)', s.name)[1]
+			label[macro] = True
+		return list(label.keys())
+		
+		
