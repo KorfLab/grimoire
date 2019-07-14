@@ -3,11 +3,14 @@
 import argparse
 import sys
 import json
+import copy
 
 import grimoire.toolbox as toolbox
 import grimoire.hmm as hmm
 import grimoire.genome as genome
+import grimoire.decode as decode
 from grimoire.hmm import HMM
+from grimoire.sequence import DNA
 
 ## Command line stuff ##
 
@@ -66,13 +69,24 @@ def output_sources(features, filename):
 	for feature in features:
 		fp.write(feature.gff())
 
-def output_replicant(model, features, filename):
-#	perf = hmm.Performance()
-	for feature in features:
-		pass
-#		decode = model.decode(algorithm='viterbi', transform='log',
-#			sequence=feature.seq())
-#		perf.add_run(decode)
+def output_replicant(mod, regions, filename):
+	model = copy.deepcopy(mod)
+	model.convert2log()
+	for region in regions:
+		seq = region.seq_str()
+		print(seq)
+		print(region)
+		dna = DNA(name='replicant', seq=seq)
+		v = decode.Viterbi(model=model, dna=dna)
+		p = v.generate_path()
+		ft = p.features(labels=model.macro_labels(), dna=dna)
+		for f in ft:
+			f.dna = region.dna
+			f.beg += region.beg -1
+			f.end += region.beg -1
+			print(f)
+		# these features should be compared to the children of the region
+		sys.exit(1)
 
 if arg.model == 'internal_exon':
 	gen = genome.Genome(gff3=arg.gff3, fasta=arg.fasta)
