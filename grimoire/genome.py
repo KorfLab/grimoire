@@ -89,6 +89,9 @@ class Feature:
 			
 		return string
 
+	def __str__(self):
+		return self.gff()
+
 class mRNA(Feature):
 
 	clade = 'std'
