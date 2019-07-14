@@ -104,6 +104,9 @@ class BioSequence:
 		for i in range(0, len(self.seq), wrap):
 			s += self.seq[i:i+wrap] + '\n'
 		return s
+	
+	def __str__(self):
+		return self.fasta()
 
 class DNA(BioSequence):
 	"""Class for DNA sequences. IUPAC alphabet. Uppercase only"""
