@@ -35,6 +35,10 @@ class Feature:
 		self.issues = {}
 		self.children = []
 		self.validated = False
+		
+		if self.dna == None:
+			raise GenomeError('attempt to create feature unbound to DNA')
+		self._validate()
 
 	def _validate(self, cid='child', pid='parent'):
 		if self.beg < 0: self.issues['beg<0'] = True
