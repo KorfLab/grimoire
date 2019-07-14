@@ -13,13 +13,17 @@ class DecodeError(Exception):
 	pass
 
 class Parse:
-	def __init__(self, score=None, path=None, freq=None, pid=None):
+	def __init__(self, score=None, path=None, freq=None, pid=None, decoder=None):
 		self.score = score
 		self.path = path
 		self.freq = freq
 		self.pid = pid
+		self.decoder = decoder
 
-	def features(self, labels=None, dna=None):
+	def features(self):
+		dna = self.decoder.dna
+		labels = self.decoder.model.macro_labels()
+		
 		mypath = []
 		for name in self.path:
 			found = False
@@ -202,7 +206,7 @@ class Viterbi(HMM_NT_decoder):
 		self.matrix = v
 
 	def generate_path(self):
-		return(Parse(path=self.path, score=self.score))
+		return(Parse(path=self.path, score=self.score, decoder=self))
 
 class StochasticViterbi(HMM_NT_decoder):
 	"""Viterbi supporting multiple sub-optimal trace-backs"""
@@ -366,7 +370,8 @@ class StochasticViterbi(HMM_NT_decoder):
 				score=score,
 				path=trace_table[sig]['path'],
 				freq=trace_table[sig]['count'] / n,
-				pid='parse-' + str(pn)))
+				pid='parse-' + str(pn),
+				decoder=self))
 			pn += 1
 
 		return parses
