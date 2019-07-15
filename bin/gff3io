@@ -100,3 +100,42 @@ if arg.source == 'ap':
 					print('\t'.join([chr_id, 'araport', 'CDS', str(cb),
 						str(ce), score, strand, '.', attr]))
 
+#GTF to GFF3
+if arg.source == 'gtf':
+	genes = {}
+	with open(arg.file) as file:
+		add_stop = None
+		for i, line in enumerate(file):
+			#Set Up
+			col = line.rstrip().split('\t')
+			if add_stop == True:
+				col[3]=str(int(col[3])-3)
+			#Exceptions
+			if col[2]=='transcript':
+				col[2]='mRNA'
+			elif col[2]=='three_prime_utr' or col[2]=='five_prime_utr' or col[2]=='start_codon':
+				del col
+				continue
+			elif col[2]=='stop_codon':
+				add_stop = True
+				del col
+				continue
+			add_stop = False
+			#Convert Features Colomn to Dictionary
+			last_col = col[8].split('; ')
+			features = {}
+			for feature in last_col:
+				temp = feature.replace('"','')
+				temp = temp.split(' ')
+				features.update({temp[0]:temp[1]})
+			#Rewrite last colomn in GFF3 format
+			if col[2]=='gene':
+				col[8]='ID=Gene:'+features['gene_id']
+			if col[2]=='exon':
+				col[8]='Parent=Transcript:'+features['transcript_id']
+			if col[2]=='mRNA':
+				col[8]='ID=Transcript:'+features['transcript_id']+';Parent=Gene:'+features['gene_id']
+			if col[2]=='CDS':
+				col[8]='Parent=Transcript:'+features['transcript_id']
+			updated_line = "\t".join(col)
+			print(updated_line)
