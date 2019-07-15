@@ -372,90 +372,44 @@ class StochasticViterbi(HMM_NT_decoder):
 		return parses
 
 class ForwardBackward(HMM_NT_decoder):
-	"""Forward Backward algorithm generating a matrix of posterior probabilities"""
-
+	"""Compute posterior probabilities using Forward-Backward algorithm"""
+	
 	def __init__(self, model=None, dna=None):
 		self.model = model
 		self.dna = dna
 		self.tmap = self.transition_map()
 		self.smap = self.state_map()
+		self.matrix = None
 
-		f, sum_f = self._forward()
-		b, sum_b = self._backward()
+		p = {}
+		T =	len(self.dna.seq) - 1
 
-		self.p = [] # matrix of posterior probabilities
-		for i in range(len(self.dna.seq)):
-			dist = {}
-			for j in self.model.states:
-				if self.model.log:
-					dist[j.name] = toolbox.sumlog(f[i][j.name], b[i][j.name]) - sum_f
-				else:
-					dist[j.name] = (f[i][j.name] * b[i][j.name]) / sum_f
-			self.p.append(dist)
+		# Initial probabilities
+		for k in self.model.states:
+			p[k.name] = [{} for _ in range(0,T+1)]
+			p[k.name][0] = {}
+			p[k.name][T] = {}
+			p[k.name][0]['f'] = k.init * self.emission(k.name, 0)
+			p[k.name][T]['b'] = 1
+		# Build forward/backward matrix
+		for t in range(1,T+1):
+			for k in self.model.states:
+				# Forward probability
+				p[k.name][t]['f'] = sum(p[j.name][t-1]['f'] \
+					* (self.tmap[k.name][j.name] if j.name in self.tmap[k.name] else 0) \
+					for j in self.model.states) \
+					* self.emission(k.name, t)
+				# Backward probability
+				p[k.name][T-t]['b'] = sum(p[j][T-t+1]['b'] \
+					* self.tmap[j][k.name] \
+					* self.emission(j, T-t+1) for j in k.next)
 
-	def get_prob(self, state, t):
-		"""Returns the probability of state at time t"""
-		return self.p[t][state]
+		# Compute posterior probabilities
+		for t in range(0,T+1):
+			for k in self.model.states:
+				p[k.name][t]['posterior'] = p[k.name][t]['f'] * p[k.name][t]['b']
 
-	def find_best_state(self, t):
-		"""Finds the most likely state at time t"""
-		return max(self.p[t].keys(), key=(lambda key: self.p[t][key]))
+		self.matrix = p
 
-	def _forward(self):
-		f = []
-		if self.model.log:
-			prev = {k.name: toolbox.sumlog(self.emission(k.name,0), k.init) \
-				for k in self.model.states}
-		else:
-			prev = {k.name: self.emission(k.name,0) * k.init for k in self.model.states}
-
-		for i in range(len(self.dna.seq)):
-			curr = {}
-			for j in self.model.states:
-				if self.model.log:
-					if i == 0:
-						curr[j.name] = toolbox.sumlog(self.emission(j.name, i), j.init)
-					else:
-						curr[j.name] = toolbox.sumlog(self.emission(j.name, i),
-							toolbox.prod(toolbox.sumlog(self.tmap[k.name][j.name],prev[k.name]) \
-							for k in self.model.states))
-				else:
-					if i == 0:
-						curr[j.name] = self.emission(j.name, i) * j.init
-					else:
-						curr[j.name] = self.emission(j.name, i) \
-							* sum(self.tmap[k.name][j.name] * prev[k.name] \
-							for k in self.model.states)
-			f.append(curr)
-			prev = curr
-		if self.model.log:
-			sum_f = toolbox.prod(curr[j.name] + j.term for j in self.model.states)
-		else:
-			sum_f = sum(curr[j.name] * j.term for j in self.model.states)
-		return f, sum_f
-
-	def _backward(self):
-		b = [{} for _ in range(len(self.dna.seq))]
-		prev = {k.name: k.term for k in self.model.states}
-		for i in range(len(self.dna.seq), 0, -1):
-			curr = {}
-			for j in self.model.states:
-				if i == len(self.dna.seq):
-					curr[j.name] = j.term
-				elif self.model.log:
-					curr[j.name] = toolbox.prod(self.tmap[j.name][k.name] \
-						+ self.emission(k.name, i) + prev[k.name] \
-						for k in self.model.states)
-				else:
-					curr[j.name] = sum(self.tmap[j.name][k.name] \
-					* self.emission(k.name	, i) * prev[k.name] \
-					for k in self.model.states)
-			b[i-1] = curr
-			prev = curr
-			if self.model.log:
-				sum_b = toolbox.prod(k.init + self.emission(k.name,0) \
-					+ curr[k.name] for k in self.model.states)
-			else:
-				sum_b = sum(k.init * self.emission(k.name,0) * curr[k.name] \
-					for k in self.model.states)
-		return b, sum_b
+	def posterior(self, time, state):
+		return self.matrix[state][time]['posterior']
