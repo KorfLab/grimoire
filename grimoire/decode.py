@@ -460,6 +460,6 @@ class ForwardBackward(HMM_NT_decoder):
 
 		self.matrix = p
 
-	def posterior(self, time, state):
-		"""Get the probability @time of being in @state"""
+	def posterior(self, state, time):
+		"""Get the probability of being in @state at @time"""
 		return self.matrix[state][time]['posterior']

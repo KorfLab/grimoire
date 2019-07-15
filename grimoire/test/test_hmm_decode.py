@@ -96,13 +96,13 @@ class TestHMM(unittest.TestCase):
 	def test_Decode_ForwardBackward(self):
 		dna = sequence.DNA(name='test', seq='AGT')
 		p = decode.ForwardBackward(model=self.hmm, dna=dna)
-		self.assertAlmostEqual(p.posterior(time=0, state='GEN'),
+		self.assertAlmostEqual(p.posterior(state='GEN', time=0),
 			0.01224654564, places=8)
-		self.assertAlmostEqual(p.posterior(time=2, state='DON-1'),
+		self.assertAlmostEqual(p.posterior(state='DON-1', time=2),
 			0.0025, places=8)
-		self.assertAlmostEqual(p.posterior(time=1, state='DON-0'),
+		self.assertAlmostEqual(p.posterior(state='DON-0', time=1),
 			0.0025, places=8)
-		self.assertAlmostEqual(p.posterior(time=2, state='GEN'),
+		self.assertAlmostEqual(p.posterior(state='GEN', time=2),
 			0.009746545644, places=8)
 
 if __name__ == '__main__':
