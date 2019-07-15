@@ -51,6 +51,50 @@ class Parse:
 					end = len(mypath) +1
 		return features
 
+class Performance:
+	
+	def __init__(self, model):
+		self.model = model
+		self.nt_same = 0
+		self.nt_diff = 0
+		self.full_same = 0
+		self.full_diff = 0
+		self.feature = {} # 2D table of [type][type] = count
+	
+	def compare(self, source=None, prediction=None):
+		# NT-level comparisons
+		same, diff = 0, 0
+		s, p = [], []
+		for f in source:
+			for i in range(f.beg, f.end): s.append(f.type)
+		for f in prediction:
+			for i in range(f.beg, f.end): p.append(f.type)
+		for i in range(len(s)):
+			if s[i] == p[i]: same += 1
+			else:            diff += 1
+		self.nt_same += same
+		self.nt_diff += diff
+		
+		# Complete-level comparisons
+		if diff == 0: self.full_same += 1
+		else:         self.full_diff += 1
+		
+		# Feature-type-level comparisons
+		for i in range(len(s)):
+			if s[i] not in self.feature: self.feature[s[i]] = {}
+			if p[i] not in self.feature[s[i]]: self.feature[s[i]][p[i]] = 0
+			self.feature[s[i]][p[i]] += 1
+			
+	def report(self):
+		print('Exact:', self.full_same / (self.full_same + self.full_diff))
+		print('Accuracy:', self.nt_same / (self.nt_same + self.nt_diff))
+		for s1 in self.feature:
+			print(s1)
+			total = 0
+			for s2 in self.feature[s1]: total += self.feature[s1][s2]
+			for s2 in self.feature[s1]:
+				print('',s2, self.feature[s1][s2] / total)
+
 class HMM_NT_decoder:
 
 	def state_map(self):
