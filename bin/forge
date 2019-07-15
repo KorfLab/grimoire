@@ -7,10 +7,9 @@ import copy
 
 import grimoire.toolbox as toolbox
 import grimoire.hmm as hmm
-import grimoire.genome as genome
 import grimoire.decode as decode
-from grimoire.hmm import HMM
 from grimoire.sequence import DNA
+from grimoire.genome import Genome, Feature
 
 ## Command line stuff ##
 
@@ -19,14 +18,12 @@ parser.add_argument('--fasta', required=True, type=str,
 	metavar='<path>', help='path to fasta file (%(type)s)')
 parser.add_argument('--gff3', required=True, type=str,
 	metavar='<path>', help='path to GFF3 file (%(type)s)')
-parser.add_argument('--hmm', required=True, type=str,
-	metavar='<path>', help='path to output HMM file (%(type)s)')
-parser.add_argument('--sources', required=False, type=str,
-	metavar='<path>', help='path to sources GFF (%(type)s)')
-parser.add_argument('--replicant', required=False, type=str,
-	metavar='<path>', help='path to replicant report (%(type)s), req --sources')
 parser.add_argument('--model', required=True, type=str,
-	metavar='<model>', help='exon|cds')
+	metavar='<model>', help='internal_exon|splicing|mRNA')
+parser.add_argument('--hmm', required=False, type=str,
+	metavar='<path>', help='output HMM file (%(type)s)')
+parser.add_argument('--source', required=False, type=str,
+	metavar='<name>', help='output sources to <name>.fasta, <name>.gff (%(type)s)')
 parser.add_argument('--null_ctx', required=False, type=int, default=0,
 	metavar='<int>', help='null model context [%(default)d]')
 parser.add_argument('--acc_len', required=False, type=int, default=5,
@@ -59,43 +56,51 @@ parser.add_argument('--atg_ctx', required=False, type=int, default=0,
 	metavar='<int>', help='ATG context [%(default)d]')
 parser.add_argument('--cds_ctx', required=False, type=int, default=0,
 	metavar='<int>', help='CDS context [%(default)d]')
+parser.add_argument('--replicant', action='store_true',
+	help='perform replicant analysis (model vs source)')
 arg = parser.parse_args()
 
 ff = toolbox.FASTA_file(arg.fasta)
 gf = toolbox.GFF_file(arg.gff3)
 
-def output_sources(features, filename):
-	fp = open(filename, 'w+')
-	for feature in features:
-		fp.write(feature.gff())
+###############
+## Functions ##
+###############
 
-def output_replicant(mod, regions, filename):
-	model = copy.deepcopy(mod)
-	model.convert2log()
-	for region in regions:
-		seq = region.seq_str()
-		print(seq)
-		print(region)
-		dna = DNA(name='replicant', seq=seq)
-		v = decode.Viterbi(model=model, dna=dna)
-		p = v.generate_path()
-		ft = p.features(labels=model.macro_labels(), dna=dna)
-		for f in ft:
-			f.dna = region.dna
-			f.beg += region.beg -1
-			f.end += region.beg -1
-			print(f)
-		# these features should be compared to the children of the region
-		sys.exit(1)
+class ForgeError(Exception):
+	pass
+
+def make_source(name, comps):
+	seq = ''
+	features = []
+	for comp in comps: seq += comp['seq']
+	dna = DNA(seq=seq, name=name)
+	beg, end = 1, None
+	for comp in comps:
+		end = beg + len(comp['seq']) - 1
+		features.append(Feature(dna, beg, end, '+', comp['label']))
+		beg += len(comp['seq'])
+	return {'dna':dna, 'features':features}
+
+#############
+## Globals ##
+#############
+
+sources = [] # used for outputting sources and performing replicant analysis
+model = None # used for outputting HMM and perforing replicant analysis
+
+############################
+## Model Building Section ##
+############################
 
 if arg.model == 'internal_exon':
-	gen = genome.Genome(gff3=arg.gff3, fasta=arg.fasta)
+	gen = Genome(gff3=arg.gff3, fasta=arg.fasta)
 	acc_seqs = []
 	don_seqs = []
 	exon_seqs = []
-	txa = []
 	exon_len = 0
 	splices = 0
+	
 	for chr in gen.chromosomes:
 		for gene in chr.features:
 			if not gene.mRNAs(): continue # some tx are miRNA etc
@@ -103,26 +108,29 @@ if arg.model == 'internal_exon':
 			if gene.issues: continue
 			if len(gene.mRNAs()) > 1: continue
 			if len(tx.exons) < 3: continue
+			
+			rcount = 0
 			for i in range(1, len(tx.exons) -1):
 				iprev = tx.introns[i-1].seq_str()
-				acc_seqs.append(iprev[-arg.acc_len:len(iprev)])
-				exon_seqs.append(tx.exons[i].seq_str())
-				exon_len += tx.exons[i].end - tx.exons[i].beg + 1
 				inext = tx.introns[i].seq_str()
-				don_seqs.append(inext[0:arg.don_len])
+				
+				acc_seq = iprev[-arg.acc_len:len(iprev)]
+				exon_seq = tx.exons[i].seq_str()
+				don_seq = inext[0:arg.don_len]
+				
+				acc_seqs.append(acc_seq)
+				exon_seqs.append(exon_seq)
+				don_seqs.append(don_seq)
+				
 				splices += 1
-				if arg.sources or arg.replicant:
-					txid = 'model-' + str(splices)
-					parent = genome.Feature(chr, tx.introns[i-1].end - arg.acc_len + 1,
-						tx.introns[i].beg + arg.don_len - 1, tx.strand, 'model', id=txid)
-					parent.add_child(genome.Feature(chr, tx.introns[i-1].end - arg.acc_len + 1,
-						tx.introns[i-1].end, tx.introns[i-1].strand, 'ACC', parent_id=txid))
-					parent.add_child(genome.Feature(chr, tx.exons[i].beg, tx.exons[i].end,
-						tx.exons[i].strand, 'E', parent_id=txid))
-					parent.add_child(genome.Feature(chr, tx.introns[i].beg,
-						tx.introns[i].beg + arg.don_len - 1, tx.introns[i].strand, 'DON',
-						parent_id=txid))
-					txa.append(parent)
+				exon_len += tx.exons[i].end - tx.exons[i].beg + 1
+				
+				if arg.source or arg.replicant:
+					rcount += 1
+					sources.append(make_source(tx.id + '-region-' + str(rcount),
+						[{'label':'ACC', 'seq':acc_seq},
+						{'label':'EXON', 'seq':exon_seq},
+						{'label':'DON', 'seq':don_seq}]))
 
 	acc_emits = hmm.train_emissions(acc_seqs, context=arg.acc_ctx)
 	don_emits = hmm.train_emissions(don_seqs, context=arg.don_ctx)
@@ -146,21 +154,16 @@ if arg.model == 'internal_exon':
 	null_state.term = 1
 	hmm.connect2(null_state, null_state, 1)
 	
-	model = HMM(name=arg.hmm, states=acc_states + [exon_state] + don_states,
+	model = hmm.HMM(name=arg.hmm, states=acc_states + [exon_state] + don_states,
 		null = null_state)
-	model.write(arg.hmm)
-	
-	if arg.sources: output_sources(txa, arg.sources)
-	if arg.replicant: output_replicant(model, txa, arg.replicant)
-		
 
 elif arg.model == 'splicing':
-	gen = genome.Genome(gff3=arg.gff3, fasta=arg.fasta)
-	ep_seqs = []
-	en_seqs = []
+	gen = Genome(gff3=arg.gff3, fasta=arg.fasta)
+	exp_seqs = []
+	exn_seqs = []
 	don_seqs = []
 	acc_seqs = []
-	intron_seqs = []
+	int_seqs = []
 	txa = []
 	exon_len = 0
 	splices = 0
@@ -172,64 +175,58 @@ elif arg.model == 'splicing':
 			if gene.issues: continue
 			if len(gene.mRNAs()) > 1: continue
 			if len(tx.exons) < 2: continue
+			
+			rcount = 0
 			for i in range(len(tx.exons) - 1):
-				ep_seqs.append(tx.exons[i].seq_str())
+				exp_seq = tx.exons[i].seq_str()
+				exn_seq = tx.exons[i + 1].seq_str()
 				iseq = tx.introns[i].seq_str()
-				don_seqs.append(iseq[0:arg.don_len])
-				intron_seqs.append(iseq[arg.don_len:-arg.acc_len])
-				intron_len += len(iseq) - arg.don_len - arg.acc_len
-				en_seqs.append(tx.exons[i + 1].seq_str())
-				acc_seqs.append(iseq[-arg.acc_len:len(iseq)])
-				exon_len += tx.exons[i].end - tx.exons[i].beg + 1
+				don_seq = iseq[0:arg.don_len]
+				int_seq = iseq[arg.don_len:-arg.acc_len]
+				acc_seq = iseq[-arg.acc_len:len(iseq)]
+				
+				exp_seqs.append(exp_seq)
+				don_seqs.append(don_seq)
+				int_seqs.append(int_seq)
+				acc_seqs.append(acc_seq)
+				exn_seqs.append(exn_seq)
+				
+				intron_len += len(int_seq)
+				exon_len += len(exp_seq)
 				splices += 1
-				txid = 'model-' + str(splices)
 				
-				if arg.sources or arg.replicant:
-					# create feature object for source sequence
-					parent = genome.Feature(chr, tx.exons[i].beg, tx.exons[i + 1].end, tx.strand,
-							'model', id=txid)
-					exp = genome.Feature(chr, tx.exons[i].beg, tx.exons[i].end,
-							tx.exons[i].strand, 'EXP', parent=txid)
-					parent.add_child(exp)
-					don = genome.Feature(chr, tx.introns[i].beg, tx.introns[i].beg + arg.don_len - 1,
-							tx.introns[i].strand, 'DON', parent=txid)
-					parent.add_child(don)
-					int = genome.Feature(chr, tx.introns[i].beg + arg.don_len,
-							tx.introns[i].end - arg.acc_len, tx.introns[i].strand,
-							'INT', parent=txid)
-					parent.add_child(int)
-					acc = genome.Feature(chr, tx.introns[i].end - arg.acc_len + 1,
-							tx.introns[i].end, tx.introns[i].strand, 'ACC', parent=txid)
-					parent.add_child(acc)
-					exn = genome.Feature(chr, tx.exons[i + 1].beg, tx.exons[i + 1].end,
-							tx.exons[i + 1].strand, 'EXN', parent=txid)
-					parent.add_child(exn)
-				
-					txa.append(parent)				
+				if arg.source or arg.replicant:
+					rcount += 1
+					sources.append(make_source(tx.id + '-region-' + str(rcount),
+						[{'label':'EXP', 'seq':exp_seq},
+						{'label':'DON', 'seq':don_seq},
+						{'label':'INT', 'seq':int_seq},
+						{'label':'ACC', 'seq':acc_seq},
+						{'label':'EXN', 'seq':exn_seq}]))
 	
-	ep_emits = hmm.train_emission(ep_seqs, context=arg.exon_ctx)
+	exp_emits = hmm.train_emission(exp_seqs, context=arg.exon_ctx)
 	don_emits = hmm.train_emissions(don_seqs, context=arg.don_ctx)
-	intron_emits = hmm.train_emission(intron_seqs, context=arg.int_ctx)
+	int_emits = hmm.train_emission(int_seqs, context=arg.int_ctx)
 	acc_emits = hmm.train_emissions(acc_seqs, context=arg.acc_ctx)
-	en_emits = hmm.train_emission(en_seqs, context=arg.exon_ctx)
+	exn_emits = hmm.train_emission(exn_seqs, context=arg.exon_ctx)
 	
-	ep_state = hmm.State(name='EXP', context=arg.exon_ctx, emits=ep_emits)
-	ep_state.init = 1
+	exp_state = hmm.State(name='EXP', context=arg.exon_ctx, emits=exp_emits)
+	exp_state.init = 1
 	don_states = hmm.state_factory('DON', don_emits)
-	intron_state = hmm.State(name='INT', context=arg.int_ctx, emits=intron_emits)
+	int_state = hmm.State(name='INT', context=arg.int_ctx, emits=int_emits)
 	acc_states = hmm.state_factory('ACC', acc_emits)
-	en_state = hmm.State(name='EXN', context=arg.exon_ctx, emits=en_emits)
-	en_state.term = 1
+	exn_state = hmm.State(name='EXN', context=arg.exon_ctx, emits=exn_emits)
+	exn_state.term = 1
 	
-	hmm.connect2(ep_state, ep_state, 1 - splices/exon_len)
-	hmm.connect2(ep_state, don_states[0], splices/exon_len)
+	hmm.connect2(exp_state, exp_state, 1 - splices/exon_len)
+	hmm.connect2(exp_state, don_states[0], splices/exon_len)
 	hmm.connect_all(don_states)
-	hmm.connect2(don_states[arg.don_len-1], intron_state, 1)
-	hmm.connect2(intron_state, intron_state, 1 - splices/intron_len)
-	hmm.connect2(intron_state, acc_states[0], splices/intron_len)
+	hmm.connect2(don_states[arg.don_len-1], int_state, 1)
+	hmm.connect2(int_state, int_state, 1 - splices/intron_len)
+	hmm.connect2(int_state, acc_states[0], splices/intron_len)
 	hmm.connect_all(acc_states)
-	hmm.connect2(acc_states[arg.acc_len-1], en_state, 1)
-	hmm.connect2(en_state, en_state, 1)
+	hmm.connect2(acc_states[arg.acc_len-1], exn_state, 1)
+	hmm.connect2(exn_state, exn_state, 1)
 	
 	null_emits = hmm.train_emission(chr.seq, context=arg.null_ctx)	
 	null_state = hmm.State(name='NULL', context=arg.null_ctx, emits=null_emits)
@@ -237,15 +234,11 @@ elif arg.model == 'splicing':
 	null_state.term = 1
 	hmm.connect2(null_state, null_state, 1)
 	
-	model = HMM(name=arg.hmm, null=null_state,
-		states=[ep_state] + don_states + [intron_state] + acc_states + [en_state])
-	model.write(arg.hmm)
-	if arg.sources: output_sources(txa, arg.sources)
-	if arg.replicant: output_replicant(model, txa, arg.replicant)
-	
+	model = hmm.HMM(name=arg.hmm, null=null_state,
+		states=[exp_state] + don_states + [int_state] + acc_states + [exn_state])
 
 elif arg.model == 'mRNA':
-	gen = genome.Genome(gff3=arg.gff3, fasta=arg.fasta)
+	gen = Genome(gff3=arg.gff3, fasta=arg.fasta)
 	u5_seqs = []
 	koz_seqs = []
 	atg_seqs = []
@@ -261,6 +254,7 @@ elif arg.model == 'mRNA':
 			tx = gene.mRNAs()[0]
 			if gene.issues: continue
 			if len(gene.mRNAs()) > 1: continue
+			
 			cds = tx.cds_str()
 			ptx = tx.tx_str()
 			beg = ptx.find(cds)
@@ -268,30 +262,30 @@ elif arg.model == 'mRNA':
 			if beg < arg.u5_ctx + arg.koz_len: continue
 			if len(ptx) - end < arg.u3_ctx: continue
 			
-			u5_seqs.append(ptx[0 : beg - arg.koz_len])
-			koz_seqs.append(ptx[beg-arg.koz_len:beg])
-			u3_seqs.append(ptx[end:len(ptx)])
-			atg_seqs.append(cds[0:3])
-			cds_seqs.append(cds[3:len(cds)])
+			u5_seq = ptx[0 : beg - arg.koz_len]
+			koz_seq = ptx[beg-arg.koz_len:beg]
+			atg_seq = cds[0:3]
+			cds_seq = cds[3:len(cds)]
+			u3_seq = ptx[end:len(ptx)]
 			
-			u5_len += beg - arg.koz_len
+			u5_seqs.append(u5_seq)
+			koz_seqs.append(koz_seq)
+			atg_seqs.append(atg_seq)
+			cds_seqs.append(cds_seq)
+			u3_seqs.append(u3_seq)
+			
+			u5_len += len(u5_seq)
 			cds_len += len(cds) - 3
 			mRNAs += 1
 			
-			if arg.sources or arg.replicant:
-				txid = 'model-' + str(mRNAs)
-				parent = genome.Feature(chr, tx.beg, tx.end, tx.strand, 'model', id=txid)
-				parent.add_child(genome.Feature(chr, tx.beg,
-					tx.beg + (beg - arg.koz_len) - 1, tx.strand, 'UTR5', parent=txid))
-				parent.add_child(genome.Feature(chr, tx.beg + (beg - arg.koz_len),
-					tx.beg + beg - 1, tx.strand, 'KOZ', parent=txid))
-				parent.add_child(genome.Feature(chr, tx.beg + beg, tx.beg + beg + 2,
-					tx.strand, 'ATG', parent=txid))
-				parent.add_child(genome.Feature(chr, tx.beg + beg + 3, tx.beg + end, tx.strand, 'CDS',
-					parent=txid))
-				parent.add_child(genome.Feature(chr, tx.beg + end + 1, tx.end, tx.strand, 'UTR3',
-					parent=txid))
-				txa.append(parent)
+			if arg.source or arg.replicant:
+				sources.append(make_source(tx.id + '-cDNA',
+					[{'label':'UTR5', 'seq':u5_seq},
+					{'label':'KOZ', 'seq':koz_seq},
+					{'label':'ATG', 'seq':atg_seq},
+					{'label':'CDS', 'seq':cds_seq},
+					{'label':'UTR3', 'seq':u3_seq}]))
+
 					
 	u5_emits = hmm.train_emission(u5_seqs, context=arg.u5_ctx)
 	koz_emits = hmm.train_emissions(koz_seqs, context=arg.koz_ctx)
@@ -323,13 +317,35 @@ elif arg.model == 'mRNA':
 	null_state.term = 1
 	hmm.connect2(null_state, null_state, 1)
 	
-	model = HMM(name=arg.hmm, states=[u5_state] + koz_states + atg_states
+	model = hmm.HMM(name=arg.hmm, states=[u5_state] + koz_states + atg_states
 		+ cds_states + [u3_state], null=null_state)
-	model.write(arg.hmm)
-	
-	if arg.sources: output_sources(txa, arg.sources)
-	if arg.replicant: output_replicant(model, txa, arg.replicant)
 
 else:
-	print('unrecognized model name')
-	sys.exit(1)
+	raise ForgeError('unknown model type: ' + arg.model)
+
+########################
+## Post-build Actions ##
+########################
+
+if arg.hmm:
+	model.write(arg.hmm)
+
+if arg.source:
+	with open(arg.source + '.fasta', 'w+') as file:
+		for source in sources:
+			file.write(source['dna'].fasta())
+	with open(arg.source + '.gff', 'w+') as file:
+		for source in sources:
+			for f in source['features']:
+				file.write(f.gff() + '\n')
+
+if arg.replicant:
+	model.convert2log() # note from here down, the model is log-space
+	perf = decode.Performance(model)
+	for source in sources:
+		v = decode.Viterbi(model=model, dna=source['dna'])
+		p = v.generate_path()
+		features = p.features()
+		perf.compare(source=source['features'], prediction=features)
+	perf.report()
+

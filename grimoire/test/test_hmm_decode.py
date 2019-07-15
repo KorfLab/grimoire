@@ -65,7 +65,7 @@ class TestHMM(unittest.TestCase):
 		v = decode.Viterbi(model=self.hmm, dna=dna)
 		p = v.generate_path()
 		self.assertEqual(p.score, 4.401452575029605)
-		ft = p.features(labels=['DON', 'GEN'], dna=dna)
+		ft = p.features()
 		self.assertEqual(ft[1].type, 'DON')
 		self.assertEqual(ft[1].beg, 5)
 

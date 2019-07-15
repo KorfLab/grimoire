@@ -13,13 +13,17 @@ class DecodeError(Exception):
 	pass
 
 class Parse:
-	def __init__(self, score=None, path=None, freq=None, pid=None):
+	def __init__(self, score=None, path=None, freq=None, pid=None, decoder=None):
 		self.score = score
 		self.path = path
 		self.freq = freq
 		self.pid = pid
+		self.decoder = decoder
 
-	def features(self, labels=None, dna=None):
+	def features(self):
+		dna = self.decoder.dna
+		labels = self.decoder.model.macro_labels()
+		
 		mypath = []
 		for name in self.path:
 			found = False
@@ -46,6 +50,50 @@ class Parse:
 						mypath[beg], parent_id=self.pid))
 					end = len(mypath) +1
 		return features
+
+class Performance:
+	
+	def __init__(self, model):
+		self.model = model
+		self.nt_same = 0
+		self.nt_diff = 0
+		self.full_same = 0
+		self.full_diff = 0
+		self.feature = {} # 2D table of [type][type] = count
+	
+	def compare(self, source=None, prediction=None):
+		# NT-level comparisons
+		same, diff = 0, 0
+		s, p = [], []
+		for f in source:
+			for i in range(f.beg, f.end): s.append(f.type)
+		for f in prediction:
+			for i in range(f.beg, f.end): p.append(f.type)
+		for i in range(len(s)):
+			if s[i] == p[i]: same += 1
+			else:            diff += 1
+		self.nt_same += same
+		self.nt_diff += diff
+		
+		# Complete-level comparisons
+		if diff == 0: self.full_same += 1
+		else:         self.full_diff += 1
+		
+		# Feature-type-level comparisons
+		for i in range(len(s)):
+			if s[i] not in self.feature: self.feature[s[i]] = {}
+			if p[i] not in self.feature[s[i]]: self.feature[s[i]][p[i]] = 0
+			self.feature[s[i]][p[i]] += 1
+			
+	def report(self):
+		print('Exact:', self.full_same / (self.full_same + self.full_diff))
+		print('Accuracy:', self.nt_same / (self.nt_same + self.nt_diff))
+		for s1 in self.feature:
+			print(s1)
+			total = 0
+			for s2 in self.feature[s1]: total += self.feature[s1][s2]
+			for s2 in self.feature[s1]:
+				print('',s2, self.feature[s1][s2] / total)
 
 class HMM_NT_decoder:
 
@@ -202,7 +250,7 @@ class Viterbi(HMM_NT_decoder):
 		self.matrix = v
 
 	def generate_path(self):
-		return(Parse(path=self.path, score=self.score))
+		return(Parse(path=self.path, score=self.score, decoder=self))
 
 class StochasticViterbi(HMM_NT_decoder):
 	"""Viterbi supporting multiple sub-optimal trace-backs"""
@@ -366,7 +414,8 @@ class StochasticViterbi(HMM_NT_decoder):
 				score=score,
 				path=trace_table[sig]['path'],
 				freq=trace_table[sig]['count'] / n,
-				pid='parse-' + str(pn)))
+				pid='parse-' + str(pn),
+				decoder=self))
 			pn += 1
 
 		return parses

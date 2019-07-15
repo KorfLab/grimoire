@@ -14,7 +14,7 @@ class TestGenome(unittest.TestCase):
 			for g in c.features:
 				for m in g.mRNAs():
 					if m.issues: issues += 1
-		self.assertEqual(issues, 30)
+		self.assertEqual(issues, 31)
 
 if __name__ == '__main__':
 	unittest.main(verbosity=2)
