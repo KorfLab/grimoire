@@ -429,34 +429,56 @@ class ForwardBackward(HMM_NT_decoder):
 		self.tmap = self.transition_map()
 		self.smap = self.state_map()
 		self.matrix = None
+		prod = toolbox.prod
+		sumlog = toolbox.sumlog
 
 		p = {}
 		T =	len(self.dna.seq) - 1
 
 		# Initial probabilities
 		for k in self.model.states:
+			ki = k.init
+			ep = self.emission(k.name, 0)
 			p[k.name] = [{} for _ in range(0,T+1)]
 			p[k.name][0] = {}
 			p[k.name][T] = {}
-			p[k.name][0]['f'] = k.init * self.emission(k.name, 0)
-			p[k.name][T]['b'] = 1
+			if self.model.log:
+				p[k.name][0]['f'] = sumlog(ki, ep)
+				p[k.name][T]['b'] = math.inf
+			else:
+				p[k.name][0]['f'] = ki * ep
+				p[k.name][T]['b'] = 1
 		# Build forward/backward matrix
 		for t in range(1,T+1):
 			for k in self.model.states:
-				# Forward probability
-				p[k.name][t]['f'] = sum(p[j.name][t-1]['f'] \
+				if self.model.log:
+					# Forward probability
+					p[k.name][t]['f'] =	sumlog(prod(sumlog(p[j.name][t-1]['f'],
+					self.tmap[k.name][j.name] if j.name in self.tmap[k.name] else 0) \
+					for j in self.model.states), self.emission(k.name, t))
+					# Backward probability
+					p[k.name][T-t]['b'] = prod(sumlog(sumlog(p[j][T-t+1]['b'],
+						self.tmap[j][k.name]),
+						self.emission(j, T-t+1)) for j in k.next)
+				else:
+					# Forward probability
+					p[k.name][t]['f'] = sum(p[j.name][t-1]['f'] \
 					* (self.tmap[k.name][j.name] if j.name in self.tmap[k.name] else 0) \
 					for j in self.model.states) \
 					* self.emission(k.name, t)
-				# Backward probability
-				p[k.name][T-t]['b'] = sum(p[j][T-t+1]['b'] \
+					# Backward probability
+					p[k.name][T-t]['b'] = sum(p[j][T-t+1]['b'] \
 					* self.tmap[j][k.name] \
 					* self.emission(j, T-t+1) for j in k.next)
 
 		# Compute posterior probabilities
 		for t in range(0,T+1):
 			for k in self.model.states:
-				p[k.name][t]['posterior'] = p[k.name][t]['f'] * p[k.name][t]['b']
+				if self.model.log:
+					p[k.name][t]['posterior'] = sumlog(p[k.name][t]['f'],
+						p[k.name][t]['b'])
+				else:
+					p[k.name][t]['posterior'] = p[k.name][t]['f'] * p[k.name][t]['b']
 
 		self.matrix = p
 
