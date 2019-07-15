@@ -20,6 +20,8 @@ parser.add_argument('--gff3', required=True, type=str,
 	metavar='<path>', help='path to GFF3 file (%(type)s)')
 parser.add_argument('--model', required=True, type=str,
 	metavar='<model>', help='internal_exon|splicing|mRNA')
+parser.add_argument('--padding', required=False, type=int, default=100,
+	metavar='<int>', help='length of flanking sequence [%(default)d]')
 parser.add_argument('--hmm', required=False, type=str,
 	metavar='<path>', help='output HMM file (%(type)s)')
 parser.add_argument('--source', required=False, type=str,
@@ -56,12 +58,12 @@ parser.add_argument('--atg_ctx', required=False, type=int, default=0,
 	metavar='<int>', help='ATG context [%(default)d]')
 parser.add_argument('--cds_ctx', required=False, type=int, default=0,
 	metavar='<int>', help='CDS context [%(default)d]')
-parser.add_argument('--replicant', action='store_true',
-	help='perform replicant analysis (model vs source)')
+parser.add_argument('--xvalid', required=False, type=int, default=1,
+	metavar='<int>', help='CDS context [%(default)d]')
+#parser.add_argument('--replicant', action='store_true',
+#	help='perform replicant analysis (model vs source)')
 arg = parser.parse_args()
 
-ff = toolbox.FASTA_file(arg.fasta)
-gf = toolbox.GFF_file(arg.gff3)
 
 ###############
 ## Functions ##
@@ -70,29 +72,79 @@ gf = toolbox.GFF_file(arg.gff3)
 class ForgeError(Exception):
 	pass
 
-def make_source(name, comps):
-	seq = ''
-	features = []
-	for comp in comps: seq += comp['seq']
-	dna = DNA(seq=seq, name=name)
-	beg, end = 1, None
-	for comp in comps:
-		end = beg + len(comp['seq']) - 1
-		features.append(Feature(dna, beg, end, '+', comp['label']))
-		beg += len(comp['seq'])
-	return {'dna':dna, 'features':features}
+def chromify(feature, beg, end):
+	dna = DNA(seq=feature.dna.seq[beg:end], name=feature.id + '-remapped')
+	gene = Feature(dna, feature.beg -beg, feature.end -beg,
+		feature.strand, 'gene', id=feature.parent_id)
+	tx = Feature(dna, feature.beg -beg, feature.end -beg,
+		feature.strand, 'mRNA', id=feature.id, parent_id=gene.id)
+	for child in feature.children:
+		tx.add_child(Feature(dna, child.beg -beg, child.end -beg,
+			child.strand, child.type, parent_id=child.parent_id))
+	gene.add_child(tx)
+	dna.features.append(gene)
+	if feature.strand == '-': dna.revcomp()
+	raise ForgeError('stopped here, need revcomp of feature table')
+	return dna
 
 #############
 ## Globals ##
 #############
 
-sources = [] # used for outputting sources and performing replicant analysis
-model = None # used for outputting HMM and perforing replicant analysis
+dataset = [] # data source organized by set number
+for n in range(arg.xvalid): dataset.append([])
 
-############################
-## Model Building Section ##
-############################
+##############################
+## Sequence Munging Section ##
+##############################
 
+gene_count = 0
+gen = Genome(gff3=arg.gff3, fasta=arg.fasta)
+for chr in gen.chromosomes:
+	for gene in chr.features:
+		if not gene.mRNAs(): continue # some tx are miRNA etc
+		tx = gene.mRNAs()[0]
+		if tx.issues: continue
+		rbeg = tx.beg - arg.padding
+		rend = tx.end + arg.padding
+		if rbeg < 1 or rend > len(chr.seq): continue
+		
+		dna = chromify(tx, rbeg, rend)
+		n = gene_count % arg.xvalid
+		dataset[n].append(dna)
+		gene_count += 1
+
+if arg.source:
+	if arg.xvalid == 1:
+		with open(arg.source + '.fasta', 'w+') as file:
+			for dna in dataset[0]:
+				file.write(dna.fasta())
+		with open(arg.source + '.gff', 'w+') as file:
+			for dna in dataset[0]:
+				file.write(dna.features[0].gff())
+	else:
+		for n in range(arg.xvalid):
+			with open(arg.source + '-set' + str(n) + '.fasta', 'w+') as file:
+				for dna in dataset[n]:
+					file.write(dna.fasta())
+			with open(arg.source + '-set' + str(n) + '.gff', 'w+') as file:
+				for dna in dataset[n]:
+					file.write(dna.features[0].gff())
+
+###############################
+## Sequence Modeling Section ##
+###############################
+
+if arg.model == 'internal_exon':
+	need = ['acc', 'don', 'exon']
+elif arg.model == 'splicing':
+	need = ['acc', 'don', 'exon', 'intron']
+elif arg.model == 'mRNA':
+	need = ['utr5', 'atg', 'koz', 'cds', 'stop', 'utr3']
+else:
+	raise ForgeError('unknown model type: ' + arg.model)
+
+"""
 if arg.model == 'internal_exon':
 	gen = Genome(gff3=arg.gff3, fasta=arg.fasta)
 	acc_seqs = []
@@ -348,4 +400,4 @@ if arg.replicant:
 		features = p.features()
 		perf.compare(source=source['features'], prediction=features)
 	perf.report()
-
+"""
