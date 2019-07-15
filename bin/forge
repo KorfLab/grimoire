@@ -321,8 +321,7 @@ elif arg.model == 'mRNA':
 		+ cds_states + [u3_state], null=null_state)
 
 else:
-	print('unrecognized model name')
-	sys.exit(1)
+	raise ForgeError('unknown model type: ' + arg.model)
 
 ########################
 ## Post-build Actions ##
@@ -342,16 +341,11 @@ if arg.source:
 
 if arg.replicant:
 	model.convert2log() # note from here down, the model is log-space
+	perf = decode.Performance(model)
 	for source in sources:
-		print(source['dna'])
-		for f in source['features']:
-			print(f)
-		
 		v = decode.Viterbi(model=model, dna=source['dna'])
 		p = v.generate_path()
 		features = p.features()
-		for f in features:
-			print(f)
-		
-		raise ForgeError('stopped here')
+		perf.compare(source=source['features'], prediction=features)
+	perf.report()
 
