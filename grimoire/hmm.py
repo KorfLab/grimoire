@@ -1,6 +1,8 @@
 
 import json
 import re
+import gzip
+import sys
 
 import grimoire.sequence as sequence
 import grimoire.toolbox as toolbox
@@ -201,8 +203,13 @@ class HMM:
 	
 	@classmethod
 	def read(cls, filename):
-		with open(filename, 'r') as fp:
-			d = json.loads(fp.read())
+		d = None
+		if re.search('\.gz$', filename):
+			with gzip.open(filename, mode='r') as fp:
+				d = json.loads(fp.read())
+		else:
+			with open(filename, 'r') as fp:
+				d = json.loads(fp.read())
 		hmm = HMM()
 		hmm.name = d['name']
 		hmm.log = d['log']
@@ -226,6 +233,10 @@ class HMM:
 		return hmm
 	
 	def write(self, filename):
+		if re.search('\.gz$', filename):
+			with gzip.open(filename, mode='w') as fp:
+				fp.write(json.dumps(self.__dict__, indent=4, cls=HMMdecoder))
+			
 		with open(filename, 'w+') as fp:
 			fp.write(json.dumps(self.__dict__, indent=4, cls=HMMdecoder))
 
