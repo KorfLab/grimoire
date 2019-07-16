@@ -1,4 +1,18 @@
-"""Mostly IO functions for standard interchange formats"""
+"""
+Toolbox
+
+This script contains I/O functions that allow the user to input files with
+standard interchange formats and output file entry info as class instances
+
+There are 2 methods of reading GFF and FASTA files provided in the toolbox:
+1. GFF_file/FASTA_file classes
+	Obtains the entries using random search.
+2. GFF_stream/FASTA_stream classes
+	Obtains the entries one directionally one record at a time.
+
+This tool currently accepts GFF and FASTA files, and outputs GFF/FASTA entries.
+"""
+#Documentation done in NumPy/SciPy format.
 
 import math
 import re
@@ -9,21 +23,31 @@ class ToolboxError(Exception):
 	pass
 
 def log(p):
+	"""Converts to Logspace"""
 	if p < 0: raise ValueError('p < 0')
 	if p == 0: return -999
 	else:      return math.log(p)
 
 def sumlog(v1, v2):
+	"""Finds the sum of two logspaced values"""
 	if v1 < v2: v1, v2 = v2, v1
 	return math.log(1 + math.exp(v2 - v1)) + v1
 
 def prod(iterable):
+	"""Please write doc string on what this is about"""
 	return reduce(operator.mul, iterable, 1)
 
 class GFF_entry:
 	"""Class representing a GFF entry (row)"""
 
 	def __init__(self, column):
+		"""
+		Parameters
+		----------
+		colum: list
+			A list of columns in GFF file
+		"""
+
 		self.chrom = column[0]
 		self.source = column[1]
 		self.type = column[2]
@@ -38,6 +62,13 @@ class GFF_file:
 	"""Class for reading and searching GFF files (slurps all into memory)."""
 
 	def __init__(self, filename):
+		"""
+		Parameters
+		----------
+		filename: str
+			Name of the GFF file
+		"""
+
 		self._chroms = {}
 		self._types = {}
 		with open(filename, 'r') as self.file:
@@ -57,6 +88,25 @@ class GFF_file:
 				self.types = list(self._types.keys())
 
 	def get(self, type=None, chrom=None, beg=None, end=None):
+		"""
+		Retrieves GFF entries with given parameters. If beg and end not
+		specified, capture all
+
+		Parameters
+		----------
+		type: str
+			Type of GFF entry (e.g. exon, gene) (default is None)
+
+		chrom: int
+			Chromosome of interest (default is None)
+
+		beg: int
+			Beginning coordinate (default is None)
+
+		end: int
+			Ending coordinate (default is None)
+		"""
+
 		type_search = {}
 		if type:
 			if type not in self._types:
@@ -72,11 +122,11 @@ class GFF_file:
 		else:
 			chrom_search = self.chroms
 
-		beg = 0 if not beg else beg
-		end = 1e300 if not end else end
+		#If beg and end not specified, capture all
+		beg = -1 if not beg else beg
+		end = math.inf if not end else end
 		if beg > end:
 			raise ToolboxError('beg > end: ' + beg + '-' + end)
-
 
 		found = []
 		for c in chrom_search:
@@ -91,6 +141,16 @@ class GFF_stream:
 	"""Class for reading GFF records one at a time"""
 
 	def __init__(self, filename=None, filepointer=None):
+		"""
+		Parameters
+		----------
+		filename: str
+			Name of GFF file (default is None)
+
+		filepointer:
+			Filepointer
+		"""
+
 		self.fp = None
 		if   filename    != None: self.fp = open(filename, 'r')
 		elif filepointer != None: self.fp = filepointer
@@ -103,6 +163,10 @@ class GFF_stream:
 		return self.next()
 
 	def next(self):
+		"""
+		Iterates over the GFF file rows until end of file
+		"""
+
 		line = self.fp.readline()
 		if line == '':
 			self.fp.close()
@@ -114,9 +178,22 @@ class GFF_stream:
 		return GFF_entry(col)
 
 class FASTA_entry:
-	"""Class representing a FASTA entry (id, desc, seq)"""
+	"""Class representing a FASTA entry"""
 
 	def __init__(self, id, desc, seq):
+		"""
+		Parameters
+		----------
+		id: str
+			Identifier of current FASTA entry
+
+		desc: str
+			Description/Info of entry
+
+		seq: str
+			Sequence of entry
+		"""
+
 		self.id = id
 		self.desc = desc
 		self.seq = seq
@@ -125,6 +202,15 @@ class FASTA_file:
 	"""Class for reading a FASTA file with random acess"""
 
 	def __init__(self, filename):
+		"""
+		Reads in FASTA file. If there are duplicate ids, raise error.
+
+		Parameters
+		----------
+		filename: str
+			Name of FASTA file
+		"""
+
 		self.filename = filename
 		self.offset = {} # indexes identifiers to file offsets
 		self.ids = []
@@ -141,6 +227,16 @@ class FASTA_file:
 		self.file.close()
 
 	def get(self, id):
+		"""
+		Retrieves FASTA entry with given identifier.
+		This method also joins the sequence into a string.
+
+		Parameters
+		----------
+		id: str
+			Identifier name
+		"""
+
 		self.file = open(self.filename, 'r')
 		self.file.seek(self.offset[id])
 		header = self.file.readline()
@@ -161,6 +257,15 @@ class FASTA_stream:
 	"""Class for reading FASTA records in a stream"""
 
 	def __init__(self, filename=None, filepointer=None):
+		"""
+		Parameters
+		----------
+		filename: str
+			Name of the file (default is None)
+		filepointer:
+			Filepointer
+		"""
+
 		self.fp = None
 		if   filename    != None: self.fp = open(filename, 'r')
 		elif filepointer != None: self.fp = filepointer
@@ -175,6 +280,11 @@ class FASTA_stream:
 		return self.next()
 
 	def next(self):
+		"""
+		Iterates over the FASTA file until end of file.
+		This method also adds the information of each entry as a FASTA_entry object.
+		"""
+
 		if self.done: raise StopIteration()
 		header = None
 		if self.lastline[0:1] == '>': header = self.lastline
