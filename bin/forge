@@ -9,7 +9,7 @@ import grimoire.toolbox as toolbox
 import grimoire.hmm as hmm
 import grimoire.decode as decode
 from grimoire.sequence import DNA
-from grimoire.genome import Genome, Feature
+from grimoire.genome import Genome, Feature, mRNA, ProteinCodingGene
 
 ## Command line stuff ##
 
@@ -74,9 +74,9 @@ class ForgeError(Exception):
 
 def chromify(feature, beg, end):
 	dna = DNA(seq=feature.dna.seq[beg:end], name=feature.id + '-remapped')
-	gene = Feature(dna, feature.beg -beg, feature.end -beg,
+	gene = ProteinCodingGene(dna, feature.beg -beg, feature.end -beg,
 		feature.strand, 'gene', id=feature.parent_id)
-	tx = Feature(dna, feature.beg -beg, feature.end -beg,
+	tx = mRNA(dna, feature.beg -beg, feature.end -beg,
 		feature.strand, 'mRNA', id=feature.id, parent_id=gene.id)
 	for child in feature.children:
 		tx.add_child(Feature(dna, child.beg -beg, child.end -beg,
@@ -93,9 +93,9 @@ def chromify(feature, beg, end):
 dataset = [] # data source organized by set number
 for n in range(arg.xvalid): dataset.append([])
 
-##############################
-## Sequence Munging Section ##
-##############################
+############################
+## Build Mini-Chromosomes ##
+############################
 
 gene_count = 0
 gen = Genome(gff3=arg.gff3, fasta=arg.fasta)
@@ -114,34 +114,110 @@ for chr in gen.chromosomes:
 		gene_count += 1
 
 if arg.source:
+	for n in range(arg.xvalid):
+		setname = ''
+		if (arg.xvalid != 1): setname = '-set' + str(n)
+		with open(arg.source + setname + '.fasta', 'w+') as file:
+			for dna in dataset[n]: file.write(dna.fasta())
+		with open(arg.source + setname + '.gff3', 'w+') as file:
+			for dna in dataset[n]: file.write(dna.features[0].gff())
+
+##########################
+## Gather Sub-Sequences ##
+##########################
+
+for i in range(len(dataset)):
+	training = []
+	testing = []
 	if arg.xvalid == 1:
-		with open(arg.source + '.fasta', 'w+') as file:
-			for dna in dataset[0]:
-				file.write(dna.fasta())
-		with open(arg.source + '.gff3', 'w+') as file:
-			for dna in dataset[0]:
-				file.write(dna.features[0].gff())
+		training = dataset[0]
+		testing = dataset[0]
 	else:
-		for n in range(arg.xvalid):
-			with open(arg.source + '-set' + str(n) + '.fasta', 'w+') as file:
-				for dna in dataset[n]:
-					file.write(dna.fasta())
-			with open(arg.source + '-set' + str(n) + '.gff3', 'w+') as file:
-				for dna in dataset[n]:
-					file.write(dna.features[0].gff())
+		for j in range(len(dataset)):
+			if i == j: testing = dataset[i]
+			else:      training += dataset[i]
+	print(i, len(training), len(testing))
+	
+	acc_seqs = [] # splice acceptors
+	don_seqs = [] # splice donors
+	exn_seqs = [] # exons, the whole thing
+	int_seqs = [] # introns, minus the acceptor and donors
+	cds_seqs = [] # coding sequence
+	koz_seqs = [] # kozak-ish sequence (upstream of atg)
+	ut5_seqs = [] # 5'UTR
+	ut3_seqs = [] # 3'UTR
+	atg_seqs = [] # translation start, which may not always be atg
+	stp_seqs = [] # translation end, usually TAA|TAG|TGA
+		
+	exn_len = 0
+	int_len = 0
+	ut5_len = 0
+	ut3_len = 0
+	splices = 0
+	mRNAs = 0
+	
+	for dna in training:
+		gene = dna.features[0]
+		mRNA = gene.mRNAs()[0]
+		
+		# exon
+		for exon in mRNA.exons:
+			exn_seqs.append(exon.seq_str())
+			exn_len += exon.length
+		
+		# intron & splice sites
+		for intron in mRNA.introns:
+			seq = intron.seq_str()
+			don_seqs.append(seq[0:arg.don_len])
+			int_seqs.append(seq[arg.don_len:-arg.acc_len])
+			acc_seqs.append(seq[-arg.acc_len:len(seq)])
+			splices += 1
 
-###############################
-## Sequence Modeling Section ##
-###############################
+		# mRNA-based sequences
+		cds = tx.cds_str()
+		ptx = tx.tx_str()
+		beg = ptx.find(cds)
+		end = beg + len(cds)
+		
+		if beg < arg.u5_ctx + arg.koz_len: continue
+		if len(ptx) - end < arg.u3_ctx: continue
+			
+		ut5_seq = ptx[0 : beg - arg.koz_len]
+		koz_seq = ptx[beg-arg.koz_len:beg]
+		atg_seq = cds[0:3]
+		stp_seq = cds[-3:]
+		cds_seq = cds[3:]
+		ut3_seq = ptx[end:]
+			
+		ut5_seqs.append(ut5_seq)
+		koz_seqs.append(koz_seq)
+		atg_seqs.append(atg_seq)
+		cds_seqs.append(cds_seq)
+		stp_seqs.append(stp_seq)
+		ut3_seqs.append(ut3_seq)
+			
+		ut5_len += len(ut5_seq)
+		ut3_len += len(ut3_seq)
+		cds_len += len(cds) - 3
+		mRNAs += 1
 
-if arg.model == 'internal_exon':
-	need = ['acc', 'don', 'exon']
-elif arg.model == 'splicing':
-	need = ['acc', 'don', 'exon', 'intron']
-elif arg.model == 'mRNA':
-	need = ['utr5', 'atg', 'koz', 'cds', 'stop', 'utr3']
-else:
-	raise ForgeError('unknown model type: ' + arg.model)
+	model = None
+	if arg.model == 'internal_exon':
+		model = build_hmm(
+		[
+			{'label':'IN0',  'seqs':int_seqs, 'mode':'single'},
+			{'label':'ACC', ' seqs':acc_seqs, 'mode':'multi'},
+			{'label':'EXON', 'seqs':exn_seqs, 'mode':'single'},
+			{'label':'DON',  'seqs':don_seqs, 'mode':'multi'},
+			{'label':'IN1',  'seqs':int_seqs, 'mode':'single'},
+		],
+			
+			
+			
+	elif arg.model == 'splicing':
+	elif arg.model == 'mRNA':
+	else:
+		raise ForgeError('unknown model type: ' + arg.model)
 
 """
 if arg.model == 'internal_exon':
