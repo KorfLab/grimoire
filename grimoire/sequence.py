@@ -128,8 +128,9 @@ class DNA(BioSequence):
 				raise SequenceError('letter not in DNA alphabet: ' + nt)
 	
 	def revcomp(self):
-		anti = revcomp_str(self.seq)
-		return DNA(seq=anti)
+		self.seq = revcomp_str(self.seq)
+		for f in self.features:
+			f._revcomp()
 
 	def translate(self, table='standard'):
 		pro = translate_str(self.seq)

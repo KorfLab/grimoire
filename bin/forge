@@ -84,7 +84,6 @@ def chromify(feature, beg, end):
 	gene.add_child(tx)
 	dna.features.append(gene)
 	if feature.strand == '-': dna.revcomp()
-	raise ForgeError('stopped here, need revcomp of feature table')
 	return dna
 
 #############

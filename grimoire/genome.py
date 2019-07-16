@@ -23,6 +23,8 @@ class Feature:
 	def __init__(self, dna, beg, end, strand, type,
 			id=None, score='.', source='.', parent_id=None):
 		self.dna = dna
+		if self.dna == None: # this should really be DNA type
+			raise GenomeError('attempt to create feature unbound to DNA')
 		self.beg = beg
 		self.end = end
 		self.length = end - beg + 1
@@ -35,15 +37,13 @@ class Feature:
 		self.issues = {}
 		self.children = []
 		self.validated = False
-		
-		if self.dna == None:
-			raise GenomeError('attempt to create feature unbound to DNA')
 		self._validate()
 
 	def _validate(self, cid='child', pid='parent'):
 		if self.beg < 0: self.issues['beg<0'] = True
 		if self.beg > self.end: self.issues['beg>end'] = True
 		if self.end > len(self.dna.seq): self.issues['end>seq'] = True
+		# need more sanity checks on allowed values
 		if self.children:
 			for child in self.children:
 				child.validate()	
@@ -55,6 +55,16 @@ class Feature:
 					self.issues['mixed_strands'] = True
 				if child.issues:
 					self.issues[cid + '_issues'] = True
+	
+	def _revcomp(self):
+		if   self.strand == '+': self.strand = '-'
+		elif self.strand == '-': self.strand = '+'
+		new_beg = len(self.dna.seq) - self.end + 1
+		new_end = len(self.dna.seq) - self.beg + 1
+		self.beg = new_beg
+		self.end = new_end
+		for child in self.children:
+			child._revcomp()
 	
 	def validate(self):
 		if self.validated: return
