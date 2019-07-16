@@ -22,14 +22,15 @@ class Feature:
 
 	def __init__(self, dna, beg, end, strand, type,
 			id=None, score='.', source='.', parent_id=None):
+		
+		# sanity checks needed on parameters
+		
 		self.dna = dna
-		if self.dna == None: # this should really be DNA type
-			raise GenomeError('attempt to create feature unbound to DNA')
 		self.beg = beg
 		self.end = end
 		self.length = end - beg + 1
 		self.strand = strand
-		self.type = type
+		self.type = type		
 		self.id = id
 		self.parent_id = parent_id
 		self.score = score
@@ -43,7 +44,6 @@ class Feature:
 		if self.beg < 0: self.issues['beg<0'] = True
 		if self.beg > self.end: self.issues['beg>end'] = True
 		if self.end > len(self.dna.seq): self.issues['end>seq'] = True
-		# need more sanity checks on allowed values
 		if self.children:
 			for child in self.children:
 				child.validate()	
@@ -55,6 +55,7 @@ class Feature:
 					self.issues['mixed_strands'] = True
 				if child.issues:
 					self.issues[cid + '_issues'] = True
+		self.children.sort(key = operator.attrgetter('beg', 'end', 'type'))
 	
 	def _revcomp(self):
 		if   self.strand == '+': self.strand = '-'
@@ -65,6 +66,8 @@ class Feature:
 		self.end = new_end
 		for child in self.children:
 			child._revcomp()
+		self.validated = False
+		self.validate()
 	
 	def validate(self):
 		if self.validated: return

@@ -118,7 +118,7 @@ if arg.source:
 		with open(arg.source + '.fasta', 'w+') as file:
 			for dna in dataset[0]:
 				file.write(dna.fasta())
-		with open(arg.source + '.gff', 'w+') as file:
+		with open(arg.source + '.gff3', 'w+') as file:
 			for dna in dataset[0]:
 				file.write(dna.features[0].gff())
 	else:
@@ -126,7 +126,7 @@ if arg.source:
 			with open(arg.source + '-set' + str(n) + '.fasta', 'w+') as file:
 				for dna in dataset[n]:
 					file.write(dna.fasta())
-			with open(arg.source + '-set' + str(n) + '.gff', 'w+') as file:
+			with open(arg.source + '-set' + str(n) + '.gff3', 'w+') as file:
 				for dna in dataset[n]:
 					file.write(dna.features[0].gff())
 

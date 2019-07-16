@@ -236,9 +236,9 @@ class HMM:
 		if re.search('\.gz$', filename):
 			with gzip.open(filename, mode='w') as fp:
 				fp.write(json.dumps(self.__dict__, indent=4, cls=HMMdecoder))
-			
-		with open(filename, 'w+') as fp:
-			fp.write(json.dumps(self.__dict__, indent=4, cls=HMMdecoder))
+		else:
+			with open(filename, 'w+') as fp:
+				fp.write(json.dumps(self.__dict__, indent=4, cls=HMMdecoder))
 
 	def convert2log(self):
 		if self.log:
