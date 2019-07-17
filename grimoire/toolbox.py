@@ -1,18 +1,21 @@
 """
 Toolbox
 
-This script contains I/O functions that allow the user to input files with
-standard interchange formats and output file entry info as class instances
+This module contains a few math utility functions and classes for the I/O of
+GFF and FASTA files.
 
-There are 2 methods of reading GFF and FASTA files provided in the toolbox:
-1. GFF_file/FASTA_file classes
-	Obtains the entries using random search.
-2. GFF_stream/FASTA_stream classes
-	Obtains the entries one directionally one record at a time.
+There are 2 flavors of how to read GFF and FASTA files:
 
-This tool currently accepts GFF and FASTA files, and outputs GFF/FASTA entries.
+1. File-based: GFF_file, FASTA_file
+2. Stream-based: GFF_stream, FASTA_stream
+
+Stream-based reading is generally preferred as they use fewer resources.
+GFF_file lets you retrieve records by searching for attributes, but the
+class reads the entire file into memory.
+FASTA_file gives you random access to records via sequence ids. The file
+is scanned once to record offsets.
+
 """
-#Documentation done in NumPy/SciPy format.
 
 import math
 import re
@@ -23,18 +26,18 @@ class ToolboxError(Exception):
 	pass
 
 def log(p):
-	"""Converts to Logspace"""
+	"""Returns the value in log base e with a minimum value of -999"""
 	if p < 0: raise ValueError('p < 0')
 	if p == 0: return -999
 	else:      return math.log(p)
 
 def sumlog(v1, v2):
-	"""Finds the sum of two logspaced values"""
+	"""Returns the sum of two logspaced values"""
 	if v1 < v2: v1, v2 = v2, v1
 	return math.log(1 + math.exp(v2 - v1)) + v1
 
 def prod(iterable):
-	"""Please write doc string on what this is about"""
+	"""Doc string needed"""
 	return reduce(operator.mul, iterable, 1)
 
 class GFF_entry:
@@ -44,7 +47,7 @@ class GFF_entry:
 		"""
 		Parameters
 		----------
-		colum: list
+		column: list
 			A list of columns in GFF file
 		"""
 
@@ -66,7 +69,7 @@ class GFF_file:
 		Parameters
 		----------
 		filename: str
-			Name of the GFF file
+			Path to the GFF file
 		"""
 
 		self._chroms = {}
@@ -89,8 +92,8 @@ class GFF_file:
 
 	def get(self, type=None, chrom=None, beg=None, end=None):
 		"""
-		Retrieves GFF entries with given parameters. If beg and end not
-		specified, capture all
+		Retrieves GFF entries with given parameters. If parameter isn't
+		specified, all are returned
 
 		Parameters
 		----------
@@ -122,7 +125,6 @@ class GFF_file:
 		else:
 			chrom_search = self.chroms
 
-		#If beg and end not specified, capture all
 		beg = -1 if not beg else beg
 		end = math.inf if not end else end
 		if beg > end:
@@ -142,10 +144,12 @@ class GFF_stream:
 
 	def __init__(self, filename=None, filepointer=None):
 		"""
+		Use either a path to file or filepointer object.
+		
 		Parameters
 		----------
 		filename: str
-			Name of GFF file (default is None)
+			Path to GFF file
 
 		filepointer:
 			Filepointer
@@ -164,7 +168,7 @@ class GFF_stream:
 
 	def next(self):
 		"""
-		Iterates over the GFF file rows until end of file
+		Returns the next row in the GFF file/stream.
 		"""
 
 		line = self.fp.readline()
@@ -188,7 +192,7 @@ class FASTA_entry:
 			Identifier of current FASTA entry
 
 		desc: str
-			Description/Info of entry
+			Description/Info of entry (often empty)
 
 		seq: str
 			Sequence of entry
@@ -203,12 +207,12 @@ class FASTA_file:
 
 	def __init__(self, filename):
 		"""
-		Reads in FASTA file. If there are duplicate ids, raise error.
+		Reads in FASTA file. Raises errors on duplicate ids.
 
 		Parameters
 		----------
 		filename: str
-			Name of FASTA file
+			Path to FASTA file
 		"""
 
 		self.filename = filename
@@ -229,7 +233,6 @@ class FASTA_file:
 	def get(self, id):
 		"""
 		Retrieves FASTA entry with given identifier.
-		This method also joins the sequence into a string.
 
 		Parameters
 		----------
@@ -258,12 +261,14 @@ class FASTA_stream:
 
 	def __init__(self, filename=None, filepointer=None):
 		"""
+		Use path to file or file pointer.
+		
 		Parameters
 		----------
 		filename: str
-			Name of the file (default is None)
+			Path to file
 		filepointer:
-			Filepointer
+			File pointer object
 		"""
 
 		self.fp = None
@@ -281,8 +286,7 @@ class FASTA_stream:
 
 	def next(self):
 		"""
-		Iterates over the FASTA file until end of file.
-		This method also adds the information of each entry as a FASTA_entry object.
+		Retrieves the next entry of the FASTA file/stream.
 		"""
 
 		if self.done: raise StopIteration()
