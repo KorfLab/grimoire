@@ -86,6 +86,30 @@ def chromify(feature, beg, end):
 	if feature.strand == '-': dna.revcomp()
 	return dna
 
+def make_states(comps):
+	single = ['int', 'exon', 'ut5', 'ut3']
+	multi = ['acc', 'don', 'koz', 'atg', 'stop']
+	cds = ['cds']
+	group = []
+	for comp in comps:
+		(type, label, seqs, ctx, sst) = comp
+		if type in single:
+			emits = hmm.train_emission(seqs, ctx)
+			state = hmm.State(name=label, context=ctx, emits=emits)
+		elif type in multi:
+			emits = hmm.train_emissions(seqs, ctx)
+			states = hmm.state_factory(label, emits)
+			hmm.connect_all(states)
+		elif type in cds:
+			emits = hmm.train_cds(seqs, ctx)
+			states = hmm.state_factory('CDS', emits)
+			hmm.connect_all(states)
+		else:
+			raise ForgeError('unknown type')
+		
+	raise ForgeError('must create null and genomic models')
+	return model
+
 #############
 ## Globals ##
 #############
@@ -136,7 +160,6 @@ for i in range(len(dataset)):
 		for j in range(len(dataset)):
 			if i == j: testing = dataset[i]
 			else:      training += dataset[i]
-	print(i, len(training), len(testing))
 	
 	acc_seqs = [] # splice acceptors
 	don_seqs = [] # splice donors
@@ -179,6 +202,7 @@ for i in range(len(dataset)):
 		beg = ptx.find(cds)
 		end = beg + len(cds)
 		
+		# should these be here?
 		if beg < arg.u5_ctx + arg.koz_len: continue
 		if len(ptx) - end < arg.u3_ctx: continue
 			
@@ -195,7 +219,10 @@ for i in range(len(dataset)):
 		cds_seqs.append(cds_seq)
 		stp_seqs.append(stp_seq)
 		ut3_seqs.append(ut3_seq)
-			
+		
+		exn_len += len(exn_seq)
+		cds_len += len(cds_seq)
+		int_len += len(int_seq)
 		ut5_len += len(ut5_seq)
 		ut3_len += len(ut3_seq)
 		cds_len += len(cds) - 3
@@ -203,19 +230,20 @@ for i in range(len(dataset)):
 
 	model = None
 	if arg.model == 'internal_exon':
-		model = build_hmm(
-		[
-			{'label':'IN0',  'seqs':int_seqs, 'mode':'single'},
-			{'label':'ACC', ' seqs':acc_seqs, 'mode':'multi'},
-			{'label':'EXON', 'seqs':exn_seqs, 'mode':'single'},
-			{'label':'DON',  'seqs':don_seqs, 'mode':'multi'},
-			{'label':'IN1',  'seqs':int_seqs, 'mode':'single'},
-		],
-			
-			
-			
+		ii = int_len / len(int_seqs)
+		print(int_len, len(int_seqs))
+		ee = 1 - 1 /(exn_len / len(exn_seqs))
+		model = make_model([
+			['int',  'INTa', int_seqs, arg.int_ctx,  ii],
+			['acc',  'ACC',  acc_seqs, arg.acc_ctx,  0],
+			['exon', 'EXON', exn_seqs, arg.exon_ctx, ee],
+			['don',  'DON',  don_seqs, arg.don_ctx,  0],
+			['int',  'INTb', int_seqs, arg.int_ctx,  ii],
+			['null', 'NULL', chr_seqs, arg.null_ctx, 1]])
 	elif arg.model == 'splicing':
+		pass
 	elif arg.model == 'mRNA':
+		pass
 	else:
 		raise ForgeError('unknown model type: ' + arg.model)
 
