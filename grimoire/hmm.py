@@ -1,7 +1,7 @@
 """
 HMM(Hidden Markov Model)
 
-This script contains classes and functions that used to create HMM.
+This script contains classes and functions used to create HMM.
 It is assumed that the sequences inputted are in the list format.
 
 The following functions are provided in HMM:
