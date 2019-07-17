@@ -1,4 +1,23 @@
-"""Sequence module"""
+"""
+Sequence
+
+This script contains classes and functions used to make/interpret sequences.
+
+The following functions are provided in HMM:
+ 	* generate_kmers
+	* revcomp_str
+	* translate_str
+
+The following classes and methods are provided in HMM:
+	* BioSequence
+		* BioSequence.fasta
+	* DNA
+		* DNA.check_alphabet
+		* DNA.revcomp
+		* DNA.translate
+	* Protein
+		* Protein.check_alphabet
+"""
 
 class SequenceError(Exception):
 	pass
