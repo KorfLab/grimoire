@@ -22,7 +22,6 @@ The following classes and methods are provided in HMM:
 		* HMM.convert2log
 		* HMM.macro_labels
 """
-#Documentation done in NumPy/SciPy format.
 
 import json
 import re
@@ -34,6 +33,10 @@ import grimoire.toolbox as toolbox
 
 class HMMError(Exception):
 	pass
+
+##########################
+### naked definitions  ###
+##########################
 
 def emission_model(context=1, alphabet='nt'): #Why first context then alphabet?
 	"""
@@ -234,44 +237,6 @@ def train_cds(seqs, context=0):
 
 	return freqs
 
-class State:
-	"""Class for HMM States"""
-
-	def __init__(self, name=None, context=None, emits=None, init=0, term=0, next=None):
-		"""
-		Parameters
-		----------
-		name: str
-			Name of State (default is None)
-		context: int
-			The level of context, or the number of previous states taken into
-			account when calculating the emission probabilities. Value must be a
-			nonzero whole number (default is None)
-		emits: float?
-			Singular emission probability for state? (default is None)
-		init:  float
-			Probability of having the HMM start at this state (default is 0)
-		term: float
-			Probability of having the HMM end at this state (default is 0)
-		next: dictionary
-			Dictionary of all next states (default is None)
-		"""
-
-		self.name = name
-		self.ctxt = context
-		self.init = init
-		self.term = term
-		self.emit = emits
-		self.next = {}
-
-	@classmethod
-	def from_json(cls, json_string):
-		state = cls()
-		state.__dict__ = json.loads(json_string)
-
-	def to_json(self):
-		return(json.dumps(self.__dict__, indent = 4))
-
 def state_factory(prefix, emissions):
 	"""
 	Create a list of state objects.
@@ -377,6 +342,48 @@ def connect2 (s1, s2, p) :
 	"""
 
 	s1.next[s2.name] = p
+    
+###############
+### Classes ###
+###############
+
+class State:
+	"""Class for HMM States"""
+
+	def __init__(self, name=None, context=None, emits=None, init=0, term=0, next=None):
+		"""
+		Parameters
+		----------
+		name: str
+			Name of State (default is None)
+		context: int
+			The level of context, or the number of previous states taken into
+			account when calculating the emission probabilities. Value must be a
+			nonzero whole number (default is None)
+		emits: float?
+			Singular emission probability for state? (default is None)
+		init:  float
+			Probability of having the HMM start at this state (default is 0)
+		term: float
+			Probability of having the HMM end at this state (default is 0)
+		next: dictionary
+			Dictionary of all next states (default is None)
+		"""
+
+		self.name = name
+		self.ctxt = context
+		self.init = init
+		self.term = term
+		self.emit = emits
+		self.next = {}
+
+	@classmethod
+	def from_json(cls, json_string):
+		state = cls()
+		state.__dict__ = json.loads(json_string)
+
+	def to_json(self):
+		return(json.dumps(self.__dict__, indent = 4))
 
 class HMMdecoder(json.JSONEncoder):
 	def default(self, o):
