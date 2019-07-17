@@ -22,7 +22,6 @@ The following classes and methods are provided in HMM:
 		* HMM.convert2log
 		* HMM.macro_labels
 """
-
 #Documentation done in NumPy/SciPy format.
 
 import json
