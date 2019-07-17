@@ -5,9 +5,8 @@ This module contains a few math utility functions and classes for the I/O of
 GFF and FASTA files.
 
 There are 2 flavors of how to read GFF and FASTA files:
-
-1. File-based: GFF_file, FASTA_file
-2. Stream-based: GFF_stream, FASTA_stream
+	* File-based: GFF_file, FASTA_file
+	* Stream-based: GFF_stream, FASTA_stream
 
 Stream-based reading is generally preferred as they use fewer resources.
 GFF_file lets you retrieve records by searching for attributes, but the
@@ -99,13 +98,10 @@ class GFF_file:
 		----------
 		type: str
 			Type of GFF entry (e.g. exon, gene) (default is None)
-
 		chrom: int
 			Chromosome of interest (default is None)
-
 		beg: int
 			Beginning coordinate (default is None)
-
 		end: int
 			Ending coordinate (default is None)
 		"""
@@ -190,10 +186,8 @@ class FASTA_entry:
 		----------
 		id: str
 			Identifier of current FASTA entry
-
 		desc: str
 			Description/Info of entry (often empty)
-
 		seq: str
 			Sequence of entry
 		"""
