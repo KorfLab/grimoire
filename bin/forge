@@ -60,8 +60,6 @@ parser.add_argument('--cds_ctx', required=False, type=int, default=0,
 	metavar='<int>', help='CDS context [%(default)d]')
 parser.add_argument('--xvalid', required=False, type=int, default=1,
 	metavar='<int>', help='CDS context [%(default)d]')
-#parser.add_argument('--replicant', action='store_true',
-#	help='perform replicant analysis (model vs source)')
 arg = parser.parse_args()
 
 
@@ -86,34 +84,46 @@ def chromify(feature, beg, end):
 	if feature.strand == '-': dna.revcomp()
 	return dna
 
-def make_states(comps):
+def make_model(name, comps):
 	single = ['int', 'exon', 'ut5', 'ut3']
 	multi = ['acc', 'don', 'koz', 'atg', 'stop']
 	cds = ['cds']
-	group = []
+	all_states = []
 	for comp in comps:
 		(type, label, seqs, ctx, sst) = comp
 		if type in single:
 			emits = hmm.train_emission(seqs, ctx)
 			state = hmm.State(name=label, context=ctx, emits=emits)
+			hmm.connect2(state, state, sst)
+			all_states.append(state)
 		elif type in multi:
 			emits = hmm.train_emissions(seqs, ctx)
 			states = hmm.state_factory(label, emits)
 			hmm.connect_all(states)
+			all_states += states
 		elif type in cds:
 			emits = hmm.train_cds(seqs, ctx)
 			states = hmm.state_factory('CDS', emits)
 			hmm.connect_all(states)
+			all_states += states
 		else:
 			raise ForgeError('unknown type')
-		
-	raise ForgeError('must create null and genomic models')
-	return model
+	
+	for i in range(len(all_states)):
+		sum = 0
+		for s2 in all_states[i].next:
+			sum += all_states[i].next[s2]
+		if sum < 1 and i < len(all_states) -1:
+			r = 1 - sum
+			all_states[i].next[all_states[i+1].name] = r
+	
+	return hmm.HMM(name=name, states=all_states, null=null_state)
 
 #############
 ## Globals ##
 #############
 
+null_state = hmm.null_state_factory(arg.fasta, arg.null_ctx)
 dataset = [] # data source organized by set number
 for n in range(arg.xvalid): dataset.append([])
 
@@ -171,9 +181,10 @@ for i in range(len(dataset)):
 	ut3_seqs = [] # 3'UTR
 	atg_seqs = [] # translation start, which may not always be atg
 	stp_seqs = [] # translation end, usually TAA|TAG|TGA
-		
+	
 	exn_len = 0
 	int_len = 0
+	cds_len = 0
 	ut5_len = 0
 	ut3_len = 0
 	splices = 0
@@ -194,58 +205,58 @@ for i in range(len(dataset)):
 			don_seqs.append(seq[0:arg.don_len])
 			int_seqs.append(seq[arg.don_len:-arg.acc_len])
 			acc_seqs.append(seq[-arg.acc_len:len(seq)])
+			int_len += len(seq) - arg.don_len - arg.acc_len
 			splices += 1
 
 		# mRNA-based sequences
+		mRNAs += 1
 		cds = tx.cds_str()
 		ptx = tx.tx_str()
 		beg = ptx.find(cds)
 		end = beg + len(cds)
 		
-		# should these be here?
-		if beg < arg.u5_ctx + arg.koz_len: continue
-		if len(ptx) - end < arg.u3_ctx: continue
-			
-		ut5_seq = ptx[0 : beg - arg.koz_len]
-		koz_seq = ptx[beg-arg.koz_len:beg]
 		atg_seq = cds[0:3]
-		stp_seq = cds[-3:]
 		cds_seq = cds[3:]
-		ut3_seq = ptx[end:]
-			
-		ut5_seqs.append(ut5_seq)
-		koz_seqs.append(koz_seq)
+		stp_seq = cds[-3:]
+		
 		atg_seqs.append(atg_seq)
 		cds_seqs.append(cds_seq)
 		stp_seqs.append(stp_seq)
-		ut3_seqs.append(ut3_seq)
-		
-		exn_len += len(exn_seq)
 		cds_len += len(cds_seq)
-		int_len += len(int_seq)
-		ut5_len += len(ut5_seq)
-		ut3_len += len(ut3_seq)
-		cds_len += len(cds) - 3
-		mRNAs += 1
-
+		
+		# 5' end stuff
+		if beg > arg.u5_ctx + arg.koz_len:
+			ut5_seq = ptx[0 : beg - arg.koz_len]
+			koz_seq = ptx[beg-arg.koz_len:beg]
+			ut5_seqs.append(ut5_seq)
+			koz_seqs.append(koz_seq)
+			ut5_len += len(ut5_seq)
+		
+		# 3' end stuff (maybe include poly-A at some point)
+		if len(ptx) - end > arg.u3_ctx:
+			ut3_seq = ptx[end:]
+			ut3_seqs.append(ut3_seq)
+			ut3_len += len(ut3_seq)
+	
 	model = None
 	if arg.model == 'internal_exon':
-		ii = int_len / len(int_seqs)
-		print(int_len, len(int_seqs))
+		ii = 1 - 1 / (int_len / len(int_seqs))
 		ee = 1 - 1 /(exn_len / len(exn_seqs))
-		model = make_model([
+		model = make_model(
+			arg.model, [
 			['int',  'INTa', int_seqs, arg.int_ctx,  ii],
 			['acc',  'ACC',  acc_seqs, arg.acc_ctx,  0],
 			['exon', 'EXON', exn_seqs, arg.exon_ctx, ee],
 			['don',  'DON',  don_seqs, arg.don_ctx,  0],
-			['int',  'INTb', int_seqs, arg.int_ctx,  ii],
-			['null', 'NULL', chr_seqs, arg.null_ctx, 1]])
+			['int',  'INTb', int_seqs, arg.int_ctx,  1.0]])
 	elif arg.model == 'splicing':
 		pass
 	elif arg.model == 'mRNA':
 		pass
 	else:
 		raise ForgeError('unknown model type: ' + arg.model)
+	
+	model.write('foo')
 
 """
 if arg.model == 'internal_exon':

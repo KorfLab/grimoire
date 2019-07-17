@@ -180,6 +180,38 @@ def state_factory(stub, emissions):
 		state_list.append(state)
 	return(state_list)
 
+def null_state_factory(file=None, context=None):
+	fasta = toolbox.FASTA_stream(filename=file)
+	count = emission_model(context=context)
+	freq = {}
+	
+	if context == 0:
+		total = 0
+		for entry in fasta:
+			seq = entry.seq
+			for i in range(len(seq)):
+				nt = seq[i:i+1]
+				if (nt in count):
+					count[nt] += 1
+					total += 1
+		for nt in count: freq[nt] = round(count[nt] / total, 4)
+	else:
+		for entry in fasta:
+			seq = entry.seq
+			for i in range(len(seq) -context):
+				pos = i + context
+				ctx = seq[i:i+context]
+				nt = seq[pos:pos+1]
+				if ctx in count and nt in count[ctx]:
+					count[ctx][nt] += 1
+		for ctx in count:
+			total = 0
+			freq[ctx] = {}
+			for nt in count[ctx]: total += count[ctx][nt]
+			for nt in count[ctx]: freq[ctx][nt] = round(count[ctx][nt]/total, 4)
+	
+	return State(name='null', context=context, emits=freq)
+
 
 def connect_all (states) :
 	for i in range(len(states)-1) :
