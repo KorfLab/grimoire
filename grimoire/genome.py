@@ -2,7 +2,7 @@
 Genome
 
 This modeule contains classes and functions used for the representation and
-validation of genomes. 
+validation of genomes.
 
 """
 
@@ -22,10 +22,10 @@ def overlap(f1, f2):
 	Determine if two features overlap
 
 	Parameters
-    ----------
-    f1: object
-        Feature 1. Class Feature.
-    f2: object
+	----------
+	f1: object
+		Feature 1. Class Feature.
+	f2: object
 		Feature 2. Class Feature.
 	"""
 
@@ -42,10 +42,10 @@ class Feature:
 			id=None, score='.', source='.', parent_id=None):
 		"""
 		Parameters
-	    ----------
-	    dna: object
-	        DNA of Feature
-	    beg: int
+		----------
+		dna: object
+			DNA of Feature
+		beg: int
 			Beginning position of feature
 		end: int
 			Ending position of feature
@@ -109,9 +109,9 @@ class Feature:
 		Add child to Feature
 
 		Parameters
-	    ----------
-	    child: str
-	        Name of child feature
+		----------
+		child: str
+			Name of child feature
 		"""
 
 		self.validated = False
@@ -171,12 +171,12 @@ class mRNA(Feature):
 	def set_rules(self, clade='std'):
 		"""
 		Set rules for mRNA by clade.
-        Currently, rules include boundaries for the size of introns.
+		Currently, rules include boundaries for the size of introns.
 
 		Parameters
-	    ----------
-	    clade: str
-	        Type of clade (default is 'std or standard') Currently, 'std' and
+		----------
+		clade: str
+			Type of clade (default is 'std or standard') Currently, 'std' and
 			'mammal' is supported.
 		"""
 
@@ -194,11 +194,11 @@ class mRNA(Feature):
 		Check for overlap issues
 
 		Parameters
-	    ----------
-	    f: object
-	        Feature
+		----------
+		f: object
+			Feature
 		type: str
-		 	Feature type
+			Feature type
 		"""
 
 		for i in range(1, len(f)):
@@ -210,11 +210,11 @@ class mRNA(Feature):
 		Check for length issues
 
 		Parameters
-	    ----------
-	    features: list[object]
-	        A list of feature objects
+		----------
+		features: list[object]
+			A list of feature objects
 		type: str
-		 	Feature type
+			Feature type
 		"""
 
 		for f in features:
@@ -336,10 +336,11 @@ class mRNA(Feature):
 		return sequence.translate_str(self.cds_str())
 
 class ProteinCodingGene(Feature):
-    """Class for Protein Coding Genes"""
+	"""Class for Protein Coding Genes"""
 
 	def mRNAs(self):
-        """Protein Coding Gene is mRNA. Validates that mRNA has all components"""
+		"""Protein Coding Gene is mRNA. Validates that mRNA has all components"""
+
 		if not self.validated:
 			self.validate()
 		return self.children
@@ -355,17 +356,17 @@ class Genome:
 
 	def __init__(self, species=None, fasta=None, gff3=None,
 			check_alphabet=False):
-        """
-        Parameters
-	    ----------
-	    species: str
-	       Specie of genome
+		"""
+		Parameters
+		----------
+		species: str
+		   Specie of genome
 		fasta: file
-		 	Path to fasta file
-        gff3: file
-            Path to gff3 file
-        check_alphabet: bool
-            Check whether it is the correct alphabet
+			Path to fasta file
+		gff3: file
+			Path to gff3 file
+		check_alphabet: bool
+			Check whether it is the correct alphabet
 		"""
 
 		self.species = species
