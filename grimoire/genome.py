@@ -1,3 +1,10 @@
+"""
+Genome
+
+This modeule contains classes and functions used for the representation and
+validation of genomes. 
+
+"""
 
 import re
 import json
@@ -11,6 +18,17 @@ class GenomeError(Exception):
 	pass
 
 def overlap(f1, f2):
+	"""
+	Determine if two features overlap
+
+	Parameters
+    ----------
+    f1: object
+        Feature 1. Class Feature.
+    f2: object
+		Feature 2. Class Feature.
+	"""
+
 	if f1.dna == f2.dna:
 		if f1.beg >= f2.beg and f1.beg <= f2.end: return True
 		if f1.end >= f2.beg and f1.end <= f2.end: return True
@@ -22,15 +40,35 @@ class Feature:
 
 	def __init__(self, dna, beg, end, strand, type,
 			id=None, score='.', source='.', parent_id=None):
-		
-		# sanity checks needed on parameters
-		
+		"""
+		Parameters
+	    ----------
+	    dna: object
+	        DNA of Feature
+	    beg: int
+			Beginning position of feature
+		end: int
+			Ending position of feature
+		strand: str
+			Forward (+) or reverse (-) strand
+		type: str
+			Feature type (e.g. gene)
+		id: str
+			Feature ID  (default is None)
+		score: float/str
+			A floating point number (default is '.')
+		source: str
+			Data source (default is '.')
+		parent_id: str
+			ID of parent (default is None)
+		"""
+
 		self.dna = dna
 		self.beg = beg
 		self.end = end
 		self.length = end - beg + 1
 		self.strand = strand
-		self.type = type		
+		self.type = type
 		self.id = id
 		self.parent_id = parent_id
 		self.score = score
@@ -38,6 +76,9 @@ class Feature:
 		self.issues = {}
 		self.children = []
 		self.validated = False
+
+		if self.dna == None:
+			raise GenomeError('attempt to create feature unbound to DNA')
 		self._validate()
 
 	def _validate(self, cid='child', pid='parent'):
@@ -46,7 +87,7 @@ class Feature:
 		if self.end > len(self.dna.seq): self.issues['end>seq'] = True
 		if self.children:
 			for child in self.children:
-				child.validate()	
+				child.validate()
 				if child.beg < self.beg:
 					self.issues[cid + '.beg<' + pid + '.beg'] = True
 				if child.end > self.end:
@@ -55,26 +96,24 @@ class Feature:
 					self.issues['mixed_strands'] = True
 				if child.issues:
 					self.issues[cid + '_issues'] = True
-		self.children.sort(key = operator.attrgetter('beg', 'end', 'type'))
-	
-	def _revcomp(self):
-		if   self.strand == '+': self.strand = '-'
-		elif self.strand == '-': self.strand = '+'
-		new_beg = len(self.dna.seq) - self.end + 1
-		new_end = len(self.dna.seq) - self.beg + 1
-		self.beg = new_beg
-		self.end = new_end
-		for child in self.children:
-			child._revcomp()
-		self.validated = False
-		self.validate()
-	
+
 	def validate(self):
+		"""Make sure feature is validated"""
+
 		if self.validated: return
 		self._validate()
 		self.validated = True
-	
+
 	def add_child(self, child):
+		"""
+		Add child to Feature
+
+		Parameters
+	    ----------
+	    child: str
+	        Name of child feature
+		"""
+
 		self.validated = False
 		if not self.id:
 			raise GenomeError('parent feature requires ID')
@@ -82,11 +121,15 @@ class Feature:
 			self.children.append(child)
 
 	def seq_str(self):
+		"""Return a sequence of feature"""
+
 		seq = self.dna.seq[self.beg-1:self.end]
 		if self.strand == '-': seq = sequence.revcomp_str(seq)
 		return seq
 
 	def gff(self):
+		"""Return feature in GFF3 format"""
+
 		attr = ''
 		if self.id and self.parent_id:
 			attr = 'ID=' + self.id + ';Parent=' + self.parent_id
@@ -94,22 +137,25 @@ class Feature:
 			attr = 'ID=' + self.id
 		elif self.parent_id:
 			attr = 'Parent=' + self.parent_id
-		
+
 		string = '\t'.join([self.dna.name, self.source, self.type,
 			str(self.beg), str(self.end), str(self.score),
-			self.strand, '.', attr]) + '\n'
+			self.strand, '.', attr])
 		if self.children:
+			string += '\n'
 			for child in self.children:
-				string += child.gff()
-			
+				string += child.gff() + '\n'
+			string += '\n'
+
 		return string
 
 	def __str__(self):
 		return self.gff()
 
 class mRNA(Feature):
+	"""Class for mRNA"""
 
-	clade = 'std'
+	clade = 'std' #standard
 	limit = {
 		'exon':   {'min':20, 'max':10000},
 		'cds':    {'min':1,  'max':10000},
@@ -121,8 +167,19 @@ class mRNA(Feature):
 	accs = {'AG':True}
 	starts = {'ATG':True}
 	stops = {'TAA':True, 'TGA':True, 'TAG':True}
-	
+
 	def set_rules(self, clade='std'):
+		"""
+		Set rules for mRNA by clade.
+        Currently, rules include boundaries for the size of introns.
+
+		Parameters
+	    ----------
+	    clade: str
+	        Type of clade (default is 'std or standard') Currently, 'std' and
+			'mammal' is supported.
+		"""
+
 		if clade == 'std':
 			pass # the defaults are considered standard
 		elif clade == 'mammal':
@@ -131,50 +188,74 @@ class mRNA(Feature):
 		else:
 			raise GenomeError('clade not yet supported: ' + clade)
 		self.clade = clade
-	
+
 	def check_overlaps(self, f, type):
+		"""
+		Check for overlap issues
+
+		Parameters
+	    ----------
+	    f: object
+	        Feature
+		type: str
+		 	Feature type
+		"""
+
 		for i in range(1, len(f)):
 			if f[i-1].end >= f[i].beg:
 				self.issues['overlap_' + type] = True
 
 	def check_lengths(self, features, type):
+		"""
+		Check for length issues
+
+		Parameters
+	    ----------
+	    features: list[object]
+	        A list of feature objects
+		type: str
+		 	Feature type
+		"""
+
 		for f in features:
 			if f.length < self.limit[type]['min']:
 				self.issues['short_' + type] = True
 			if f.length > self.limit[type]['max']:
 				self.issues['long_' + type] = True
-	
+
 	def validate(self):
+		"""Validate Feature and make sure nothing breaks"""
+
 		if self.validated: return
 		if not self.id: raise GenomeError('mRNAs must have ids')
 		if not self.parent_id: raise GenomeError('mRNAs must have parent_ids')
 		self._validate()
-		
+
 		# mRNA properties (extended constructor)
 		self.exons = []
 		self.introns = []
 		self.cdss = []
 		self.utr5s = []
 		self.utr3s = []
-		
+
 		for f in self.children:
 			if   f.type == 'exon': self.exons.append(f)
 			elif f.type == 'CDS': self.cdss.append(f)
 			else: raise GenomeError('unknown type: ' + f.type)
-		
-		if len(self.cdss) == 0: 
+
+		if len(self.cdss) == 0:
 			self.issues['no_CDS'] = True
-		
+
 		self.exons.sort(key = operator.attrgetter('beg'))
 		self.cdss.sort(key = operator.attrgetter('beg'))
-		
+
 		# create introns from exons
 		for i in range(len(self.exons)-1):
 			beg = self.exons[i].end +1
 			end = self.exons[i+1].beg -1
 			self.introns.append(
 				Feature(self.dna, beg, end, self.strand, 'intron'))
-		
+
 		# create 5' and 3' UTRs from exons and CDSs
 		if len(self.cdss) > 0:
 			cds_beg = self.cdss[0].beg
@@ -202,21 +283,21 @@ class mRNA(Feature):
 					else:
 						self.utr5s.append(Feature(self.dna, ub, ue, self.strand,
 							'five_prime_UTR'))
-		
+
 		# check for overlapping features
 		self.check_overlaps(self.exons, 'exon')
 		self.check_overlaps(self.cdss, 'cds')
 		self.check_overlaps(self.utr5s, 'utr5')
 		self.check_overlaps(self.utr3s, 'utr3')
 		self.check_overlaps(self.introns, 'intron')
-		
+
 		# check for unusual lengths
 		self.check_lengths(self.exons, 'exon')
 		self.check_lengths(self.cdss, 'cds')
 		self.check_lengths(self.utr5s, 'utr5')
 		self.check_lengths(self.utr3s, 'utr3')
 		self.check_lengths(self.introns, 'intron')
-		
+
 		# canonical splicing
 		for intron in self.introns:
 			s = intron.seq_str()
@@ -235,14 +316,14 @@ class mRNA(Feature):
 		if stop not in self.stops: self.issues['stop'] = True
 		for i in range(len(pro) - 1):
 			if pro[i:i+1] == '*': self.issues['ptc'] = True
-	
+
 	def tx_str(self):
 		if not self.validated: self.validate()
 		seq = []
 		for exon in self.exons: seq.append(exon.seq_str())
 		if self.strand == '-': seq.reverse()
 		return ''.join(seq)
-	
+
 	def cds_str(self):
 		if not self.validated: self.validate()
 		seq = []
@@ -255,12 +336,14 @@ class mRNA(Feature):
 		return sequence.translate_str(self.cds_str())
 
 class ProteinCodingGene(Feature):
-	
+    """Class for Protein Coding Genes"""
+
 	def mRNAs(self):
+        """Protein Coding Gene is mRNA. Validates that mRNA has all components"""
 		if not self.validated:
 			self.validate()
 		return self.children
-	
+
 	def validate(self):
 		if not self.id: raise GenomeError('genes must have ids')
 		if self.parent_id: raise GenomeError('genes have no parent_ids')
@@ -272,20 +355,32 @@ class Genome:
 
 	def __init__(self, species=None, fasta=None, gff3=None,
 			check_alphabet=False):
-		
+        """
+        Parameters
+	    ----------
+	    species: str
+	       Specie of genome
+		fasta: file
+		 	Path to fasta file
+        gff3: file
+            Path to gff3 file
+        check_alphabet: bool
+            Check whether it is the correct alphabet
+		"""
+
 		self.species = species
 		self.chromosomes = []
 		ff = toolbox.FASTA_file(fasta)
 		gf = toolbox.GFF_file(gff3)
-		
+
 		for chr in gf._chroms:
 			if chr not in ff.offset:
 				raise GenomeError('GFF3 id not in FASTA (' + chr + ')')
-		
+
 		mRNA_parts = ['CDS', 'exon']
 		for id in ff.ids:
 			entry = ff.get(id)
-			
+
 			chrom = sequence.DNA(name=id, seq=entry.seq)
 			if check_alphabet: chrom.check_alphabet()
 
@@ -305,23 +400,22 @@ class Genome:
 					mRNAs[id] = mRNA(chrom, g.beg, g.end, g.strand, g.type, id=id, parent_id=pid)
 				elif g.type in mRNA_parts:
 					parts.append(Feature(chrom, g.beg, g.end, g.strand, g.type, id=id, parent_id=pid))
-			
+
 			# add parts to mRNAs
 			for f in parts:
 				f.validate()
 				if f.parent_id in mRNAs:
 					mRNAs[f.parent_id].add_child(f)
-			
+
 			# add mRNAs to genes
 			for txid in mRNAs:
 				f = mRNAs[txid]
 				if f.parent_id in genes:
 					genes[f.parent_id].add_child(f)
-			
+
 			# add genes to chromosome
 			for gid in genes:
 				chrom.features.append(genes[gid])
-		
-			# add chromosom to genome
-			self.chromosomes.append(chrom)
 
+			# add chromosome to genome
+			self.chromosomes.append(chrom)
