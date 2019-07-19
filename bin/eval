@@ -4,7 +4,7 @@ import grimoire.genome as genome
 import argparse
 
 ## Command line w/ Argparse ##
-parser = argparse.ArgumentParser(description='Concatenate Files for Features')
+parser = argparse.ArgumentParser(description='Concatenate Files for Chromosomes')
 parser.add_argument('--addfile', required=True, action='append',
 	metavar='<path>', help='input file names. GFF/FASTA must have same name (%(type)li)')
 arg = parser.parse_args()
