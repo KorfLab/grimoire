@@ -74,21 +74,29 @@ class GFF_file:
 
 		self._chroms = {}
 		self._types = {}
-		with open(filename, 'r') as self.file:
-			while (1):
-				line = self.file.readline()
-				if line == '': break
-				if line[0:1] == '#': continue
-				col = line.split('\t')
-				chrom = col[0]
-				type = col[2]
-				entry = GFF_entry(col)
-				if chrom not in self._chroms: self._chroms[chrom] = []
-				self._chroms[chrom].append(entry)
-				if type not in self._types: self._types[type] = []
-				self._types[type].append(entry)
-				self.chroms = list(self._chroms.keys())
-				self.types = list(self._types.keys())
+		gz = False
+		fp = None
+		if re.search('\.gz$', filename):
+			fp = gzip.open(filename)
+			gz = True
+		else:
+			fp = open(filename, 'r')
+		
+		while (1):
+			line = fp.readline()
+			if gz: line = str(line, 'utf-8')
+			if line == '': break
+			if line[0:1] == '#': continue
+			col = line.split('\t')
+			chrom = col[0]
+			type = col[2]
+			entry = GFF_entry(col)
+			if chrom not in self._chroms: self._chroms[chrom] = []
+			self._chroms[chrom].append(entry)
+			if type not in self._types: self._types[type] = []
+			self._types[type].append(entry)
+			self.chroms = list(self._chroms.keys())
+			self.types = list(self._types.keys())
 
 	def get(self, type=None, chrom=None, beg=None, end=None):
 		"""
@@ -153,9 +161,18 @@ class GFF_stream:
 		"""
 
 		self.fp = None
-		if   filename    != None: self.fp = open(filename, 'r')
-		elif filepointer != None: self.fp = filepointer
-		else: raise ToolboxError('no file or filepointer given')
+		self.gz = False
+		
+		if filename != None:
+			if re.search('\.gz$', filename):
+				self.fp = gzip.open(filename)
+				self.gz = True
+			else:
+				self.fp = open(filename, 'r')
+		elif filepointer != None:
+			self.fp = filepointer
+		else:
+			raise ToolboxError('no file or filepointer given')
 
 	def __iter__(self):
 		return self
@@ -169,6 +186,7 @@ class GFF_stream:
 		"""
 
 		line = self.fp.readline()
+		if self.gz: line = str(line, 'utf-8')
 		if line == '':
 			self.fp.close()
 			raise StopIteration()
