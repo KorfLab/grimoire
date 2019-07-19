@@ -259,13 +259,13 @@ elif arg.model == 'mRNA':
 			ptx = tx.tx_str()
 			beg = ptx.find(cds)
 			end = beg + len(cds)
-			if beg < arg.u5_ctx + arg.koz_len: continue
-			if len(ptx) - end < arg.u3_ctx: continue
+			if beg < arg.u5_ctx + arg.koz_len + 1: continue
+			if end >= len(ptx): continue
 			
 			u5_seq = ptx[0 : beg - arg.koz_len]
 			koz_seq = ptx[beg-arg.koz_len:beg]
 			atg_seq = cds[0:3]
-			cds_seq = cds[3:len(cds)]
+			cds_seq = cds[3:]
 			u3_seq = ptx[end:len(ptx)]
 			
 			u5_seqs.append(u5_seq)
