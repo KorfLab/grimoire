@@ -543,7 +543,7 @@ class ForwardBackward(HMM_NT_decoder):
 			p[k.name][0] = {}
 			p[k.name][T] = {}
 			if self.model.log:
-				p[k.name][0]['f'] = sumlog(ki, ep)
+				p[k.name][0]['f'] = ki + ep
 				p[k.name][T]['b'] = math.inf
 			else:
 				p[k.name][0]['f'] = ki * ep
@@ -553,13 +553,14 @@ class ForwardBackward(HMM_NT_decoder):
 			for k in self.model.states:
 				if self.model.log:
 					# Forward probability
-					p[k.name][t]['f'] =	sumlog(prod(sumlog(p[j.name][t-1]['f'],
-					self.tmap[k.name][j.name] if j.name in self.tmap[k.name] else 0) \
-					for j in self.model.states), self.emission(k.name, t))
+					p[k.name][t]['f'] =	prod(p[j.name][t-1]['f'] \
+						+ self.tmap[k.name][j.name] \
+						if j.name in self.tmap[k.name] else -999 \
+						for j in self.model.states) + self.emission(k.name, t))
 					# Backward probability
-					p[k.name][T-t]['b'] = prod(sumlog(sumlog(p[j][T-t+1]['b'],
-						self.tmap[j][k.name]),
-						self.emission(j, T-t+1)) for j in k.next)
+					p[k.name][T-t]['b'] = prod(p[j][T-t+1]['b'] \
+						+ self.tmap[j][k.name]
+						+ self.emission(j, T-t+1)) for j in k.next)
 				else:
 					# Forward probability
 					p[k.name][t]['f'] = sum(p[j.name][t-1]['f'] \
@@ -575,8 +576,7 @@ class ForwardBackward(HMM_NT_decoder):
 		for t in range(0,T+1):
 			for k in self.model.states:
 				if self.model.log:
-					p[k.name][t]['posterior'] = sumlog(p[k.name][t]['f'],
-						p[k.name][t]['b'])
+					p[k.name][t]['posterior'] = p[k.name][t]['f'] + p[k.name][t]['b'])
 				else:
 					p[k.name][t]['posterior'] = p[k.name][t]['f'] * p[k.name][t]['b']
 
