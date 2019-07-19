@@ -56,6 +56,8 @@ parser.add_argument('--atg_ctx', required=False, type=int, default=0,
 	metavar='<int>', help='ATG context [%(default)d]')
 parser.add_argument('--cds_ctx', required=False, type=int, default=0,
 	metavar='<int>', help='CDS context [%(default)d]')
+parser.add_argument('--stop_ctx', required=False, type=int, default=0,
+	metavar='<int>', help='CDS context [%(default)d]')
 parser.add_argument('--replicant', action='store_true',
 	help='perform replicant analysis (model vs source)')
 arg = parser.parse_args()
@@ -237,6 +239,221 @@ elif arg.model == 'splicing':
 	model = hmm.HMM(name=arg.hmm, null=null_state,
 		states=[exp_state] + don_states + [int_state] + acc_states + [exn_state])
 
+elif arg.model == 'mRNA1':
+	gen = Genome(gff3=arg.gff3, fasta=arg.fasta)
+	gen_seqs = []
+	ut5_seqs = []
+	koz_seqs = []
+	atg_seqs = []
+	cds_seqs = []
+	stp_seqs = []
+	ut3_seqs = []
+	
+	ut5_len = 0
+	mRNAs = 0
+	cds_len = 0
+	ut3_len = []
+	for chr in gen.chromosomes:
+		for gene in chr.features:
+			if not gene.mRNAs(): continue # some tx are miRNA etc
+			tx = gene.mRNAs()[0]
+			if gene.issues: continue
+			if len(gene.mRNAs()) > 1: continue
+			
+			cds = tx.cds_str()
+			ptx = tx.tx_str()
+			beg = ptx.find(cds)
+			end = beg + len(cds)
+			if beg < arg.u5_ctx + arg.koz_len + 1: continue
+			if end >= len(ptx): continue
+			
+			ut5_seq = ptx[0 : beg - arg.koz_len]
+			koz_seq = ptx[beg-arg.koz_len:beg]
+			atg_seq = cds[0:3]
+			cds_seq = cds[3:-3]
+			stp_seq = cds[-3:]
+			ut3_seq = ptx[end:len(ptx)]
+			
+			ut5_seqs.append(ut5_seq)
+			koz_seqs.append(koz_seq)
+			atg_seqs.append(atg_seq)
+			cds_seqs.append(cds_seq)
+			stp_seqs.append(stp_seq)
+			ut3_seqs.append(ut3_seq)
+			
+			ut5_len += len(ut5_seq)
+			cds_len += len(cds_seq)
+			ut3_len == len(ut3_seq)
+			mRNAs += 1
+			
+			if arg.source or arg.replicant:
+				sources.append(make_source(tx.id + '-gene',
+					[{'label':'UTR5', 'seq':ut5_seq},
+					{'label':'KOZ', 'seq':koz_seq},
+					{'label':'ATG', 'seq':atg_seq},
+					{'label':'CDS', 'seq':cds_seq},
+					{'label':'STOP', 'seq':stp_seq},
+					{'label':'UTR3', 'seq':ut3_seq}]))
+		
+	ut5_emits = hmm.train_emission(ut5_seqs, context=arg.u5_ctx)
+	koz_emits = hmm.train_emissions(koz_seqs, context=arg.koz_ctx)
+	atg_emits = hmm.train_emissions(atg_seqs, context=arg.atg_ctx)
+	cds_emits = hmm.train_cds(cds_seqs, context=arg.cds_ctx)
+	ut3_emits = hmm.train_emission(ut3_seqs, context=arg.u3_ctx)
+	stp_emits = hmm.train_emissions(stp_seqs, context=arg.stop_ctx)
+	
+	u5_state = hmm.State(name='UTR5', context=arg.u5_ctx, emits=ut5_emits)
+	koz_states = hmm.state_factory('KOZ', koz_emits)
+	atg_states = hmm.state_factory('ATG', atg_emits)
+	cds_states = hmm.state_factory('CDS', cds_emits)
+	u3_state = hmm.State(name='UTR3', context=arg.u3_ctx, emits=ut3_emits)
+	stp_states = hmm.state_factory('STOP', stp_emits)
+	u5_state.init = 1
+	u3_state.term = 1
+
+	hmm.connect2(u5_state, u5_state, 1 - mRNAs/ut5_len)
+	hmm.connect2(u5_state, atg_states[0], mRNAs/ut5_len)
+#	hmm.connect_all(koz_states)
+#	hmm.connect2(koz_states[-1], atg_states[0], 1)
+	hmm.connect_all(atg_states)
+	hmm.connect2(atg_states[-1], cds_states[0], 1)
+	hmm.connect_all(cds_states)
+	hmm.connect2(cds_states[2], cds_states[0], 1 - mRNAs / (cds_len/3))
+	hmm.connect2(cds_states[2], stp_states[0], mRNAs / (cds_len/3))
+	hmm.connect_all(stp_states)
+	hmm.connect2(stp_states[-1], u3_state, 1)
+	hmm.connect2(u3_state, u3_state, 1)
+	
+	null_emits = hmm.train_emission(chr.seq, context=arg.null_ctx)	
+	null_state = hmm.State(name='NULL', context=arg.null_ctx, emits=null_emits)
+	
+	model = hmm.HMM(name=arg.hmm, states=[u5_state] + atg_states
+		+ cds_states + [u3_state] + stp_states, null=null_state)
+
+
+elif arg.model == 'mRNA2':
+	gen = Genome(gff3=arg.gff3, fasta=arg.fasta)
+	gen_seqs = []
+	ut5_seqs = []
+	koz_seqs = []
+	atg_seqs = []
+	cds_seqs = []
+	stp_seqs = []
+	ut3_seqs = []
+	
+	ut5_len = 0
+	mRNAs = 0
+	cds_len = 0
+	ut3_len = []
+	for chr in gen.chromosomes:
+		for gene in chr.features:
+			if not gene.mRNAs(): continue # some tx are miRNA etc
+			tx = gene.mRNAs()[0]
+			if gene.issues: continue
+			if len(gene.mRNAs()) > 1: continue
+			
+			cds = tx.cds_str()
+			ptx = tx.tx_str()
+			beg = ptx.find(cds)
+			end = beg + len(cds)
+			if beg < arg.u5_ctx + arg.koz_len + 1: continue
+			if end >= len(ptx): continue
+			
+			ut5_seq = ptx[0 : beg - arg.koz_len]
+			koz_seq = ptx[beg-arg.koz_len:beg]
+			atg_seq = cds[0:3]
+			cds_seq = cds[3:-3]
+			stp_seq = cds[-3:]
+			ut3_seq = ptx[end:len(ptx)]
+			
+			ut5_seqs.append(ut5_seq)
+			koz_seqs.append(koz_seq)
+			atg_seqs.append(atg_seq)
+			cds_seqs.append(cds_seq)
+			stp_seqs.append(stp_seq)
+			ut3_seqs.append(ut3_seq)
+			
+			ut5_len += len(ut5_seq)
+			cds_len += len(cds_seq)
+			ut3_len == len(ut3_seq)
+			mRNAs += 1
+			
+			if arg.source or arg.replicant:
+				sources.append(make_source(tx.id + '-gene',
+					[{'label':'UTR5', 'seq':ut5_seq},
+					{'label':'KOZ', 'seq':koz_seq},
+					{'label':'ATG', 'seq':atg_seq},
+					{'label':'CDS', 'seq':cds_seq},
+					{'label':'STOP', 'seq':stp_seq},
+					{'label':'UTR3', 'seq':ut3_seq}]))
+		
+	ut5_emits = hmm.train_emission(ut5_seqs, context=arg.u5_ctx)
+	koz_emits = hmm.train_emissions(koz_seqs, context=arg.koz_ctx)
+	atg_emits = hmm.train_emissions(atg_seqs, context=arg.atg_ctx)
+	cds_emits = hmm.train_cds(cds_seqs, context=arg.cds_ctx)
+	ut3_emits = hmm.train_emission(ut3_seqs, context=arg.u3_ctx)
+	stp_emits = hmm.train_emissions(stp_seqs, context=arg.stop_ctx)
+	
+	u5_state = hmm.State(name='UTR5', context=arg.u5_ctx, emits=ut5_emits)
+	koz_states = hmm.state_factory('KOZ', koz_emits)
+	atg_states = hmm.state_factory('ATG', atg_emits)
+	cds_states = hmm.state_factory('CDS', cds_emits)
+	u3_state = hmm.State(name='UTR3', context=arg.u3_ctx, emits=ut3_emits)
+	stp_states = hmm.state_factory('STOP', stp_emits)
+	u5_state.init = 1
+	u3_state.term = 1
+
+	hmm.connect2(u5_state, u5_state, 1 - mRNAs/ut5_len)
+	hmm.connect2(u5_state, koz_states[0], mRNAs/ut5_len)
+	hmm.connect_all(koz_states)
+	hmm.connect2(koz_states[-1], atg_states[0], 1)
+	hmm.connect_all(atg_states)
+	hmm.connect2(atg_states[-1], cds_states[0], 1)
+	hmm.connect_all(cds_states)
+	hmm.connect2(cds_states[2], cds_states[0], 1 - mRNAs / (cds_len/3))
+	hmm.connect2(cds_states[2], stp_states[0], mRNAs / (cds_len/3))
+	hmm.connect_all(stp_states)
+	hmm.connect2(stp_states[-1], u3_state, 1)
+	hmm.connect2(u3_state, u3_state, 1)
+	
+	null_emits = hmm.train_emission(chr.seq, context=arg.null_ctx)	
+	null_state = hmm.State(name='NULL', context=arg.null_ctx, emits=null_emits)
+	
+	model = hmm.HMM(name=arg.hmm, states=[u5_state] + koz_states + atg_states
+		+ cds_states + [u3_state] + stp_states, null=null_state)
+
+
+else:
+	raise ForgeError('unknown model type: ' + arg.model)
+
+########################
+## Post-build Actions ##
+########################
+
+if arg.hmm:
+	model.write(arg.hmm)
+
+if arg.source:
+	with open(arg.source + '.fasta', 'w+') as file:
+		for source in sources:
+			file.write(source['dna'].fasta())
+	with open(arg.source + '.gff', 'w+') as file:
+		for source in sources:
+			for f in source['features']:
+				file.write(f.gff() + '\n')
+
+if arg.replicant:
+	model.convert2log() # note from here down, the model is log-space
+	perf = decode.Performance(model)
+	for source in sources:
+		v = decode.Viterbi(model=model, dna=source['dna'])
+		p = v.generate_path()
+		features = p.features()
+		perf.compare(source=source['features'], prediction=features)
+	perf.report()
+
+
+"""
 elif arg.model == 'mRNA':
 	gen = Genome(gff3=arg.gff3, fasta=arg.fasta)
 	u5_seqs = []
@@ -319,33 +536,4 @@ elif arg.model == 'mRNA':
 	
 	model = hmm.HMM(name=arg.hmm, states=[u5_state] + koz_states + atg_states
 		+ cds_states + [u3_state], null=null_state)
-
-else:
-	raise ForgeError('unknown model type: ' + arg.model)
-
-########################
-## Post-build Actions ##
-########################
-
-if arg.hmm:
-	model.write(arg.hmm)
-
-if arg.source:
-	with open(arg.source + '.fasta', 'w+') as file:
-		for source in sources:
-			file.write(source['dna'].fasta())
-	with open(arg.source + '.gff', 'w+') as file:
-		for source in sources:
-			for f in source['features']:
-				file.write(f.gff() + '\n')
-
-if arg.replicant:
-	model.convert2log() # note from here down, the model is log-space
-	perf = decode.Performance(model)
-	for source in sources:
-		v = decode.Viterbi(model=model, dna=source['dna'])
-		p = v.generate_path()
-		features = p.features()
-		perf.compare(source=source['features'], prediction=features)
-	perf.report()
-
+"""
