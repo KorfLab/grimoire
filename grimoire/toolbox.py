@@ -18,6 +18,7 @@ is scanned once to record offsets.
 
 import math
 import re
+import gzip
 from functools import reduce
 
 
@@ -266,9 +267,18 @@ class FASTA_stream:
 		"""
 
 		self.fp = None
-		if   filename    != None: self.fp = open(filename, 'r')
-		elif filepointer != None: self.fp = filepointer
-		else: raise ToolboxError('no file or filepointer given')
+		self.gz = False
+		
+		if filename != None:
+			if re.search('\.gz$', filename):
+				self.fp = gzip.open(filename)
+				self.gz = True
+			else:
+				self.fp = open(filename, 'r')
+		elif filepointer != None:
+			self.fp = filepointer
+		else:
+			raise ToolboxError('no file or filepointer given')
 		self.lastline = ''
 		self.done = False
 
@@ -285,8 +295,11 @@ class FASTA_stream:
 
 		if self.done: raise StopIteration()
 		header = None
-		if self.lastline[0:1] == '>': header = self.lastline
-		else:                         header = self.fp.readline()
+		if self.lastline[0:1] == '>':
+			header = self.lastline
+		else:
+			header = self.fp.readline()
+			if self.gz: header = str(header, 'utf-8')
 
 		m = re.search('>\s*(\S+)\s*(.*)', header)
 		id = m[1]
@@ -295,6 +308,7 @@ class FASTA_stream:
 
 		while (True):
 			line = self.fp.readline()
+			if self.gz: line = str(line, 'utf-8')
 			if line[0:1] == '>':
 				self.lastline = line
 				break
