@@ -309,6 +309,7 @@ elif arg.model == 'mRNA':
 	hmm.connect_all(cds_states)
 	hmm.connect2(cds_states[2], cds_states[0], 1 - mRNAs / (cds_len/3))
 	hmm.connect2(cds_states[2], u3_state, mRNAs / (cds_len/3))
+	hmm.connect2(u3_state, u3_state, 1)
 	
 	null_emits = hmm.train_emission(chr.seq, context=arg.null_ctx)	
 	null_state = hmm.State(name='NULL', context=arg.null_ctx, emits=null_emits)
