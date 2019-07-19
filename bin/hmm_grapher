@@ -6,17 +6,19 @@ import argparse
 ## Command line w/ Argparse ##
 parser = argparse.ArgumentParser(description='HMM Grapher')
 parser.add_argument('--hmm', required=True, type=str,
-	metavar='<path>', help='input HMM file name (%(type)s)')
-parser.add_argument('--output', required=True, type=str,
-	metavar='<path>', help='output graph name (%(type)s)')
-parser.add_argument('--title', type=str, default=None,
-	metavar='<path>', help='enter to display graph title (%(type)s)')
+	metavar='<path>', help='path to input HMM file (%(type)s)')
+parser.add_argument('--svg', required=True, type=str,
+	metavar='<path>', help='path to output svg file (%(type)s)')
+parser.add_argument('--tb', action='store_true',
+	help='top to bottom graph [default left to right]')
 arg = parser.parse_args()
 
 # Default Graph Attributes
 graph = Digraph(format='png')
 graph.attr('node', shape='circle')
-graph.attr(label=str(arg.title))
+graph.attr(label=str(arg.hmm))
+if arg.tb: graph.attr(rankdir='TB')
+else: graph.attr(rankdir='LR')
 
 # Read in File and Make Graph
 hmm = hmm.HMM.read(arg.hmm)
@@ -24,8 +26,8 @@ hmm = hmm.HMM.read(arg.hmm)
 for s1 in hmm.states:
 	graph.node(s1.name)
 	for s2 in s1.next:
-		graph.edge(s1.name, s2, label=' '+str(s1.next[s2]),constraint='false')
+		graph.edge(s1.name, s2)
 
 # Save Graph as SVG
-with open(arg.output, 'w') as f:
+with open(arg.svg, 'w') as f:
     f.write(graph._repr_svg_())
