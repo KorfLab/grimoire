@@ -217,7 +217,10 @@ class HMM_NT_decoder:
 				else: return 0.25
 		raise DecodeError('not possible')
 
-	def _inspect(self, beg, end, field):
+	def _inspect(self, field, beg=None, end=None):
+		if not beg: beg = 0
+		if not end: end = len(self.matrix)
+	
 		# print numbers
 		print('{:<6s}'.format(''), end='')
 		for col in range(beg, end):
@@ -438,6 +441,7 @@ class StochasticViterbi(HMM_NT_decoder):
 			sum = 0
 			for s in self.model.states:
 				sum += self.matrix[-1][s.name]['score']
+			
 			rsum = 0
 			for s in self.model.states:
 				rsum += self.matrix[-1][s.name]['score'] / sum
