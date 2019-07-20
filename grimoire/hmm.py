@@ -311,7 +311,6 @@ def null_state_factory(file=None, context=None):
 
 	return State(name='null', context=context, emits=freq)
 
-
 def connect_all (states) :
 	"""
 	Connects all of the state objects.

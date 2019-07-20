@@ -245,7 +245,6 @@ class HMM_NT_decoder:
 					print('{:<10s}'.format('None'), end='')
 			print()
 
-
 class Viterbi(HMM_NT_decoder):
 	"""Standard Viterbi in probabilty or log space"""
 

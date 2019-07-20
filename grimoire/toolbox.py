@@ -27,7 +27,7 @@ class ToolboxError(Exception):
 
 def log(p):
 	"""Returns the value in log base e with a minimum value of -999"""
-	if p < 0: raise ValueError('p < 0')
+	if p < 0: raise ValueError('p < 0: ' + str(p))
 	if p == 0: return -999
 	else:      return math.log(p)
 
@@ -97,6 +97,7 @@ class GFF_file:
 			self._types[type].append(entry)
 			self.chroms = list(self._chroms.keys())
 			self.types = list(self._types.keys())
+		fp.close()
 
 	def get(self, type=None, chrom=None, beg=None, end=None):
 		"""
