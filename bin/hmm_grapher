@@ -9,6 +9,8 @@ parser.add_argument('--hmm', required=True, type=str,
 	metavar='<path>', help='path to input HMM file (%(type)s)')
 parser.add_argument('--svg', required=True, type=str,
 	metavar='<path>', help='path to output svg file (%(type)s)')
+parser.add_argument('--prob', action='store_true',
+	help='label transition probabilities')
 parser.add_argument('--tb', action='store_true',
 	help='top to bottom graph [default left to right]')
 arg = parser.parse_args()
@@ -26,7 +28,10 @@ hmm = hmm.HMM.read(arg.hmm)
 for s1 in hmm.states:
 	graph.node(s1.name)
 	for s2 in s1.next:
-		graph.edge(s1.name, s2)
+		label = None
+		if arg.prob:
+			label=str(round(s1.next[s2], 3))
+		graph.edge(s1.name, s2, label=label)
 
 # Save Graph as SVG
 with open(arg.svg, 'w') as f:
