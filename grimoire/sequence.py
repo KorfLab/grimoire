@@ -1,14 +1,14 @@
 """
 Sequence
 
-This script contains classes and functions used to make/interpret sequences.
+This module contains classes and functions used to make/interpret sequences.
 
-The following functions are provided in HMM:
+The following functions are provided in Sequence:
  	* generate_kmers
 	* revcomp_str
 	* translate_str
 
-The following classes and methods are provided in HMM:
+The following classes and methods are provided in Sequence:
 	* BioSequence
 		* BioSequence.fasta
 	* DNA
@@ -109,7 +109,7 @@ GCODE = {
 
 def revcomp_str(seq):
 	"""
-	Makes reverse compliment sequence
+	Returns the reverse compliment of a string (assumed to be nt)
 
 	Parameters
 	----------
@@ -123,7 +123,7 @@ def revcomp_str(seq):
 
 def translate_str(seq, table='standard'):
 	"""
-	Translate sequence into protein
+	Translate a string (of nucleotides) into protein
 
 	Parameters
 	----------
@@ -149,7 +149,7 @@ class BioSequence:
 
 	def fasta(self, wrap=80):
 		"""
-		Convert FASTA format to objects
+		Returns the object as a string in FASTA format
 
 		Parameters
 		----------
@@ -181,9 +181,9 @@ class DNA(BioSequence):
 		Parameters
 		----------
 		name: str
-			Name of Sequence (default is None)
+			Name of Sequence
 		seq: str
-			The actual sequence (default is None)
+			The string of letters
 		desc: str
 			Description of sequence (default is None)
 		species: str
@@ -213,6 +213,7 @@ class DNA(BioSequence):
 		"""Return translated protein sequence"""
 		pro = translate_str(self.seq)
 		return Protein(seq=pro)
+
 
 class Protein(BioSequence):
 	"""Class for protein sequences. Uppercase only. 20 aa + X and *"""

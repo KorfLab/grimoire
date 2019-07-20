@@ -1,10 +1,10 @@
 """
 HMM(Hidden Markov Model)
 
-This script contains classes and functions used to create HMM.
+This module contains classes and functions used to create HMMs.
 It is assumed that the sequences inputted are in the list format.
 
-The following functions are provided in HMM:
+The following functions are provided to help build the model.
  	* emission_model
 	* train_emission
 	* train_emissions
@@ -38,7 +38,7 @@ class HMMError(Exception):
 ### naked definitions  ###
 ##########################
 
-def emission_model(context=1, alphabet='nt'): #Why first context then alphabet?
+def emission_model(context=1, alphabet='nt'):
 	"""
 	Makes an empty emission model with specified context and alphabet.
 
@@ -52,8 +52,7 @@ def emission_model(context=1, alphabet='nt'): #Why first context then alphabet?
 		nonzero whole number (default is 1)
     alphabet: str
 		The type of alphabet for model. Takes input nucleotides 'nt' or amino
-		acids 'aa'. If other strings are inputted, an alphabet error is raised.
-		(default is 'nt')
+		acids 'aa' but only 'nt' is suppoorted in the HMM currently.
     """
 
 	letters = None
@@ -76,18 +75,18 @@ def emission_model(context=1, alphabet='nt'): #Why first context then alphabet?
 
 def train_emission(seqs, context=0):
 	"""
-	Train the nucleotides emission model with customized context.
+	Train an emission table.
 
-	This function outputs the emission frequencies as a dictionary.
+	Returns a dictionary (context=0 or dictionary of dictionaries.
 
     Parameters
     ----------
 	seqs: list
-		A list of all the sequences used in training emissions
+		A list of all the sequences to be modeled
     context: int
-        The level of context, or the number of previous states taken into
+        The level of context, or the number of previous symbols taken into
 		account when calculating the emission probabilities. Value must be a
-		nonzero whole number (default is 1)
+		nonzero whole number (default is 0)
     """
 
 	count = emission_model(context=context)
@@ -120,7 +119,7 @@ def train_emission(seqs, context=0):
 
 def train_emissions(seqs, context=0):
 	"""
-	Train nucleotides emission models with customized context.
+	Train a list of emission tables. Usually for use with connected states.
 
 	This function outputs the emission frequencies as a list of dictionaries.
 	If context = 0, outputs list with a single dictionary.
@@ -129,11 +128,11 @@ def train_emissions(seqs, context=0):
     Parameters
     ----------
 	seqs: list
-		A list of all the sequences used in training emissions
+		A list of training sequences.
     context: int
-        The level of context, or the number of previous states taken into
+        The level of context, or the number of previous symbols taken into
 		account when calculating the emission probabilities. Value must be a
-		nonzero whole number (default is 1)
+		nonzero whole number (default is 0)
     """
 
 	counts = []
@@ -179,7 +178,7 @@ def train_emissions(seqs, context=0):
 
 def train_cds(seqs, context=0):
 	"""
-	Train the coding sequence (CDS) emission model with customized context.
+	Train the coding sequence (CDS) emission model..
 
 	This function outputs the emission frequencies as a list of dictionaries.
 	If context = 0, outputs list with a single dictionary.
@@ -188,7 +187,7 @@ def train_cds(seqs, context=0):
     Parameters
     ----------
 	seqs: list
-		A list of all the sequences used in training emissions
+		A list of sequences for training the model.
     context: int
         The level of context, or the number of previous states taken into
 		account when calculating the emission probabilities. Value must be a
@@ -239,7 +238,7 @@ def train_cds(seqs, context=0):
 
 def state_factory(prefix, emissions):
 	"""
-	Create a list of state objects.
+	Create a list of related state objects (e.g. splice donor site)
 
 	Parameters
 	----------
@@ -268,12 +267,12 @@ def state_factory(prefix, emissions):
 
 def null_state_factory(file=None, context=None):
 	"""
-	Create a list of null state objects.
+	Create the null state object.
 
 	Parameters
 	----------
 	file: str
-		File name
+		File path, which may be compressed
 	context: int
         The level of context, or the number of previous states taken into
 		account when calculating the emission probabilities. Value must be a
@@ -313,8 +312,8 @@ def null_state_factory(file=None, context=None):
 
 def connect_all (states) :
 	"""
-	Connects all of the state objects.
-	Updates the dictionary of next state objects
+	Connects all of the state objects with probability 1. The first and
+	last states are unconnected.
 
 	Parameters
 	----------
@@ -327,8 +326,7 @@ def connect_all (states) :
 
 def connect2 (s1, s2, p) :
 	"""
-	Connects 2 state objects.
-	Updates the dictionary of next state objects
+	Connects 2 state objects with a given probability.
 
 	Parameters
 	----------
@@ -354,19 +352,19 @@ class State:
 		Parameters
 		----------
 		name: str
-			Name of State (default is None)
+			Name of State, required
 		context: int
 			The level of context, or the number of previous states taken into
 			account when calculating the emission probabilities. Value must be a
 			nonzero whole number (default is None)
-		emits: float?
-			Singular emission probability for state? (default is None)
+		emits: float
+			Singular emission probability for the state.
 		init:  float
 			Probability of having the HMM start at this state (default is 0)
 		term: float
 			Probability of having the HMM end at this state (default is 0)
 		next: dictionary
-			Dictionary of all next states (default is None)
+			Dictionary of all next states (default is empty dictionary)
 		"""
 
 		self.name = name
@@ -417,7 +415,7 @@ class HMM:
 		Parameters
 		----------
 		filename: str
-			Name of HMM file
+			Path to HMM file, which may be compressed
 		"""
 
 		d = None
@@ -456,7 +454,7 @@ class HMM:
 		Parameters
 		----------
 		filename: str
-			Name of HMM file
+			Path to the HMM output file, which may be compressed
 		"""
 
 		if re.search('\.gz$', filename):
@@ -490,11 +488,12 @@ class HMM:
 
 	def macro_labels(self):
 		"""
-		Returns a list of label names and strips off the probability attributes
-		Output is not a true list.
+		Returns a list of label names stripped of the numeric identifier.
+		For example ACC-0 becomes ACC.
 		"""
 		label = {}
 		for state in self.states:
 			macro = re.search('(\w+)', state.name)[1]
 			label[macro] = True
 		return list(label.keys())
+

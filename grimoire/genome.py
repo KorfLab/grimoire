@@ -24,9 +24,9 @@ def overlap(f1, f2):
 	Parameters
 	----------
 	f1: object
-		Feature 1. Class Feature.
+		Feature 1
 	f2: object
-		Feature 2. Class Feature.
+		Feature 2
 	"""
 
 	if f1.dna == f2.dna:
@@ -44,11 +44,11 @@ class Feature:
 		Parameters
 		----------
 		dna: object
-			DNA of Feature
+			DNA object
 		beg: int
-			Beginning position of feature
+			Beginning position of feature (1-based)
 		end: int
-			Ending position of feature
+			Ending position of feature (always >= begin)
 		strand: str
 			Forward (+) or reverse (-) strand
 		type: str
@@ -171,13 +171,14 @@ class mRNA(Feature):
 	def set_rules(self, clade='std'):
 		"""
 		Set rules for mRNA by clade.
-		Currently, rules include boundaries for the size of introns.
+		Currently, rules include boundaries for the size of introns and
+		canonical signals (start, stop, splices).
 
 		Parameters
 		----------
 		clade: str
 			Type of clade (default is 'std or standard') Currently, 'std' and
-			'mammal' is supported.
+			'mammal' are supported.
 		"""
 
 		if clade == 'std':
@@ -360,13 +361,13 @@ class Genome:
 		Parameters
 		----------
 		species: str
-		   Specie of genome
+		   Species of genome, not really used yet
 		fasta: file
-			Path to fasta file
+			Path to fasta file, may be compressed
 		gff3: file
-			Path to gff3 file
+			Path to gff3 file, may be compressed
 		check_alphabet: bool
-			Check whether it is the correct alphabet
+			Check whether it is the correct alphabet (good idea)
 		"""
 
 		self.species = species
