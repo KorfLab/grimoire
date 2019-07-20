@@ -62,9 +62,6 @@ parser.add_argument('--replicant', action='store_true',
 	help='perform replicant analysis (model vs source)')
 arg = parser.parse_args()
 
-ff = toolbox.FASTA_file(arg.fasta)
-gf = toolbox.GFF_file(arg.gff3)
-
 ###############
 ## Functions ##
 ###############
@@ -330,7 +327,6 @@ elif arg.model == 'mRNA1':
 	model = hmm.HMM(name=arg.hmm, states=[u5_state] + atg_states
 		+ cds_states + [u3_state] + stp_states, null=null_state)
 
-
 elif arg.model == 'mRNA2':
 	gen = Genome(gff3=arg.gff3, fasta=arg.fasta)
 	gen_seqs = []
@@ -422,7 +418,6 @@ elif arg.model == 'mRNA2':
 	model = hmm.HMM(name=arg.hmm, states=[u5_state] + koz_states + atg_states
 		+ cds_states + [u3_state] + stp_states, null=null_state)
 
-
 else:
 	raise ForgeError('unknown model type: ' + arg.model)
 
@@ -451,89 +446,3 @@ if arg.replicant:
 		features = p.features()
 		perf.compare(source=source['features'], prediction=features)
 	perf.report()
-
-
-"""
-elif arg.model == 'mRNA':
-	gen = Genome(gff3=arg.gff3, fasta=arg.fasta)
-	u5_seqs = []
-	koz_seqs = []
-	atg_seqs = []
-	cds_seqs = []
-	u3_seqs = []
-	txa = []
-	u5_len = 0
-	mRNAs = 0
-	cds_len = 0
-	for chr in gen.chromosomes:
-		for gene in chr.features:
-			if not gene.mRNAs(): continue # some tx are miRNA etc
-			tx = gene.mRNAs()[0]
-			if gene.issues: continue
-			if len(gene.mRNAs()) > 1: continue
-			
-			cds = tx.cds_str()
-			ptx = tx.tx_str()
-			beg = ptx.find(cds)
-			end = beg + len(cds)
-			if beg < arg.u5_ctx + arg.koz_len + 1: continue
-			if end >= len(ptx): continue
-			
-			u5_seq = ptx[0 : beg - arg.koz_len]
-			koz_seq = ptx[beg-arg.koz_len:beg]
-			atg_seq = cds[0:3]
-			cds_seq = cds[3:]
-			u3_seq = ptx[end:len(ptx)]
-			
-			u5_seqs.append(u5_seq)
-			koz_seqs.append(koz_seq)
-			atg_seqs.append(atg_seq)
-			cds_seqs.append(cds_seq)
-			u3_seqs.append(u3_seq)
-			
-			u5_len += len(u5_seq)
-			cds_len += len(cds) - 3
-			mRNAs += 1
-			
-			if arg.source or arg.replicant:
-				sources.append(make_source(tx.id + '-cDNA',
-					[{'label':'UTR5', 'seq':u5_seq},
-					{'label':'KOZ', 'seq':koz_seq},
-					{'label':'ATG', 'seq':atg_seq},
-					{'label':'CDS', 'seq':cds_seq},
-					{'label':'UTR3', 'seq':u3_seq}]))
-	
-	u5_emits = hmm.train_emission(u5_seqs, context=arg.u5_ctx)
-	koz_emits = hmm.train_emissions(koz_seqs, context=arg.koz_ctx)
-	atg_emits = hmm.train_emissions(atg_seqs, context=arg.atg_ctx)
-	cds_emits = hmm.train_cds(cds_seqs, context=arg.cds_ctx)
-	u3_emits = hmm.train_emission(u3_seqs, context=arg.u3_ctx)
-	
-	u5_state = hmm.State(name='UTR5', context=arg.u5_ctx, emits=u5_emits)
-	koz_states = hmm.state_factory('KOZ', koz_emits)
-	atg_states = hmm.state_factory('ATG', atg_emits)
-	cds_states = hmm.state_factory('CDS', cds_emits)
-	u3_state = hmm.State(name='UTR3', context=arg.u3_ctx, emits=u3_emits)
-	u5_state.init = 1
-	u3_state.term = 1
-
-	hmm.connect2(u5_state, u5_state, 1 - mRNAs/u5_len)
-	hmm.connect2(u5_state, koz_states[0], mRNAs/u5_len)
-	hmm.connect_all(koz_states)
-	hmm.connect2(koz_states[-1], atg_states[0], 1)
-	hmm.connect_all(atg_states)
-	hmm.connect2(atg_states[-1], cds_states[0], 1)
-	hmm.connect_all(cds_states)
-	hmm.connect2(cds_states[2], cds_states[0], 1 - mRNAs / (cds_len/3))
-	hmm.connect2(cds_states[2], u3_state, mRNAs / (cds_len/3))
-	hmm.connect2(u3_state, u3_state, 1)
-	
-	null_emits = hmm.train_emission(chr.seq, context=arg.null_ctx)	
-	null_state = hmm.State(name='NULL', context=arg.null_ctx, emits=null_emits)
-	null_state.init = 1
-	null_state.term = 1
-	hmm.connect2(null_state, null_state, 1)
-	
-	model = hmm.HMM(name=arg.hmm, states=[u5_state] + koz_states + atg_states
-		+ cds_states + [u3_state], null=null_state)
-"""

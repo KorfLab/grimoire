@@ -229,6 +229,8 @@ class FASTA_file:
 		"""
 
 		self.filename = filename
+		if re.search('\.gz$', filename):
+			raise ToolboxError('.gz files not supported in FASTA_file')
 		self.offset = {} # indexes identifiers to file offsets
 		self.ids = []
 		self.file = open(self.filename, 'r')

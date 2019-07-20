@@ -371,18 +371,12 @@ class Genome:
 
 		self.species = species
 		self.chromosomes = []
-		ff = toolbox.FASTA_file(fasta)
+		ff = toolbox.FASTA_stream(fasta)
 		gf = toolbox.GFF_file(gff3)
 
-		for chr in gf._chroms:
-			if chr not in ff.offset:
-				raise GenomeError('GFF3 id not in FASTA (' + chr + ')')
-
 		mRNA_parts = ['CDS', 'exon']
-		for id in ff.ids:
-			entry = ff.get(id)
-
-			chrom = sequence.DNA(name=id, seq=entry.seq)
+		for entry in ff:
+			chrom = sequence.DNA(name=entry.id, seq=entry.seq)
 			if check_alphabet: chrom.check_alphabet()
 
 			# convert protein-coding gene-based GFF to Features
