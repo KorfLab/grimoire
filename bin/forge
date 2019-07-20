@@ -13,7 +13,7 @@ from grimoire.genome import Genome, Feature
 
 ## Command line stuff ##
 
-parser = argparse.ArgumentParser(description='HMM trainer for genes')
+parser = argparse.ArgumentParser(description='HMM trainer for genes and parts')
 parser.add_argument('--fasta', required=True, type=str,
 	metavar='<path>', help='path to fasta file (%(type)s)')
 parser.add_argument('--gff3', required=True, type=str,
@@ -92,7 +92,125 @@ model = None # used for outputting HMM and perforing replicant analysis
 ## Model Building Section ##
 ############################
 
-if arg.model == 'internal_exon':
+if arg.model == 'don':
+	gen = Genome(gff3=arg.gff3, fasta=arg.fasta)
+	exp_seqs = []
+	don_seqs = []
+	int_seqs = []
+	exon_len = 0
+	splices = 0
+	intron_len = 0
+	for chr in gen.chromosomes:
+		for gene in chr.features:
+			if not gene.mRNAs(): continue # some tx are miRNA etc
+			tx = gene.mRNAs()[0]
+			if gene.issues: continue
+			if len(gene.mRNAs()) > 1: continue
+			if len(tx.exons) < 2: continue
+			
+			rcount = 0
+			for i in range(len(tx.exons) - 1):
+				exp_seq = tx.exons[i].seq_str()
+				iseq = tx.introns[i].seq_str()
+				don_seq = iseq[0:arg.don_len]
+				int_seq = iseq[arg.don_len:-arg.acc_len]
+				
+				exp_seqs.append(exp_seq)
+				don_seqs.append(don_seq)
+				int_seqs.append(int_seq)
+				
+				intron_len += len(int_seq)
+				exon_len += len(exp_seq)
+				splices += 1
+				
+				if arg.source or arg.replicant:
+					rcount += 1
+					sources.append(make_source(tx.id + '-region-' + str(rcount),
+						[{'label':'EXON', 'seq':exp_seq},
+						{'label':'DON', 'seq':don_seq},
+						{'label':'INT', 'seq':int_seq}]))
+	
+	exp_emits = hmm.train_emission(exp_seqs, context=arg.exon_ctx)
+	don_emits = hmm.train_emissions(don_seqs, context=arg.don_ctx)
+	int_emits = hmm.train_emission(int_seqs, context=arg.int_ctx)
+	
+	exp_state = hmm.State(name='EXON', context=arg.exon_ctx, emits=exp_emits)
+	exp_state.init = 1
+	don_states = hmm.state_factory('DON', don_emits)
+	int_state = hmm.State(name='INT', context=arg.int_ctx, emits=int_emits)
+	int_state.term = 1
+	
+	hmm.connect2(exp_state, exp_state, 1 - splices/exon_len)
+	hmm.connect2(exp_state, don_states[0], splices/exon_len)
+	hmm.connect_all(don_states)
+	hmm.connect2(don_states[arg.don_len-1], int_state, 1)
+	hmm.connect2(int_state, int_state, 1)
+	
+	null_state = hmm.null_state_factory(file=arg.fasta, context=arg.null_ctx)
+	
+	model = hmm.HMM(name=arg.hmm, null=null_state,
+		states=[exp_state] + don_states + [int_state])
+
+elif arg.model == 'acc':
+	gen = Genome(gff3=arg.gff3, fasta=arg.fasta)
+	exn_seqs = []
+	acc_seqs = []
+	int_seqs = []
+	exon_len = 0
+	splices = 0
+	intron_len = 0
+	for chr in gen.chromosomes:
+		for gene in chr.features:
+			if not gene.mRNAs(): continue # some tx are miRNA etc
+			tx = gene.mRNAs()[0]
+			if gene.issues: continue
+			if len(gene.mRNAs()) > 1: continue
+			if len(tx.exons) < 2: continue
+			
+			rcount = 0
+			for i in range(len(tx.exons) - 1):
+				exn_seq = tx.exons[i + 1].seq_str()
+				iseq = tx.introns[i].seq_str()
+				int_seq = iseq[arg.don_len:-arg.acc_len]
+				acc_seq = iseq[-arg.acc_len:len(iseq)]
+				
+				int_seqs.append(int_seq)
+				acc_seqs.append(acc_seq)
+				exn_seqs.append(exn_seq)
+				
+				intron_len += len(int_seq)
+				exon_len += len(exn_seq)
+				splices += 1
+				
+				if arg.source or arg.replicant:
+					rcount += 1
+					sources.append(make_source(tx.id + '-region-' + str(rcount),
+						[{'label':'INT', 'seq':int_seq},
+						{'label':'ACC', 'seq':acc_seq},
+						{'label':'EXON', 'seq':exn_seq}]))
+	
+	int_emits = hmm.train_emission(int_seqs, context=arg.int_ctx)
+	acc_emits = hmm.train_emissions(acc_seqs, context=arg.acc_ctx)
+	exn_emits = hmm.train_emission(exn_seqs, context=arg.exon_ctx)
+	
+	int_state = hmm.State(name='INT', context=arg.int_ctx, emits=int_emits)
+	int_state.init = 1
+	acc_states = hmm.state_factory('ACC', acc_emits)
+	exn_state = hmm.State(name='EXON', context=arg.exon_ctx, emits=exn_emits)
+	exn_state.term = 1
+	
+	hmm.connect2(int_state, int_state, 1 - splices/intron_len)
+	hmm.connect2(int_state, acc_states[0], splices/intron_len)
+	hmm.connect_all(acc_states)
+	hmm.connect2(acc_states[arg.acc_len-1], exn_state, 1)
+	hmm.connect2(exn_state, exn_state, 1)
+	
+	null_state = hmm.null_state_factory(file=arg.fasta, context=arg.null_ctx)
+	
+	model = hmm.HMM(name=arg.hmm, null=null_state,
+		states=[int_state] + acc_states + [exn_state])
+
+elif arg.model == 'internal_exon':
 	gen = Genome(gff3=arg.gff3, fasta=arg.fasta)
 	intron_seqs = []
 	acc_seqs = []
@@ -165,8 +283,7 @@ if arg.model == 'internal_exon':
 	hmm.connect2(don_states[-1], intb_state, 1)
 	hmm.connect2(intb_state, intb_state, 1)
 	
-	null_emits = hmm.train_emission(chr.seq, context=arg.null_ctx)	
-	null_state = hmm.State(name='NULL', context=arg.null_ctx, emits=null_emits)
+	null_state = hmm.null_state_factory(file=arg.fasta, context=arg.null_ctx)
 	
 	model = hmm.HMM(name=arg.hmm, states=[inta_state] + acc_states + [exon_state]
 		+ don_states + [intb_state], null = null_state)
@@ -178,7 +295,6 @@ elif arg.model == 'splicing':
 	don_seqs = []
 	acc_seqs = []
 	int_seqs = []
-	txa = []
 	exon_len = 0
 	splices = 0
 	intron_len = 0
@@ -242,11 +358,7 @@ elif arg.model == 'splicing':
 	hmm.connect2(acc_states[arg.acc_len-1], exn_state, 1)
 	hmm.connect2(exn_state, exn_state, 1)
 	
-	null_emits = hmm.train_emission(chr.seq, context=arg.null_ctx)	
-	null_state = hmm.State(name='NULL', context=arg.null_ctx, emits=null_emits)
-	null_state.init = 1
-	null_state.term = 1
-	hmm.connect2(null_state, null_state, 1)
+	null_state = hmm.null_state_factory(file=arg.fasta, context=arg.null_ctx)
 	
 	model = hmm.HMM(name=arg.hmm, null=null_state,
 		states=[exp_state] + don_states + [int_state] + acc_states + [exn_state])
@@ -325,8 +437,6 @@ elif arg.model == 'mRNA1':
 
 	hmm.connect2(u5_state, u5_state, 1 - mRNAs/ut5_len)
 	hmm.connect2(u5_state, atg_states[0], mRNAs/ut5_len)
-#	hmm.connect_all(koz_states)
-#	hmm.connect2(koz_states[-1], atg_states[0], 1)
 	hmm.connect_all(atg_states)
 	hmm.connect2(atg_states[-1], cds_states[0], 1)
 	hmm.connect_all(cds_states)
@@ -336,8 +446,7 @@ elif arg.model == 'mRNA1':
 	hmm.connect2(stp_states[-1], u3_state, 1)
 	hmm.connect2(u3_state, u3_state, 1)
 	
-	null_emits = hmm.train_emission(chr.seq, context=arg.null_ctx)	
-	null_state = hmm.State(name='NULL', context=arg.null_ctx, emits=null_emits)
+	null_state = hmm.null_state_factory(file=arg.fasta, context=arg.null_ctx)
 	
 	model = hmm.HMM(name=arg.hmm, states=[u5_state] + atg_states
 		+ cds_states + [u3_state] + stp_states, null=null_state)
@@ -427,8 +536,7 @@ elif arg.model == 'mRNA2':
 	hmm.connect2(stp_states[-1], u3_state, 1)
 	hmm.connect2(u3_state, u3_state, 1)
 	
-	null_emits = hmm.train_emission(chr.seq, context=arg.null_ctx)	
-	null_state = hmm.State(name='NULL', context=arg.null_ctx, emits=null_emits)
+	null_state = hmm.null_state_factory(file=arg.fasta, context=arg.null_ctx)
 	
 	model = hmm.HMM(name=arg.hmm, states=[u5_state] + koz_states + atg_states
 		+ cds_states + [u3_state] + stp_states, null=null_state)
