@@ -109,7 +109,7 @@ class GFF_file:
 		----------
 		type: str
 			Type of GFF entry (e.g. exon, gene) (default is None)
-		chrom: int
+		chrom: str
 			Chromosome of interest (default is None)
 		beg: int
 			Beginning coordinate (default is None)

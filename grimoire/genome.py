@@ -140,11 +140,13 @@ class Feature:
 
 		string = '\t'.join([self.dna.name, self.source, self.type,
 			str(self.beg), str(self.end), str(self.score),
-			self.strand, '.', attr]) + '\n'
+			self.strand, '.', attr])
 		if self.children:
+			string += '\n'
+			stuff = []
 			for child in self.children:
-				string += child.gff()
-
+				stuff.append(child.gff())
+			string += '\n'.join(stuff) + '\n'
 		return string
 
 	def __str__(self):
