@@ -88,6 +88,7 @@ class GFF_file:
 			if line == '': break
 			if line[0:1] == '#': continue
 			col = line.split('\t')
+			if len(col) < 8: continue
 			chrom = col[0]
 			type = col[2]
 			entry = GFF_entry(col)
