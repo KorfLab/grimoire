@@ -14,9 +14,9 @@ for model in models:
 	png = model + '.png'
 	system(forge + ' --hmm ' + hmm + ' --model ' + model)
 	system(graph + ' --hmm ' + hmm + ' --svg ' + svg)
-	system('convert ' + svg + ' ' + png)
+	system('convert ' + svg + ' ' + png) # requires ImageMagick
 	system('mv ' + png + ' docs')
 	system('mv ' + svg + ' docs')
 	system('rm ' + hmm)
-	fp.write('<img src="' + png + '"><hr>')
+	fp.write('<img src="' + svg + '"><hr>')
 fp.write('</body></html>')
