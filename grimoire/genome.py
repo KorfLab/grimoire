@@ -190,7 +190,7 @@ class mRNA(Feature):
 			raise GenomeError('clade not yet supported: ' + clade)
 		self.clade = clade
 
-	def check_overlaps(self, f, type):
+	def _check_overlaps(self, f, type):
 		"""
 		Check for overlap issues
 
@@ -206,7 +206,7 @@ class mRNA(Feature):
 			if f[i-1].end >= f[i].beg:
 				self.issues['overlap_' + type] = True
 
-	def check_lengths(self, features, type):
+	def _check_lengths(self, features, type):
 		"""
 		Check for length issues
 
@@ -286,18 +286,18 @@ class mRNA(Feature):
 							'five_prime_UTR'))
 
 		# check for overlapping features
-		self.check_overlaps(self.exons, 'exon')
-		self.check_overlaps(self.cdss, 'cds')
-		self.check_overlaps(self.utr5s, 'utr5')
-		self.check_overlaps(self.utr3s, 'utr3')
-		self.check_overlaps(self.introns, 'intron')
+		self._check_overlaps(self.exons, 'exon')
+		self._check_overlaps(self.cdss, 'cds')
+		self._check_overlaps(self.utr5s, 'utr5')
+		self._check_overlaps(self.utr3s, 'utr3')
+		self._check_overlaps(self.introns, 'intron')
 
 		# check for unusual lengths
-		self.check_lengths(self.exons, 'exon')
-		self.check_lengths(self.cdss, 'cds')
-		self.check_lengths(self.utr5s, 'utr5')
-		self.check_lengths(self.utr3s, 'utr3')
-		self.check_lengths(self.introns, 'intron')
+		self._check_lengths(self.exons, 'exon')
+		self._check_lengths(self.cdss, 'cds')
+		self._check_lengths(self.utr5s, 'utr5')
+		self._check_lengths(self.utr3s, 'utr3')
+		self._check_lengths(self.introns, 'intron')
 
 		# canonical splicing
 		for intron in self.introns:
