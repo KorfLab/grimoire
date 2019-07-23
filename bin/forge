@@ -19,7 +19,7 @@ parser.add_argument('--fasta', required=True, type=str,
 parser.add_argument('--gff3', required=True, type=str,
 	metavar='<path>', help='path to GFF3 file (%(type)s)')
 parser.add_argument('--model', required=True, type=str,
-	metavar='<model>', help='internal_exon|splicing|mRNA')
+	metavar='<model>', help='acc|don|exon|intron|mRNA1|mRNA2')
 parser.add_argument('--hmm', required=False, type=str,
 	metavar='<path>', help='output HMM file (%(type)s)')
 parser.add_argument('--source', required=False, type=str,
@@ -210,7 +210,7 @@ elif arg.model == 'acc':
 	model = hmm.HMM(name=arg.hmm, null=null_state,
 		states=[int_state] + acc_states + [exn_state])
 
-elif arg.model == 'internal_exon':
+elif arg.model == 'exon':
 	gen = Genome(gff3=arg.gff3, fasta=arg.fasta)
 	intron_seqs = []
 	acc_seqs = []
@@ -288,7 +288,7 @@ elif arg.model == 'internal_exon':
 	model = hmm.HMM(name=arg.hmm, states=[inta_state] + acc_states + [exon_state]
 		+ don_states + [intb_state], null = null_state)
 
-elif arg.model == 'splicing':
+elif arg.model == 'intron':
 	gen = Genome(gff3=arg.gff3, fasta=arg.fasta)
 	exp_seqs = []
 	exn_seqs = []
