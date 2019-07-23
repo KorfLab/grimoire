@@ -16,7 +16,7 @@ for model in models:
 	system(graph + ' --hmm ' + hmm + ' --svg ' + svg)
 	system('convert ' + svg + ' ' + png)
 	system('mv ' + png + ' docs')
+	system('mv ' + svg + ' docs')
 	system('rm ' + hmm)
-	system('rm ' + svg)
 	fp.write('<img src="' + png + '"><hr>')
 fp.write('</body></html>')
