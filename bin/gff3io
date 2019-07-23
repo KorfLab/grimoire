@@ -1,4 +1,13 @@
 #!/usr/bin/env python3
+'''
+GFF3io
+
+Takes a file and converts it into the GFF3 format. Currently supports WormBase,
+FlyBase, Tair, Araport, and GTF format.
+
+For gzip files, use gunzip -c to pipe input to GFF3io
+For other files, use cat to pipe input to GFF3io
+'''
 
 import argparse
 import re
@@ -6,7 +15,7 @@ import sys
 
 parser = argparse.ArgumentParser(description='GFF3 gene feature selector')
 parser.add_argument('--source', required=True, type=str,
-	metavar='<string>', help='wb|fb|tair|ap (%(type)s)')
+	metavar='<string>', help='wb|fb|tair|ap|gtf (%(type)s)')
 arg = parser.parse_args()
 
 types = {
@@ -65,13 +74,13 @@ if arg.source == 'ap':
 		starts = col[11].split(',')
 		gid = re.search('(\w+)\.\d+', txid)[1]
 		attr = 'ID=' + txid + ';Parent=' + gid
-		
+
 		# create the gene entry if necessary
 		if gid not in genes:
 			print('\t'.join([chr_id, 'araport', 'gene', str(chr_beg),
 				str(chr_end), score, strand, '.', 'ID='+gid]))
 			genes[gid] = True
-			
+
 		# create the mRNA entry
 		print('\t'.join([chr_id, 'araport', 'mRNA', str(chr_beg),
 			str(chr_end), score, strand, attr]))
@@ -97,7 +106,7 @@ if arg.source == 'gtf':
 	genes = {}
 	add_stop = None
 	for line in sys.stdin:
-		
+		if line[0,1]=='#': continue
 		#Set Up
 		col = line.rstrip().split('\t')
 		if add_stop == True:
