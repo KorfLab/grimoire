@@ -106,7 +106,7 @@ if arg.source == 'gtf':
 	genes = {}
 	add_stop = None
 	for line in sys.stdin:
-		if line[0,1]=='#': continue
+		if line[0:1]=='#': continue
 		#Set Up
 		col = line.rstrip().split('\t')
 		if add_stop == True:
