@@ -24,9 +24,9 @@ def overlap(f1, f2):
 	Parameters
 	----------
 	f1: object
-		Feature 1. Class Feature.
+		Feature 1
 	f2: object
-		Feature 2. Class Feature.
+		Feature 2
 	"""
 
 	if f1.dna == f2.dna:
@@ -44,11 +44,11 @@ class Feature:
 		Parameters
 		----------
 		dna: object
-			DNA of Feature
+			DNA object
 		beg: int
-			Beginning position of feature
+			Beginning position of feature (1-based)
 		end: int
-			Ending position of feature
+			Ending position of feature (always >= begin)
 		strand: str
 			Forward (+) or reverse (-) strand
 		type: str
@@ -143,10 +143,10 @@ class Feature:
 			self.strand, '.', attr])
 		if self.children:
 			string += '\n'
+			stuff = []
 			for child in self.children:
-				string += child.gff() + '\n'
-			string += '\n'
-
+				stuff.append(child.gff())
+			string += '\n'.join(stuff) + '\n'
 		return string
 
 	def __str__(self):
@@ -171,13 +171,14 @@ class mRNA(Feature):
 	def set_rules(self, clade='std'):
 		"""
 		Set rules for mRNA by clade.
-		Currently, rules include boundaries for the size of introns.
+		Currently, rules include boundaries for the size of introns and
+		canonical signals (start, stop, splices).
 
 		Parameters
 		----------
 		clade: str
 			Type of clade (default is 'std or standard') Currently, 'std' and
-			'mammal' is supported.
+			'mammal' are supported.
 		"""
 
 		if clade == 'std':
@@ -189,7 +190,7 @@ class mRNA(Feature):
 			raise GenomeError('clade not yet supported: ' + clade)
 		self.clade = clade
 
-	def check_overlaps(self, f, type):
+	def _check_overlaps(self, f, type):
 		"""
 		Check for overlap issues
 
@@ -205,7 +206,7 @@ class mRNA(Feature):
 			if f[i-1].end >= f[i].beg:
 				self.issues['overlap_' + type] = True
 
-	def check_lengths(self, features, type):
+	def _check_lengths(self, features, type):
 		"""
 		Check for length issues
 
@@ -285,18 +286,18 @@ class mRNA(Feature):
 							'five_prime_UTR'))
 
 		# check for overlapping features
-		self.check_overlaps(self.exons, 'exon')
-		self.check_overlaps(self.cdss, 'cds')
-		self.check_overlaps(self.utr5s, 'utr5')
-		self.check_overlaps(self.utr3s, 'utr3')
-		self.check_overlaps(self.introns, 'intron')
+		self._check_overlaps(self.exons, 'exon')
+		self._check_overlaps(self.cdss, 'cds')
+		self._check_overlaps(self.utr5s, 'utr5')
+		self._check_overlaps(self.utr3s, 'utr3')
+		self._check_overlaps(self.introns, 'intron')
 
 		# check for unusual lengths
-		self.check_lengths(self.exons, 'exon')
-		self.check_lengths(self.cdss, 'cds')
-		self.check_lengths(self.utr5s, 'utr5')
-		self.check_lengths(self.utr3s, 'utr3')
-		self.check_lengths(self.introns, 'intron')
+		self._check_lengths(self.exons, 'exon')
+		self._check_lengths(self.cdss, 'cds')
+		self._check_lengths(self.utr5s, 'utr5')
+		self._check_lengths(self.utr3s, 'utr3')
+		self._check_lengths(self.introns, 'intron')
 
 		# canonical splicing
 		for intron in self.introns:
@@ -360,29 +361,23 @@ class Genome:
 		Parameters
 		----------
 		species: str
-		   Specie of genome
+		   Species of genome, not really used yet
 		fasta: file
-			Path to fasta file
+			Path to fasta file, may be compressed
 		gff3: file
-			Path to gff3 file
+			Path to gff3 file, may be compressed
 		check_alphabet: bool
-			Check whether it is the correct alphabet
+			Check whether it is the correct alphabet (good idea)
 		"""
 
 		self.species = species
 		self.chromosomes = []
-		ff = toolbox.FASTA_file(fasta)
+		ff = toolbox.FASTA_stream(fasta)
 		gf = toolbox.GFF_file(gff3)
 
-		for chr in gf._chroms:
-			if chr not in ff.offset:
-				raise GenomeError('GFF3 id not in FASTA (' + chr + ')')
-
 		mRNA_parts = ['CDS', 'exon']
-		for id in ff.ids:
-			entry = ff.get(id)
-
-			chrom = sequence.DNA(name=id, seq=entry.seq)
+		for entry in ff:
+			chrom = sequence.DNA(name=entry.id, seq=entry.seq)
 			if check_alphabet: chrom.check_alphabet()
 
 			# convert protein-coding gene-based GFF to Features

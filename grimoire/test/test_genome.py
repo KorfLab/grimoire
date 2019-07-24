@@ -8,8 +8,8 @@ class TestGenome(unittest.TestCase):
 	def test_Genome(self):
 		issues = 0
 		gen = genome.Genome(
-			fasta='data/A.thaliana.1percent.fasta',
-			gff3='data/A.thaliana.1percent.gff3')
+			fasta='data/A.thaliana.1percent.fasta.gz',
+			gff3='data/A.thaliana.1percent.gff3.gz')
 		for c in gen.chromosomes:
 			for g in c.features:
 				for m in g.mRNAs():

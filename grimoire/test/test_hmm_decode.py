@@ -14,8 +14,8 @@ class TestHMM(unittest.TestCase):
 		self.hmm = None
 
 		gen = genome.Genome(
-			gff3='data/C.elegans.1percent.gff3',
-			fasta='data/C.elegans.1percent.fasta')
+			gff3='data/C.elegans.1percent.gff3.gz',
+			fasta='data/C.elegans.1percent.fasta.gz')
 		donor_seqs = []
 		null_seqs = []
 		for chr in gen.chromosomes:

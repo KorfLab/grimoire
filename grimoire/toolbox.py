@@ -18,6 +18,7 @@ is scanned once to record offsets.
 
 import math
 import re
+import gzip
 from functools import reduce
 
 
@@ -26,7 +27,7 @@ class ToolboxError(Exception):
 
 def log(p):
 	"""Returns the value in log base e with a minimum value of -999"""
-	if p < 0: raise ValueError('p < 0')
+	if p < 0: raise ValueError('p < 0: ' + str(p))
 	if p == 0: return -999
 	else:      return math.log(p)
 
@@ -73,21 +74,31 @@ class GFF_file:
 
 		self._chroms = {}
 		self._types = {}
-		with open(filename, 'r') as self.file:
-			while (1):
-				line = self.file.readline()
-				if line == '': break
-				if line[0:1] == '#': continue
-				col = line.split('\t')
-				chrom = col[0]
-				type = col[2]
-				entry = GFF_entry(col)
-				if chrom not in self._chroms: self._chroms[chrom] = []
-				self._chroms[chrom].append(entry)
-				if type not in self._types: self._types[type] = []
-				self._types[type].append(entry)
-				self.chroms = list(self._chroms.keys())
-				self.types = list(self._types.keys())
+		gz = False
+		fp = None
+		if re.search('\.gz$', filename):
+			fp = gzip.open(filename)
+			gz = True
+		else:
+			fp = open(filename, 'r')
+		
+		while (1):
+			line = fp.readline()
+			if gz: line = str(line, 'utf-8')
+			if line == '': break
+			if line[0:1] == '#': continue
+			col = line.split('\t')
+			if len(col) < 8: continue
+			chrom = col[0]
+			type = col[2]
+			entry = GFF_entry(col)
+			if chrom not in self._chroms: self._chroms[chrom] = []
+			self._chroms[chrom].append(entry)
+			if type not in self._types: self._types[type] = []
+			self._types[type].append(entry)
+			self.chroms = list(self._chroms.keys())
+			self.types = list(self._types.keys())
+		fp.close()
 
 	def get(self, type=None, chrom=None, beg=None, end=None):
 		"""
@@ -98,7 +109,7 @@ class GFF_file:
 		----------
 		type: str
 			Type of GFF entry (e.g. exon, gene) (default is None)
-		chrom: int
+		chrom: str
 			Chromosome of interest (default is None)
 		beg: int
 			Beginning coordinate (default is None)
@@ -152,9 +163,18 @@ class GFF_stream:
 		"""
 
 		self.fp = None
-		if   filename    != None: self.fp = open(filename, 'r')
-		elif filepointer != None: self.fp = filepointer
-		else: raise ToolboxError('no file or filepointer given')
+		self.gz = False
+		
+		if filename != None:
+			if re.search('\.gz$', filename):
+				self.fp = gzip.open(filename)
+				self.gz = True
+			else:
+				self.fp = open(filename, 'r')
+		elif filepointer != None:
+			self.fp = filepointer
+		else:
+			raise ToolboxError('no file or filepointer given')
 
 	def __iter__(self):
 		return self
@@ -168,6 +188,7 @@ class GFF_stream:
 		"""
 
 		line = self.fp.readline()
+		if self.gz: line = str(line, 'utf-8')
 		if line == '':
 			self.fp.close()
 			raise StopIteration()
@@ -210,6 +231,8 @@ class FASTA_file:
 		"""
 
 		self.filename = filename
+		if re.search('\.gz$', filename):
+			raise ToolboxError('.gz files not supported in FASTA_file')
 		self.offset = {} # indexes identifiers to file offsets
 		self.ids = []
 		self.file = open(self.filename, 'r')
@@ -266,9 +289,18 @@ class FASTA_stream:
 		"""
 
 		self.fp = None
-		if   filename    != None: self.fp = open(filename, 'r')
-		elif filepointer != None: self.fp = filepointer
-		else: raise ToolboxError('no file or filepointer given')
+		self.gz = False
+		
+		if filename != None:
+			if re.search('\.gz$', filename):
+				self.fp = gzip.open(filename)
+				self.gz = True
+			else:
+				self.fp = open(filename, 'r')
+		elif filepointer != None:
+			self.fp = filepointer
+		else:
+			raise ToolboxError('no file or filepointer given')
 		self.lastline = ''
 		self.done = False
 
@@ -285,8 +317,11 @@ class FASTA_stream:
 
 		if self.done: raise StopIteration()
 		header = None
-		if self.lastline[0:1] == '>': header = self.lastline
-		else:                         header = self.fp.readline()
+		if self.lastline[0:1] == '>':
+			header = self.lastline
+		else:
+			header = self.fp.readline()
+			if self.gz: header = str(header, 'utf-8')
 
 		m = re.search('>\s*(\S+)\s*(.*)', header)
 		id = m[1]
@@ -295,6 +330,7 @@ class FASTA_stream:
 
 		while (True):
 			line = self.fp.readline()
+			if self.gz: line = str(line, 'utf-8')
 			if line[0:1] == '>':
 				self.lastline = line
 				break

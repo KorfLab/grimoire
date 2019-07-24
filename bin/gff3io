@@ -1,13 +1,21 @@
 #!/usr/bin/env python3
+'''
+GFF3io
+
+Takes a file and converts it into the GFF3 format. Currently supports WormBase,
+FlyBase, Tair, Araport, and GTF format.
+
+For gzip files, use gunzip -c to pipe input to GFF3io
+For other files, use cat to pipe input to GFF3io
+'''
 
 import argparse
 import re
+import sys
 
 parser = argparse.ArgumentParser(description='GFF3 gene feature selector')
-parser.add_argument('--file', required=True, type=str,
-	metavar='<path>', help='path to annotation file (%(type)s)')
 parser.add_argument('--source', required=True, type=str,
-	metavar='<string>', help='wb|fb|tair|ap (%(type)s)')
+	metavar='<string>', help='wb|fb|tair|ap|gtf (%(type)s)')
 arg = parser.parse_args()
 
 types = {
@@ -15,127 +23,120 @@ types = {
 	'mRNA' : True,
 	'exon' : True,
 	'CDS' : True,
-	'five_prime_utr' : True,
-	'three_prime_utr' : True,
 }
 
 if arg.source == 'wb':
-	with open(arg.file) as file:
-		for line in file:
-			if line[0:1] == '#': continue
-			col = line.rstrip().split('\t')
-			if col[1] == 'WormBase' and col[2] in types:
-				m = re.search('pseudogene', col[8], re.IGNORECASE)
-				if m: continue
-				print(line, end='')
+	for line in sys.stdin:
+		if line[0:1] == '#': continue
+		col = line.rstrip().split('\t')
+		if col[1] == 'WormBase' and col[2] in types:
+			m = re.search('pseudogene', col[8], re.IGNORECASE)
+			if m: continue
+			print(line, end='')
 
 if arg.source == 'fb':
-	with open(arg.file) as file:
-		for line in file:
-			if line[0:1] == '#':
-				if line[0:7] == '##FASTA':break
-				else: continue
-			col = line.rstrip().split('\t')
-			if col[1] == 'FlyBase' and col[2] in types:
-				# SO:0000043 is the SO tag for 'processed_psedudogene'
-				m = re.search('SO:0000043', col[8])
-				if m: continue
-				print(line, end='')
+	for line in sys.stdin:
+		if line[0:1] == '#':
+			if line[0:7] == '##FASTA':break
+			else: continue
+		col = line.rstrip().split('\t')
+		if col[1] == 'FlyBase' and col[2] in types:
+			# SO:0000043 is the SO tag for 'processed_psedudogene'
+			m = re.search('SO:0000043', col[8])
+			if m: continue
+			print(line, end='')
 
 if arg.source == 'tair':
-	with open(arg.file) as file:
-		for line in file:
-			if line[0:1] == '#': continue
-			col = line.rstrip().split('\t')
-			if col[2] in types:
-				m = re.search('pseud', col[2])
-				if m: continue
-				print(line, end='')
-
+	for line in sys.stdin:
+		if line[0:1] == '#': continue
+		col = line.rstrip().split('\t')
+		if col[2] in types:
+			m = re.search('pseud', col[2])
+			if m: continue
+			print(line, end='')
 
 if arg.source == 'ap':
 	genes = {}
-	with open(arg.file) as file:
-		for line in file:
-			col = line.split('\t')
-			if len(col) < 12: continue
-			chr_id = col[0]
-			chr_beg = int(col[1]) + 1
-			chr_end = int(col[2])
-			txid = col[3]
-			score = col[4]
-			strand = col[5]
-			cds_beg = int(col[6]) + 1
-			cds_end = int(col[7])
-			rgb = col[8]
-			n = int(col[9])
-			sizes = col[10].split(',')
-			starts = col[11].split(',')
-			gid = re.search('(\w+)\.\d+', txid)[1]
-			attr = 'ID=' + txid + ';Parent=' + gid
-		
-			# create the gene entry if necessary
-			if gid not in genes:
-				print('\t'.join([chr_id, 'araport', 'gene', str(chr_beg),
-					str(chr_end), score, strand, '.', 'ID='+gid]))
-				genes[gid] = True
-			
-			# create the mRNA entry
-			print('\t'.join([chr_id, 'araport', 'mRNA', str(chr_beg),
-				str(chr_end), score, strand, attr]))
+	for line in sys.stdin:
+		col = line.split('\t')
+		if len(col) < 12: continue
+		chr_id = col[0]
+		chr_beg = int(col[1]) + 1
+		chr_end = int(col[2])
+		txid = col[3]
+		score = col[4]
+		strand = col[5]
+		cds_beg = int(col[6]) + 1
+		cds_end = int(col[7])
+		rgb = col[8]
+		n = int(col[9])
+		sizes = col[10].split(',')
+		starts = col[11].split(',')
+		gid = re.search('(\w+)\.\d+', txid)[1]
+		attr = 'ID=' + txid + ';Parent=' + gid
 
-			# create the exons and CDS
-			for i in range(n):
-				beg = chr_beg + int(starts[i])
-				end = beg + int(sizes[i]) -1
-				attr = 'Parent=' + txid
-				print('\t'.join([chr_id, 'araport', 'exon', str(beg), str(end),
-					score, strand, ',', attr]))
-				if beg <= cds_end and end >= cds_beg:
-					cb, ce = None, None
-					if beg > cds_beg: cb = beg
-					else:             cb = cds_beg
-					if end > cds_end: ce = cds_end
-					else:             ce = end
-					print('\t'.join([chr_id, 'araport', 'CDS', str(cb),
-						str(ce), score, strand, '.', attr]))
+		# create the gene entry if necessary
+		if gid not in genes:
+			print('\t'.join([chr_id, 'araport', 'gene', str(chr_beg),
+				str(chr_end), score, strand, '.', 'ID='+gid]))
+			genes[gid] = True
+
+		# create the mRNA entry
+		print('\t'.join([chr_id, 'araport', 'mRNA', str(chr_beg),
+			str(chr_end), score, strand, attr]))
+
+		# create the exons and CDS
+		for i in range(n):
+			beg = chr_beg + int(starts[i])
+			end = beg + int(sizes[i]) -1
+			attr = 'Parent=' + txid
+			print('\t'.join([chr_id, 'araport', 'exon', str(beg), str(end),
+				score, strand, ',', attr]))
+			if beg <= cds_end and end >= cds_beg:
+				cb, ce = None, None
+				if beg > cds_beg: cb = beg
+				else:             cb = cds_beg
+				if end > cds_end: ce = cds_end
+				else:             ce = end
+				print('\t'.join([chr_id, 'araport', 'CDS', str(cb),
+					str(ce), score, strand, '.', attr]))
 
 #GTF to GFF3
 if arg.source == 'gtf':
 	genes = {}
-	with open(arg.file) as file:
-		add_stop = None
-		for i, line in enumerate(file):
-			#Set Up
-			col = line.rstrip().split('\t')
-			if add_stop == True:
-				col[3]=str(int(col[3])-3)
-			#Exceptions
-			if col[2]=='transcript':
-				col[2]='mRNA'
-			elif col[2]=='three_prime_utr' or col[2]=='five_prime_utr' or col[2]=='start_codon':
-				del col
-				continue
-			elif col[2]=='stop_codon':
-				add_stop = True
-				del col
-				continue
-			add_stop = False
-			#Convert Features Colomn to Dictionary
-			last_col = col[8].split('; ')
-			features = {}
-			for feature in last_col:
-				temp = feature.replace('"','')
-				temp = temp.split(' ')
-				features.update({temp[0]:temp[1]})
-			#Rewrite last colomn in GFF3 format
-			if col[2]=='gene':
-				col[8]='ID=Gene:'+features['gene_id']
-			if col[2]=='exon':
-				col[8]='Parent=Transcript:'+features['transcript_id']
-			if col[2]=='mRNA':
-				col[8]='ID=Transcript:'+features['transcript_id']+';Parent=Gene:'+features['gene_id']
-			if col[2]=='CDS':
-				col[8]='Parent=Transcript:'+features['transcript_id']
-			updated_line = "\t".join(col)
-			print(updated_line)
+	add_stop = None
+	for line in sys.stdin:
+		if line[0:1]=='#': continue
+		#Set Up
+		col = line.rstrip().split('\t')
+		if add_stop == True:
+			col[3]=str(int(col[3])-3)
+		#Exceptions
+		if col[2]=='transcript':
+			col[2]='mRNA'
+		elif col[2]=='three_prime_utr' or col[2]=='five_prime_utr' or col[2]=='start_codon':
+			del col
+			continue
+		elif col[2]=='stop_codon':
+			add_stop = True
+			del col
+			continue
+		add_stop = False
+		#Convert Features Colomn to Dictionary
+		last_col = col[8].split('; ')
+		features = {}
+		for feature in last_col:
+			temp = feature.replace('"','')
+			temp = temp.split(' ')
+			features.update({temp[0]:temp[1]})
+		#Rewrite last colomn in GFF3 format
+		if col[2]=='gene':
+			col[8]='ID=Gene:'+features['gene_id']
+		if col[2]=='exon':
+			col[8]='Parent=Transcript:'+features['transcript_id']
+		if col[2]=='mRNA':
+			col[8]='ID=Transcript:'+features['transcript_id']+';Parent=Gene:'+features['gene_id']
+		if col[2]=='CDS':
+			col[8]='Parent=Transcript:'+features['transcript_id']
+		updated_line = "\t".join(col)
+		print(updated_line)
