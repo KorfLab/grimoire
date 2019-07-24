@@ -37,7 +37,7 @@ def sumlog(v1, v2):
 	return math.log(1 + math.exp(v2 - v1)) + v1
 
 def prod(iterable):
-	"""Doc string needed"""
+	"""Returns product of the elements in an iterable (e.g. k for k in list)"""
 	return reduce(operator.mul, iterable, 1)
 
 class GFF_entry:
@@ -81,7 +81,7 @@ class GFF_file:
 			gz = True
 		else:
 			fp = open(filename, 'r')
-		
+
 		while (1):
 			line = fp.readline()
 			if gz: line = str(line, 'utf-8')
@@ -152,7 +152,7 @@ class GFF_stream:
 	def __init__(self, filename=None, filepointer=None):
 		"""
 		Use either a path to file or filepointer object.
-		
+
 		Parameters
 		----------
 		filename: str
@@ -164,7 +164,7 @@ class GFF_stream:
 
 		self.fp = None
 		self.gz = False
-		
+
 		if filename != None:
 			if re.search('\.gz$', filename):
 				self.fp = gzip.open(filename)
@@ -279,7 +279,7 @@ class FASTA_stream:
 	def __init__(self, filename=None, filepointer=None):
 		"""
 		Use path to file or file pointer.
-		
+
 		Parameters
 		----------
 		filename: str
@@ -290,7 +290,7 @@ class FASTA_stream:
 
 		self.fp = None
 		self.gz = False
-		
+
 		if filename != None:
 			if re.search('\.gz$', filename):
 				self.fp = gzip.open(filename)
