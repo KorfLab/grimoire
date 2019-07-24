@@ -220,7 +220,7 @@ class HMM_NT_decoder:
 	def _inspect(self, field, beg=None, end=None):
 		if not beg: beg = 0
 		if not end: end = len(self.matrix)
-	
+
 		# print numbers
 		print('{:<6s}'.format(''), end='')
 		for col in range(beg, end):
@@ -440,7 +440,7 @@ class StochasticViterbi(HMM_NT_decoder):
 			sum = 0
 			for s in self.model.states:
 				sum += self.matrix[-1][s.name]['score']
-			
+
 			rsum = 0
 			for s in self.model.states:
 				rsum += self.matrix[-1][s.name]['score'] / sum
@@ -547,7 +547,7 @@ class ForwardBackward(HMM_NT_decoder):
 			p[k.name][T] = {}
 			if self.model.log:
 				p[k.name][0]['f'] = ki + ep
-				p[k.name][T]['b'] = math.inf
+				p[k.name][T]['b'] = 999
 			else:
 				p[k.name][0]['f'] = ki * ep
 				p[k.name][T]['b'] = 1
@@ -556,30 +556,33 @@ class ForwardBackward(HMM_NT_decoder):
 			for k in self.model.states:
 				if self.model.log:
 					# Forward probability
-					p[k.name][t]['f'] =	prod(p[j.name][t-1]['f'] \
-						+ self.tmap[k.name][j.name] \
-						if j.name in self.tmap[k.name] else -999 \
-						for j in self.model.states) + self.emission(k.name, t))
+					p[k.name][t]['f'] = -999
+					for j in self.model.states:
+						prob = p[j.name][t-1]['f'] + \
+							(self.tmap[k.name][j.name] if j.name in self.tmap[k.name] else -999) \
+							+ self.emission(k.name, t)
+						p[k.name][t]['f'] = sumlog(p[k.name][t]['f'], prob)
 					# Backward probability
-					p[k.name][T-t]['b'] = prod(p[j][T-t+1]['b'] \
-						+ self.tmap[j][k.name]
-						+ self.emission(j, T-t+1)) for j in k.next)
+					p[k.name][T-t]['b'] = -999
+					for j in k.next:
+						prob = p[j][T-t+1]['b'] + self.tmap[j][k.name] \
+							+ self.emission(j, T-t+1)
+						p[k.name][T-t]['b'] = sumlog(p[k.name][T-t]['b'], prob)
 				else:
 					# Forward probability
 					p[k.name][t]['f'] = sum(p[j.name][t-1]['f'] \
-					* (self.tmap[k.name][j.name] if j.name in self.tmap[k.name] else 0) \
-					for j in self.model.states) \
-					* self.emission(k.name, t)
+						* (self.tmap[k.name][j.name] if j.name in self.tmap[k.name] else 0) \
+						for j in self.model.states) * self.emission(k.name, t)
 					# Backward probability
 					p[k.name][T-t]['b'] = sum(p[j][T-t+1]['b'] \
-					* self.tmap[j][k.name] \
-					* self.emission(j, T-t+1) for j in k.next)
+						* self.tmap[j][k.name] \
+						* self.emission(j, T-t+1) for j in k.next)
 
 		# Compute posterior probabilities
 		for t in range(0,T+1):
 			for k in self.model.states:
 				if self.model.log:
-					p[k.name][t]['posterior'] = p[k.name][t]['f'] + p[k.name][t]['b'])
+					p[k.name][t]['posterior'] = p[k.name][t]['f'] + p[k.name][t]['b']
 				else:
 					p[k.name][t]['posterior'] = p[k.name][t]['f'] * p[k.name][t]['b']
 
