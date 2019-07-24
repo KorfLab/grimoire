@@ -15,7 +15,7 @@ import sys
 
 parser = argparse.ArgumentParser(description='GFF3 gene feature selector')
 parser.add_argument('--source', required=True, type=str,
-	metavar='<string>', help='wb|fb|tair|ap|gtf (%(type)s)')
+	metavar='<string>', help='wb|fb|tair|ap|gtf')
 arg = parser.parse_args()
 
 types = {

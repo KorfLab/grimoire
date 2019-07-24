@@ -83,17 +83,17 @@ def state_generator(model, init, map, length):
 
 parser = argparse.ArgumentParser(description='HMM sequence generator')
 parser.add_argument('--hmm', required=True, type=str,
-	metavar='<path>', help='path to HMM file (%(type)s)')
+	metavar='<path>', help='path to HMM file')
 parser.add_argument('--fasta', required=True, type=str,
-	metavar='<path>', help='path to output FASTA file (%(type)s)')
+	metavar='<path>', help='path to output FASTA file')
 parser.add_argument('--gff', required=True, type=str,
-	metavar='<path>', help='path to output GFF file (%(type)s)')
+	metavar='<path>', help='path to output GFF file')
 parser.add_argument('--count', required=True, type=int,
-	metavar='<int>', help='number of sequences to generate (%(type)s)')
-parser.add_argument('--length', required=True, type=int, metavar='<int>',
-	help='length of sequences to generate (%(type)s)')
+	metavar='<int>', help='number of sequences to generate')
+parser.add_argument('--length', required=True, type=int,
+	metavar='<int>', help='length of sequences to generate')
 parser.add_argument('--seed', required=False, type=int,
-	metavar='<int>', help='random seed (%(type)s)')
+	metavar='<int>', help='random seed')
 parser.add_argument('--null_model', action='store_true',
 	help='emit sequence from the null model')
 arg = parser.parse_args()

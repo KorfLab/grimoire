@@ -10,13 +10,13 @@ from grimoire.genome import Genome, Feature, mRNA, ProteinCodingGene
 
 parser = argparse.ArgumentParser(description='Converts to single strand genes')
 parser.add_argument('--fasta', required=True, type=str,
-	metavar='<path>', help='path to input fasta file (%(type)s)')
+	metavar='<path>', help='path to input fasta file')
 parser.add_argument('--gff3', required=True, type=str,
-	metavar='<path>', help='path to input GFF3 file (%(type)s)')
+	metavar='<path>', help='path to input GFF3 file')
 parser.add_argument('--out', required=True, type=str,
-	metavar='<str>', help='output name for fasta and gff (%(type)s)')
+	metavar='<str>', help='output name for fasta and gff')
 parser.add_argument('--split', required=False, type=int, default=1,
-	metavar='<int>', help='split into <int> parts [%(default]d)')
+	metavar='<int>', help='split into <int> parts [%(default)d]')
 parser.add_argument('--padding', required=False, type=int, default=100,
 	metavar='<int>', help='length of flanking sequence [%(default)d]')
 arg = parser.parse_args()

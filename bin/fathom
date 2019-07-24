@@ -13,17 +13,17 @@ import grimoire.toolbox as toolbox
 
 ## Command Line ##
 
-parser = argparse.ArgumentParser(description='Genome annotation tool')
+parser = argparse.ArgumentParser(description='Genome annotation inspector')
 parser.add_argument('--fasta', required=True, type=str,
-	metavar='<path>', help='path to fasta file (%(type)s)')
+	metavar='<path>', help='path to fasta file')
 parser.add_argument('--gff3', required=True, type=str,
-	metavar='<path>', help='path to GFF file (%(type)s)')
+	metavar='<path>', help='path to GFF file')
 parser.add_argument('--title', required=True, type=str,
-	metavar='<path>', help='title of report (%(type)s)')
+	metavar='<path>', help='title of report')
 parser.add_argument('--html', required=True, type=str,
-	metavar='<path>', help='path to html output file (%(type)s)')
+	metavar='<path>', help='path to html output file')
 parser.add_argument('--json', required=False, type=str,
-	metavar='<path>', help='path to json output file (%(type)s)')
+	metavar='<path>', help='path to json output file')
 arg = parser.parse_args()
 
 ## needs a bunch of formatting options for the figures
