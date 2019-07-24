@@ -25,4 +25,9 @@ Contributors
 + Jack Yu
 + Joy Liu
 
+Acknowledgements
+----------------
+
++ M. O. Trebor
++ E. W. Werdna
 
