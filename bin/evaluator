@@ -3,6 +3,7 @@
 import argparse
 import sys
 
+import grimoire.genome as genome
 import grimoire.toolbox as toolbox
 import grimoire.sequence as sequence
 import grimoire.hmm as hmm
@@ -20,7 +21,7 @@ parser.add_argument('--type_map', required=False, type=str,
 	metavar='<path>', help='file of feature type mappings (where different)')
 arg = parser.parse_args()
 
-genome = toolbox.Genomic(fasta=arg.fasta, gff=arg.file1)
+genome = genome.Genomic(fasta=arg.fasta, gff=arg.file1)
 for chrom in genome:
 	print(chrom.name)
 	for f in chrom.features:
