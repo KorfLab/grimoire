@@ -16,6 +16,18 @@ The code is designed with the folllowing analyses in mind:
 + Gene structure prediction using hidden Markov models and variants
 + Genome annotation quality control
 
+Programs:
+
++ milwa - reveals genes (light)
++ calfo - describes contents of genome annotation (x-ray vision)
++ kandi - finds specific genes (locate soul)
++ dumapic - displays HMM graphically (clarity)
++ halito - builds small HMMs (little fire)
++ mahalito -builds big models (big fire)
++ morlis - creates fake sequences (fear)
++ malor - moves genes on chromosomes onto mini chromosomes (apport)
++ porfic - sanitizes the gff/gtf/bed12 to gff3 (shield)
+
 Contributors
 ------------
 
@@ -28,6 +40,6 @@ Contributors
 Acknowledgements
 ----------------
 
-+ M. O. Trebor
-+ E. W. Werdna
+Thanks to M. O. Trebor and E. W. Werdna for inspiration.
+
 
