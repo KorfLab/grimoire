@@ -12,6 +12,7 @@ For other files, use cat to pipe input to GFF3io
 import argparse
 import re
 import sys
+import grimoire.toolbox as toolbox
 
 parser = argparse.ArgumentParser(description='GFF3 gene feature selector')
 parser.add_argument('--source', required=True, type=str,
@@ -105,38 +106,53 @@ if arg.source == 'ap':
 if arg.source == 'gtf':
 	genes = {}
 	add_stop = None
+	file = []
+	stops = []
+	#Process and pull into memory
 	for line in sys.stdin:
 		if line[0:1]=='#': continue
-		#Set Up
 		col = line.rstrip().split('\t')
-		if add_stop == True:
-			col[3]=str(int(col[3])-3)
+		entry = toolbox.GFF_entry(col)
+		if entry.type == 'stop_codon':
+			stops.append(entry)
+			continue
+		file.append(entry)
+	#Post Processing and Check for Formatting
+	for entry in file:
+		#Check for stops
+		for stop in stops:
+			if entry.chrom != stop.chrom: continue
+			if entry.strand != stop.strand: continue
+			if entry.strand == '+':
+				if entry.end == stop.beg - 1:
+					entry.end = entry.end + 3
+				continue
+			if entry.strand == '-':
+				if entry.beg == stop.end + 1:
+					entry.beg = entry.beg - 3
+				continue
 		#Exceptions
-		if col[2]=='transcript':
-			col[2]='mRNA'
-		elif col[2]=='three_prime_utr' or col[2]=='five_prime_utr' or col[2]=='start_codon':
-			del col
+		if entry.type == 'transcript':
+			entry.type = 'mRNA'
+		elif entry.type == 'three_prime_utr' or entry.type == 'five_prime_utr' or entry.type == 'start_codon':
+			del entry
 			continue
-		elif col[2]=='stop_codon':
-			add_stop = True
-			del col
-			continue
-		add_stop = False
 		#Convert Features Colomn to Dictionary
-		last_col = col[8].split('; ')
+		attr = entry.attr.split('; ')
 		features = {}
-		for feature in last_col:
+		for feature in attr:
 			temp = feature.replace('"','')
 			temp = temp.split(' ')
 			features.update({temp[0]:temp[1]})
 		#Rewrite last colomn in GFF3 format
-		if col[2]=='gene':
-			col[8]='ID=Gene:'+features['gene_id']
-		if col[2]=='exon':
-			col[8]='Parent=Transcript:'+features['transcript_id']
-		if col[2]=='mRNA':
-			col[8]='ID=Transcript:'+features['transcript_id']+';Parent=Gene:'+features['gene_id']
-		if col[2]=='CDS':
-			col[8]='Parent=Transcript:'+features['transcript_id']
-		updated_line = "\t".join(col)
+		if entry.type == 'gene':
+			entry.attr = 'ID=Gene:'+features['gene_id']
+		if entry.type == 'exon':
+			entry.attr = 'Parent=Transcript:'+features['transcript_id']
+		if entry.type == 'mRNA':
+			entry.attr = 'ID=Transcript:'+features['transcript_id']+';Parent=Gene:'+features['gene_id']
+		if entry.type == 'CDS':
+			entry.attr = 'Parent=Transcript:'+features['transcript_id']
+		updated_line = "\t".join([entry.chrom,entry.source,entry.type,
+			str(entry.beg),str(entry.end),entry.score,entry.strand,entry.phase,entry.attr])
 		print(updated_line)
