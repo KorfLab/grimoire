@@ -21,6 +21,8 @@ import re
 import gzip
 from functools import reduce
 
+from grimoire.sequence import DNA
+from grimoire.genome import Feature, ProteinCodingGene, mRNA
 
 class ToolboxError(Exception):
 	pass
@@ -147,7 +149,7 @@ class GFF_file:
 		return found
 
 class GFF_stream:
-	"""Class for reading GFF records one at a time"""
+	"""Class for iterating through GFF records"""
 
 	def __init__(self, filename=None, filepointer=None):
 		"""
@@ -218,7 +220,7 @@ class FASTA_entry:
 		self.seq = seq
 
 class FASTA_file:
-	"""Class for reading a FASTA file with random acess"""
+	"""Class for reading a FASTA file with random access"""
 
 	def __init__(self, filename):
 		"""
@@ -274,7 +276,7 @@ class FASTA_file:
 		return FASTA_entry(id, desc, "".join(seq))
 
 class FASTA_stream:
-	"""Class for reading FASTA records in a stream"""
+	"""Class for iterating through a FASTA file"""
 
 	def __init__(self, filename=None, filepointer=None):
 		"""
@@ -343,3 +345,116 @@ class FASTA_stream:
 			seq.append(line.strip())
 
 		return FASTA_entry(id, desc, "".join(seq))
+
+class Genome:
+	"""Class for iterating through DNA objects with attached feature tables"""
+
+	def __init__(self, fasta=None, gff=None, check_alphabet=None):
+		"""
+		Use path to file or file pointer.
+
+		Parameters
+		----------
+		fasta: str
+			Path to fasta file (may be compressed)
+		gff: str
+			Path to gff file (may be compressed)
+		"""
+
+		self.fp = None
+		self.gz = False
+		self.gff = GFF_file(gff)
+		self.check = check_alphabet
+
+		if re.search('\.gz$', fasta):
+			self.fp = gzip.open(fasta)
+			self.gz = True
+		else:
+			self.fp = open(fasta, 'r')
+		self.lastline = ''
+		self.done = False
+
+	def __iter__(self):
+		return self
+
+	def __next__(self):
+		return self.next()
+
+	def next(self):
+		"""
+		Retrieves the next entry of the FASTA file as DNA with features
+		"""
+
+		if self.done: raise StopIteration()
+		header = None
+		if self.lastline[0:1] == '>':
+			header = self.lastline
+		else:
+			header = self.fp.readline()
+			if self.gz: header = str(header, 'utf-8')
+
+		m = re.search('>\s*(\S+)\s*(.*)', header)
+		id = m[1]
+		desc = m[2]
+		seq = []
+
+		while (True):
+			line = self.fp.readline()
+			if self.gz: line = str(line, 'utf-8')
+			if line[0:1] == '>':
+				self.lastline = line
+				break
+			if line == '':
+				self.done = True
+				self.fp.close()
+				break
+
+			line = line.replace(' ', '')
+			seq.append(line.strip())
+		
+		mRNA_parts = ['CDS', 'exon']
+		dna = DNA(name = id, seq=''.join(seq))
+		if self.check: dna.check_alphabet()
+
+		# build gene features and attach non-gene features
+		genes = {}
+		mRNAs = {}
+		parts = []
+		for g in self.gff.get(chrom=dna.name):
+			id, pid = None, None
+			im = re.search('ID=([\w\.\:]+)', g.attr)
+			pm = re.search('Parent=([\w\.:]+)', g.attr)
+			if im: id = im[1]
+			if pm: pid = pm[1]
+			if g.type == 'gene':
+				genes[id] = ProteinCodingGene(dna, g.beg, g.end, g.strand,
+					g.type, id=id, parent_id=pid)
+			elif g.type == 'mRNA':
+				mRNAs[id] = mRNA(dna, g.beg, g.end, g.strand, g.type,
+					id=id, parent_id=pid)
+			elif g.type in mRNA_parts:
+				parts.append(Feature(dna, g.beg, g.end, g.strand, g.type,
+					id=id, parent_id=pid))
+			else:
+				dna.features.append(Feature(dna, g.beg, g.end, g.strand,
+					g.type, source=g.source, score=g.score,
+					id=id, parent_id=pid))
+		
+		# add parts to mRNAs
+		for f in parts:
+			f.validate()
+			if f.parent_id in mRNAs:
+				mRNAs[f.parent_id].add_child(f)
+
+		# add mRNAs to genes
+		for txid in mRNAs:
+			f = mRNAs[txid]
+			if f.parent_id in genes:
+				genes[f.parent_id].add_child(f)
+
+		# add genes to dna
+		for gid in genes:
+			dna.features.append(genes[gid])
+			
+		return dna
+
