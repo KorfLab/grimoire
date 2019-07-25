@@ -1,0 +1,28 @@
+#!/usr/bin/env python3
+
+import argparse
+import sys
+
+import grimoire.toolbox as toolbox
+import grimoire.sequence as sequence
+import grimoire.hmm as hmm
+import grimoire.decode as decode
+
+## Command line w/ Argparse ##
+parser = argparse.ArgumentParser(description='Performance evaluation program')
+parser.add_argument('--fasta', required=True, type=str,
+	metavar='<path>', help='path to fasta file')
+parser.add_argument('--file1', required=True, type=str,
+	metavar='<path>', help='path to file1 in gff')
+parser.add_argument('--file2', required=True, type=str,
+	metavar='<path>', help='path to file2 in gff')
+parser.add_argument('--type_map', required=False, type=str,
+	metavar='<path>', help='file of feature type mappings (where different)')
+arg = parser.parse_args()
+
+genome = toolbox.Genome(fasta=arg.fasta, gff=arg.file1)
+for chrom in genome:
+	print(chrom.name)
+	for f in chrom.features:
+		print(f.type)
+
