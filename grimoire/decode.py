@@ -268,6 +268,9 @@ class Viterbi(HMM_NT_decoder):
 		self.tmap = self.transition_map()
 		self.smap = self.state_map()
 		self.set_null_score()
+		
+		if len(self.dna.seq) > 100 and not self.model.log:
+			sys.stderr.write('underflowing? use logspace model')
 
 		# initialize viterbi matrix
 		v = []
