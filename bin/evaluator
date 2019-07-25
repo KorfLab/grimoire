@@ -20,7 +20,7 @@ parser.add_argument('--type_map', required=False, type=str,
 	metavar='<path>', help='file of feature type mappings (where different)')
 arg = parser.parse_args()
 
-genome = toolbox.Genome(fasta=arg.fasta, gff=arg.file1)
+genome = toolbox.Genomic(fasta=arg.fasta, gff=arg.file1)
 for chrom in genome:
 	print(chrom.name)
 	for f in chrom.features:

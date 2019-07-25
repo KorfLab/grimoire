@@ -22,7 +22,7 @@ import gzip
 from functools import reduce
 
 from grimoire.sequence import DNA
-from grimoire.genome import Feature, ProteinCodingGene, mRNA
+import grimoire.genome as genome
 
 class ToolboxError(Exception):
 	pass
@@ -346,7 +346,7 @@ class FASTA_stream:
 
 		return FASTA_entry(id, desc, "".join(seq))
 
-class Genome:
+class Genomic:
 	"""Class for iterating through DNA objects with attached feature tables"""
 
 	def __init__(self, fasta=None, gff=None, check_alphabet=None):
@@ -427,16 +427,16 @@ class Genome:
 			if im: id = im[1]
 			if pm: pid = pm[1]
 			if g.type == 'gene':
-				genes[id] = ProteinCodingGene(dna, g.beg, g.end, g.strand,
-					g.type, id=id, parent_id=pid)
+				genes[id] = genome.ProteinCodingGene(dna, g.beg, g.end, 
+					g.strand, g.type, id=id, parent_id=pid)
 			elif g.type == 'mRNA':
-				mRNAs[id] = mRNA(dna, g.beg, g.end, g.strand, g.type,
+				mRNAs[id] = genome.mRNA(dna, g.beg, g.end, g.strand, g.type,
 					id=id, parent_id=pid)
 			elif g.type in mRNA_parts:
-				parts.append(Feature(dna, g.beg, g.end, g.strand, g.type,
+				parts.append(genome.Feature(dna, g.beg, g.end, g.strand, g.type,
 					id=id, parent_id=pid))
 			else:
-				dna.features.append(Feature(dna, g.beg, g.end, g.strand,
+				dna.features.append(genome.Feature(dna, g.beg, g.end, g.strand,
 					g.type, source=g.source, score=g.score,
 					id=id, parent_id=pid))
 		
