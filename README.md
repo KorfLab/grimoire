@@ -19,7 +19,7 @@ The code is designed with the folllowing analyses in mind:
 Programs:
 
 + milwa - reveals genes (light)
-+ calfo - describes contents of genome annotation (x-ray vision)
++ calfo/latumapic - describes contents of genome annotation (x-ray vision, location?)
 + kandi - finds specific genes (locate soul)
 + dumapic - displays HMM graphically (clarity)
 + halito - builds small HMMs (little fire)
@@ -27,6 +27,8 @@ Programs:
 + morlis - creates fake sequences (fear)
 + malor - moves genes on chromosomes onto mini chromosomes (apport)
 + porfic - sanitizes the gff/gtf/bed12 to gff3 (shield)
++ ?????? - compares predicted genes
++ ?????? - converts transcripts to CDS for those special models (lomilwa?)
 
 Contributors
 ------------
