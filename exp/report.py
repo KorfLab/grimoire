@@ -8,9 +8,9 @@ import argparse
 
 parser = argparse.ArgumentParser(description='Quantify Evaluation')
 parser.add_argument('--eval', required=True, type=str,
-	metavar='<path>', help='path to eval file (%(type)s)')
-parser.add_argument('--report_diff', required=False, action='store_true',
-	help='give detailed report on prediction differences(%(type)s)')
+	metavar='<path>', help='path to input eval file (%(type)s)')
+parser.add_argument('--report', required=False, type=str,
+	metavar='<path>', help='path to output report file for prediction differences(%(type)s)')
 arg = parser.parse_args()
 
 class Eval_entry:
@@ -27,8 +27,9 @@ lorf_mRNA2_diff = 0
 mRNA1_mRNA2_diff = 0
 all_diff = 0
 total = 0
+report_entries = []
 
-with open(arg.eval) as eval:
+with open(arg.eval,'r') as eval:
     for line in eval:
         line = line.replace('\r','')
         line = line.replace('\n','')
@@ -47,9 +48,14 @@ with open(arg.eval) as eval:
             mRNA1_mRNA2_diff += 1
         if entry.diff == True:
             all_diff += 1
-            if arg.report_diff:
-                print(entry.id+'\t'+entry.lorf+'\t'+entry.mRNA1+'\t'+entry.mRNA2)
+            if arg.report:
+                report_entries.append(entry)
         total += 1
+
+if entry.diff == True:
+    with open(arg.report,'w+') as report:
+        for entry in report_entries:
+            report.write(entry.id+'\t'+entry.lorf+'\t'+entry.mRNA1+'\t'+entry.mRNA2+'\n\r')
 
 print('LORF mRNA1 Diff: '+str(lorf_mRNA1_diff)+' out of '+str(total)+' predictions')
 print('LORF mRNA2 Diff: '+str(lorf_mRNA2_diff)+' out of '+str(total)+' predictions')
