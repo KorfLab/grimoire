@@ -23,27 +23,53 @@ parser.add_argument('--fasta', required=True, type=str,
 	metavar='<path>', help='path to fasta file (%(type)s)')
 parser.add_argument('--gff3', required=True, type=str,
 	metavar='<path>', help='path to GFF file (%(type)s)')
+parser.add_argument('--mRNA1', required=True, type=str,
+	metavar='<path>', help = 'path to the mRNA 1 HMM model. if HMM path not found it'+
+	' will be generated for you (%(type)s)')
+parser.add_argument('--mRNA2', required=True, type=str,
+	metavar='<path>', help = 'path to the mRNA 2 HMM model. if HMM path not found it'+
+	' will be generated for you (%(type)s)')
+parser.add_argument('--overwrite', action ='store_true', required=False,
+	help='overwrite previous HMM')
 parser.add_argument('--work', required=True, type=str,
 	metavar='<path>', help='path to the working directory (%(type)s)')
 arg = parser.parse_args()
 
-os.system(
-    'python3 bin/forge '+
-    '--fasta '+arg.fasta+' '+
-    '--gff3 '+arg.gff3+' '+
-    '--model '+'mRNA1'+' '+
-    '--hmm '+arg.work+'C.elegans.mRNA1.hmm'+' '+
-    '--source '+arg.work+'C.elegans.mRNA1.source'
-    )
 
-os.system(
-    'python3 bin/forge '+
-    '--fasta '+arg.fasta+' '+
-    '--gff3 '+arg.gff3+' '+
-    '--model '+'mRNA2'+' '+
-    '--hmm '+arg.work+'C.elegans.mRNA2.hmm'+' '+
-    '--source '+arg.work+'C.elegans.mRNA2.source'
-    )
+class OverwriteError(Exception):
+	pass
+
+if (os.path.exists(arg.mRNA1)==False and os.path.exists(arg.mRNA1)==False) or arg.overwrite==True:
+	print('Overwriting/Creating')
+	os.system(
+	    'python3 bin/forge '+
+	    '--fasta '+arg.fasta+' '+
+	    '--gff3 '+arg.gff3+' '+
+	    '--model '+'mRNA1'+' '+
+	    '--hmm '+arg.mRNA1+' '+
+	    '--source '+arg.work+'C.elegans.mRNA1.source'+' '+
+		'--u5_ctx '+'5 '+
+		'--u3_ctx '+'5 '+
+		'--koz_ctx '+'1 '+
+		'--atg_ctx '+'2 '+
+		'--stop_ctx '+'2'
+	    )
+	os.system(
+	    'python3 bin/forge '+
+	    '--fasta '+arg.fasta+' '+
+	    '--gff3 '+arg.gff3+' '+
+	    '--model '+'mRNA2'+' '+
+	    '--hmm '+arg.mRNA2+' '+
+	    '--source '+arg.work+'C.elegans.mRNA2.source'+' '+
+		'--u5_ctx '+'5 '+
+		'--u3_ctx '+'5 '+
+		'--koz_ctx '+'1 '+
+		'--atg_ctx '+'2 '+
+		'--stop_ctx '+'2'
+	    )
+	print('Forge Completed')
+elif os.path.exists(arg.hmm)==True:
+	raise OverwriteError('File already exists. Write --overwrite to override')
 
 fasta=toolbox.FASTA_stream(filename = arg.work+'C.elegans.mRNA1.source.fasta')
 gff =toolbox.GFF_file(filename = arg.work+'C.elegans.mRNA1.source.gff')
