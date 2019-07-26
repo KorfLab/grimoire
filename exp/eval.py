@@ -11,11 +11,11 @@ import os
 import json
 import operator
 import argparse
+import grimoire.toolbox as toolbox
+import grimoire.sequence as sequence
 import grimoire.genome as genome
 import grimoire.decode as decode
 import grimoire.hmm as hmm
-import grimoire.toolbox as toolbox
-import grimoire.sequence as sequence
 
 #Command Line
 parser = argparse.ArgumentParser(description='Evaluate 3 Different Models')
@@ -32,8 +32,8 @@ os.system(
     '--fasta '+arg.fasta+' '+
     '--gff3 '+arg.gff3+' '+
     '--model '+'mRNA1'+' '+
-    '--hmm '+arg.work+'C.elegans.1percent.mRNA1.hmm'+' '+
-    '--source '+arg.work+'C.elegans.1percent.mRNA1.source'
+    '--hmm '+arg.work+'C.elegans.mRNA1.hmm'+' '+
+    '--source '+arg.work+'C.elegans.mRNA1.source'
     )
 
 os.system(
@@ -41,21 +41,12 @@ os.system(
     '--fasta '+arg.fasta+' '+
     '--gff3 '+arg.gff3+' '+
     '--model '+'mRNA2'+' '+
-    '--hmm '+arg.work+'C.elegans.1percent.mRNA2.hmm'+' '+
-    '--source '+arg.work+'C.elegans.1percent.mRNA2.source'
+    '--hmm '+arg.work+'C.elegans.mRNA2.hmm'+' '+
+    '--source '+arg.work+'C.elegans.mRNA2.source'
     )
 
-'''
-os.system(
-    'python3 bin/chromify '+
-    '--fasta '+'data/C.elegans.1percent.fasta'+' '+
-    '--gff3 '+'data/C.elegans.1percent.gff3'+' '+
-    '--out '+'data/C.elegans.source'
-    )
-'''
-
-fasta=toolbox.FASTA_stream(filename = arg.work+'C.elegans.1percent.mRNA1.source.fasta')
-gff =toolbox.GFF_file(filename = arg.work+'C.elegans.1percent.mRNA1.source.gff')
+fasta=toolbox.FASTA_stream(filename = arg.work+'C.elegans.mRNA1.source.fasta')
+gff =toolbox.GFF_file(filename = arg.work+'C.elegans.mRNA1.source.gff')
 
 #Extract from GFF3
 GFF3_genes = {}
@@ -70,7 +61,7 @@ for entry in fasta:
 
 #mRNA1 model
 mRNA1_genes = []
-mRNA1_hmm = hmm.HMM.read(arg.work+'C.elegans.1percent.mRNA1.hmm')
+mRNA1_hmm = hmm.HMM.read(arg.work+'C.elegans.mRNA1.hmm')
 mRNA1_hmm.convert2log()
 for dna in dnas:
     mRNA1 = decode.Viterbi(model=mRNA1_hmm,dna=dna)
@@ -82,7 +73,7 @@ for dna in dnas:
 
 #mRNA2 model
 mRNA2_genes = []
-mRNA2_hmm = hmm.HMM.read(arg.work+'C.elegans.1percent.mRNA2.hmm')
+mRNA2_hmm = hmm.HMM.read(arg.work+'C.elegans.mRNA2.hmm')
 mRNA2_hmm.convert2log()
 for dna in dnas:
     mRNA2 = decode.Viterbi(model=mRNA2_hmm,dna=dna)
