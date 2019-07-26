@@ -5,13 +5,22 @@ Takes in .eval files and find differences in predictions
 '''
 
 import argparse
+import grimoire.toolbox as toolbox
+import grimoire.sequence as sequence
 
 parser = argparse.ArgumentParser(description='Quantify Evaluation')
 parser.add_argument('--eval', required=True, type=str,
 	metavar='<path>', help='path to input eval file (%(type)s)')
 parser.add_argument('--report', required=False, type=str,
 	metavar='<path>', help='path to output report file for prediction differences(%(type)s)')
+parser.add_argument('--infasta', required=False, type=str,
+	metavar='<path>', help='path to input FASTA file for protein translation(%(type)s)')
+parser.add_argument('--outfasta', required=False, type=str,
+	metavar='<path>', help='path to output FASTA file for protein translation(%(type)s)')
 arg = parser.parse_args()
+
+class ReportError(Exception):
+    pass
 
 class Eval_entry:
     def __init__(self, id, lorf, mRNA1, mRNA2):
@@ -52,10 +61,39 @@ with open(arg.eval,'r') as eval:
                 report_entries.append(entry)
         total += 1
 
+outfasta = []
 if entry.diff == True:
-    with open(arg.report,'w+') as report:
+    if arg.report:
+        with open(arg.report,'w+') as report:
+            for entry in report_entries:
+                report.write(entry.id+'\t'+entry.lorf+'\t'+entry.mRNA1+'\t'+entry.mRNA2+'\n\r')
+        if not arg.infasta or arg.outfasta:
+            raise ReportError('Did not input all necessary arguments')
+        fasta = toolbox.FASTA_file(arg.infasta)
         for entry in report_entries:
-            report.write(entry.id+'\t'+entry.lorf+'\t'+entry.mRNA1+'\t'+entry.mRNA2+'\n\r')
+            #ISSUE: THIS PART BREAKS SUPER EASILY IF ID DOES NOT 100% MATCH
+            entry.id = entry.id.replace('gene','remapped')
+            fasta_entry = fasta.get(entry.id)
+            #at this point, all seq are nt
+            length = len(fasta_entry.seq)
+            lorf_seq = fasta_entry.seq[int(entry.lorf):int(length)]
+            mRNA1_seq = fasta_entry.seq[int(entry.mRNA1):int(length)]
+            mRNA2_seq = fasta_entry.seq[int(entry.mRNA2):int(length)]
+            #translate nt to pro
+            lorf_seq = sequence.translate_str(lorf_seq)
+            mRNA1_seq = sequence.translate_str(mRNA1_seq)
+            mRNA2_seq = sequence.translate_str(mRNA2_seq)
+            lorf = toolbox.FASTA_entry(id=entry.id+'-lorf', desc='LORF', seq=lorf_seq)
+            mRNA1 = toolbox.FASTA_entry(id=entry.id+'-m1', desc='mRNA1', seq=mRNA1_seq)
+            mRNA2 = toolbox.FASTA_entry(id=entry.id+'-m2', desc='mRNA2', seq=mRNA2_seq)
+            outfasta.append(lorf)
+            outfasta.append(mRNA1)
+            outfasta.append(mRNA2)
+
+        with open(arg.outfasta,'w+') as out:
+            for fasta_entry in outfasta:
+                out.write('>'+fasta_entry.id+'\n\r')
+                out.write(fasta_entry.seq+'\n\r')
 
 print('LORF mRNA1 Diff: '+str(lorf_mRNA1_diff)+' out of '+str(total)+' predictions')
 print('LORF mRNA2 Diff: '+str(lorf_mRNA2_diff)+' out of '+str(total)+' predictions')
