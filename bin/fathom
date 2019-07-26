@@ -90,9 +90,12 @@ def bar_chart(data, title):
 		else:
 			names.append(i[0])
 			values.append(i[1])
+	
 	if overflow:
 		names.append('others')
 		values.append(overflow)
+	names.reverse()
+	values.reverse()
 	
 	ax.barh(names, values)
 	ax.set(title='Figure ' + str(FigureNumber) + ': ' + title)
