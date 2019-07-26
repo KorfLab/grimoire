@@ -122,7 +122,7 @@ class GFF_file:
 				raise ToolboxError('type not defined: ' + type)
 			type_search[type] = True
 		else:
-			for t in self.types: type_search[t] = True
+			for t in self._types: type_search[t] = True
 
 		chrom_search = []
 		if chrom:
