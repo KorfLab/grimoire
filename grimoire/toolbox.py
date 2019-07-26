@@ -193,7 +193,7 @@ class GFF_stream:
 			raise StopIteration()
 		if line[0:1] == '#': return self.next()
 		col = line.split('\t')
-		if len(col) < 9: return self.next()
+		if len(col) < 8: return self.next()
 		chrom = col[0]
 		type = col[2]
 		return GFF_entry(col)
