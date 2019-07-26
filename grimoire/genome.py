@@ -30,7 +30,7 @@ def overlap(f1, f2):
 		Feature 2
 	"""
 
-	if f1.dna == f2.dna:
+	if f1.dna.name == f2.dna.name:
 		if f1.beg >= f2.beg and f1.beg <= f2.end: return True
 		if f1.end >= f2.beg and f1.end <= f2.end: return True
 		if f1.beg <= f2.beg and f1.end >= f2.end: return True
