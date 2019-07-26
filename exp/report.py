@@ -66,8 +66,8 @@ if entry.diff == True:
     if arg.report:
         with open(arg.report,'w+') as report:
             for entry in report_entries:
-                report.write(entry.id+'\t'+entry.lorf+'\t'+entry.mRNA1+'\t'+entry.mRNA2+'\n\r')
-        if not arg.infasta or arg.outfasta:
+                report.write(entry.id+'\t'+entry.lorf+'\t'+entry.mRNA1+'\t'+entry.mRNA2+'\n')
+        if not arg.infasta or not arg.outfasta:
             raise ReportError('Did not input all necessary arguments')
         fasta = toolbox.FASTA_file(arg.infasta)
         for entry in report_entries:
@@ -92,8 +92,8 @@ if entry.diff == True:
 
         with open(arg.outfasta,'w+') as out:
             for fasta_entry in outfasta:
-                out.write('>'+fasta_entry.id+'\n\r')
-                out.write(fasta_entry.seq+'\n\r')
+                out.write('>'+fasta_entry.id+'\n')
+                out.write(fasta_entry.seq+'\n')
 
 print('LORF mRNA1 Diff: '+str(lorf_mRNA1_diff)+' out of '+str(total)+' predictions')
 print('LORF mRNA2 Diff: '+str(lorf_mRNA2_diff)+' out of '+str(total)+' predictions')
