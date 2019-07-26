@@ -3,6 +3,7 @@
 import argparse
 import base64
 import io
+import operator
 import statistics
 import sys
 
@@ -79,8 +80,20 @@ def bar_chart(data, title):
 	FigureNumber += 1
 	
 	fig, ax = plt.subplots()
-	names = list(data.keys())
-	values = list(data.values())
+	
+	overflow = 0
+	names = []
+	values = []
+	for i in sorted(data.items(), key=operator.itemgetter(1), reverse=True):
+		if len(names) > 30:
+			overflow += i[1]
+		else:
+			names.append(i[0])
+			values.append(i[1])
+	if overflow:
+		names.append('others')
+		values.append(overflow)
+	
 	ax.barh(names, values)
 	ax.set(title='Figure ' + str(FigureNumber) + ': ' + title)
 	
