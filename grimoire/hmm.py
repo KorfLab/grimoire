@@ -213,15 +213,12 @@ def train_cds(seqs, context=0):
 			freqs.append(freq)
 	else:
 		for seq in seqs:
-			#print(seq[0:10])
-			for i in range(0, len(seq) -context -3, 3):
-				for j in range(3):
-					pos = i + j + context
-					ctx = seq[i+j:i+j+context]
-					nt = seq[i + j + context]
-					#print('>>', i, j, pos, ctx, nt)
-					if (ctx in counts[j] and nt in counts[j][ctx]) :
-						counts[j][ctx][nt] += 1
+			for i in range(context, len(seq), 1):
+				ctx = seq[i-context:i]
+				nt = seq[i]
+				frame = i % 3
+				if (ctx in counts[frame] and nt in counts[frame][ctx]) :
+						counts[frame][ctx][nt] += 1
 		for j in range(3):
 			freqs.append({})
 			for ctx in counts[j]:
