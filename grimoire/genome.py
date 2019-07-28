@@ -40,7 +40,7 @@ class Feature:
 	"""Class representing a sequence feature, which may have children"""
 
 	def __init__(self, dna, beg, end, strand, type,
-			id=None, score='.', source='.', parent_id=None):
+			id=None, phase='.', score='.', source='.', parent_id=None):
 		"""
 		Parameters
 		----------
@@ -58,10 +58,17 @@ class Feature:
 			Feature ID  (default is None)
 		score: float/str
 			A floating point number (default is '.')
+		phase: [0, 1, 2] or .
+			Coding phase (for CDS features only)
 		source: str
 			Data source (default is '.')
 		parent_id: str
 			ID of parent (default is None)
+		
+		Notes
+		-----
+		features is a list of feature objects
+		genes is a list of features constructed into genes
 		"""
 
 		self.dna = dna
@@ -70,6 +77,7 @@ class Feature:
 		self.length = end - beg + 1
 		self.strand = strand
 		self.type = type
+		self.phase = phase
 		self.id = id
 		self.parent_id = parent_id
 		self.score = score
@@ -141,7 +149,7 @@ class Feature:
 
 		string = '\t'.join([self.dna.name, self.source, self.type,
 			str(self.beg), str(self.end), str(self.score),
-			self.strand, '.', attr])
+			self.strand, self.phase, attr])
 		if self.children:
 			string += '\n'
 			stuff = []
@@ -417,7 +425,6 @@ class Genome:
 			# add chromosome to genome
 			self.chromosomes.append(chrom)
 
-
 class Genomic:
 	"""Class for iterating through DNA objects with attached feature tables"""
 
@@ -484,11 +491,22 @@ class Genomic:
 			line = line.replace(' ', '')
 			seq.append(line.strip())
 		
-		mRNA_parts = ['CDS', 'exon']
 		dna = sequence.DNA(name = id, seq=''.join(seq))
 		if self.check: dna.check_alphabet()
 
-		# build gene features and attach non-gene features
+		# add features
+		for g in self.gff.get(chrom=dna.name):
+			id, pid = None, None
+			im = re.search('ID=([\w\.\:]+)', g.attr)
+			pm = re.search('Parent=([\w\.:]+)', g.attr)
+			if im: id = im[1]
+			if pm: pid = pm[1]
+			dna.features.append(Feature(dna, g.beg, g.end, g.strand,
+				g.type, source=g.source, score=g.score,
+				id=id, parent_id=pid))
+				
+		# add genes (intentionally redudant with above: separate addresses)
+		mRNA_parts = ['CDS', 'exon']
 		genes = {}
 		mRNAs = {}
 		parts = []
@@ -498,6 +516,7 @@ class Genomic:
 			pm = re.search('Parent=([\w\.:]+)', g.attr)
 			if im: id = im[1]
 			if pm: pid = pm[1]
+
 			if g.type == 'gene':
 				genes[id] = ProteinCodingGene(dna, g.beg, g.end, 
 					g.strand, g.type, id=id, parent_id=pid)
@@ -507,25 +526,21 @@ class Genomic:
 			elif g.type in mRNA_parts:
 				parts.append(Feature(dna, g.beg, g.end, g.strand, g.type,
 					id=id, parent_id=pid))
-			else:
-				dna.features.append(Feature(dna, g.beg, g.end, g.strand,
-					g.type, source=g.source, score=g.score,
-					id=id, parent_id=pid))
 		
-		# add parts to mRNAs
-		for f in parts:
-			f.validate()
-			if f.parent_id in mRNAs:
-				mRNAs[f.parent_id].add_child(f)
+			# add parts to mRNAs
+			for f in parts:
+				f.validate()
+				if f.parent_id in mRNAs:
+					mRNAs[f.parent_id].add_child(f)
 
-		# add mRNAs to genes
-		for txid in mRNAs:
-			f = mRNAs[txid]
-			if f.parent_id in genes:
-				genes[f.parent_id].add_child(f)
+			# add mRNAs to genes
+			for txid in mRNAs:
+				f = mRNAs[txid]
+				if f.parent_id in genes:
+					genes[f.parent_id].add_child(f)
 
-		# add genes to dna
-		for gid in genes:
-			dna.features.append(genes[gid])
+			# add genes to dna
+			for gid in genes:
+				dna.genes.append(genes[gid])
 			
 		return dna

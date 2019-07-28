@@ -25,6 +25,8 @@ class DecodeError(Exception):
 	pass
 
 class Parse:
+	"""Class representing a parse through a sequence"""
+	
 	def __init__(self, score=None, path=None, freq=None, decoder=None):
 		"""
 		Parameters
@@ -172,7 +174,7 @@ class HMM_NT_decoder:
 		return tmap
 
 	def set_null_score(self):
-		"""Generate/set the score fo the null model."""
+		"""Generate/set the score for the null model."""
 
 		self.null_score = 0 if self.model.log else 1
 		for i in range(len(self.dna.seq)):
@@ -217,7 +219,36 @@ class HMM_NT_decoder:
 				else: return 0.25
 		raise DecodeError('not possible')
 
+	def score_path(self, path):
+		"""
+		Returns the score for a given path
+
+		Parameters
+		----------
+		path: list
+			List of state names
+		"""
+		
+		# should this be state.next or tmap?
+		if self.model.log:
+			score = self.smap[path[0]].init + self.emission(path[0], 0)
+			for i in range(1, len(path)):
+				ep = self.emission(path[i], i)
+				tp = self.tmap[path[i]][path[i-1]]
+				score += ep + tp
+			score += self.smap[path[-1]].term
+		else:
+			score = self.smap[path[0]].init * self.emission(path[0], 0)
+			for i in range(1, len(path)):
+				ep = self.emission(path[i], i)
+				tp = self.tmap[path[i]][path[i-1]]
+				score *= ep * tp
+			score *= self.smap[path[-1]].term
+		
+		return score
+		
 	def _inspect(self, field, beg=None, end=None):
+		# used internally for debugging
 		if not beg: beg = 0
 		if not end: end = len(self.matrix)
 
@@ -516,6 +547,53 @@ class StochasticViterbi(HMM_NT_decoder):
 			pn += 1
 
 		return parses
+
+class Transcoder(HMM_NT_decoder):
+	"""Class for scoring a labeled sequence"""
+	
+	def __init__(self, model=None, dna=None):
+		"""
+		Parameters
+		----------
+		model: HMM
+			An HMM, probably converted to log space
+		"""
+		
+		self.model = model
+		self.dna = dna
+		self.smap = self.state_map()
+		self.tmap = self.transition_map()
+		self.label_count = {}
+		for state in model.states:
+			stub = re.search('(\w+)', state.name)[1]
+			if stub not in self.label_count:
+				self.label_count[stub] = 0
+			self.label_count[stub] += 1
+		self.set_null_score()
+	
+	def score(self):
+		cds_len = None # for tracking phase
+		path = []
+		for f in self.dna.features:
+			if self.label_count[f.type] == 1:
+				for i in range(f.beg -1, f.end):
+					path.append(f.type)
+			elif f.type == 'CDS':
+				if cds_len == None:
+					if   f.phase == '.': cds_len = 0
+					elif f.phase == 0:   cds_len = 0
+					elif f.phase == 1:   cds_len = 2
+					elif f.phase == 2:   cds_len = 1
+				for i in range(f.length):
+					frame = cds_len % 3
+					path.append(f.type + '-' + str(frame))
+					cds_len += 1
+			else:
+				if f.length != self.label_count[f.type]:
+					raise DecodeError('state length mismatch')
+				for i in range(f.length):
+					path.append(f.type + '-' + str(i))
+		return self.score_path(path)
 
 class ForwardBackward(HMM_NT_decoder):
 	"""Compute posterior probabilities using Forward-Backward algorithm"""
