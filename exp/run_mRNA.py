@@ -45,7 +45,10 @@ def analyze(dna):
 	elif e0 != e1:
 		flag = 'stop'
 	
-	return ','.join([dna.name, flag, str(b0), str(e0), str(b1), str(e1),
+	# make a better gene name
+	name = re.search('Transcript:(\w+\.\d+)', dna.name)[1]
+	
+	return ','.join([name, flag, str(b0), str(e0), str(b1), str(e1),
 		str(s0), str(s1)])
 
 
@@ -54,10 +57,10 @@ if __name__ == '__main__':
 	Model.convert2log()
 	gen = genome.Genomic(fasta='test.fasta', gff='test.gff')
 	print(','.join(['gene', 'diff', 'tbeg', 'tend', 'pbeg', 'pend',
-		'tscore', 'pscore']))
+		'tscore', 'pscore', 'notes']))
 
 #	for dna in gen:
-#		analyze(dna)
+#		print(analyze(dna))
 	
 	with Pool(6) as proc:
 		outs = proc.map(analyze, gen)
