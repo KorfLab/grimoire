@@ -571,7 +571,6 @@ class Transcoder(HMM_NT_decoder):
 			self.label_count[stub] += 1
 		self.set_null_score()
 	
-	def score(self):
 		cds_len = None # for tracking phase
 		path = []
 		for f in self.dna.features:
@@ -593,7 +592,13 @@ class Transcoder(HMM_NT_decoder):
 					raise DecodeError('state length mismatch')
 				for i in range(f.length):
 					path.append(f.type + '-' + str(i))
-		return self.score_path(path)
+		
+		self.max_score = self.score_path(path)
+		self.score = None
+		if self.model.log:
+			self.score = self.max_score - self.null_score
+		else:
+			self.score = self.max_score / self.null_score
 
 class ForwardBackward(HMM_NT_decoder):
 	"""Compute posterior probabilities using Forward-Backward algorithm"""
