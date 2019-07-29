@@ -35,41 +35,37 @@ parser.add_argument('--work', required=True, type=str,
 	metavar='<path>', help='path to the working directory (%(type)s)')
 arg = parser.parse_args()
 
-
-class OverwriteError(Exception):
-	pass
-
-if (os.path.exists(arg.mRNA1)==False and os.path.exists(arg.mRNA1)==False) or arg.overwrite==True:
+if (os.path.exists(arg.mRNA1)==False or os.path.exists(arg.mRNA1)==False) or arg.overwrite==True:
 	print('Overwriting/Creating')
 	os.system(
-	    'python3 bin/forge '+
-	    '--fasta '+arg.fasta+' '+
-	    '--gff3 '+arg.gff3+' '+
-	    '--model '+'mRNA1'+' '+
-	    '--hmm '+arg.mRNA1+' '+
-	    '--source '+arg.work+'C.elegans.mRNA1.source'+' '+
+		'python3 bin/forge '+
+		'--fasta '+arg.fasta+' '+
+		'--gff3 '+arg.gff3+' '+
+		'--model '+'mRNA1'+' '+
+		'--hmm '+arg.mRNA1+' '+
+		'--source '+arg.work+'C.elegans.mRNA1.source'+' '+
 		'--u5_ctx '+'5 '+
 		'--u3_ctx '+'5 '+
 		'--koz_ctx '+'1 '+
 		'--atg_ctx '+'2 '+
-		'--stop_ctx '+'2'
-	    )
+		'--stop_ctx '+'2 '+
+		'--cds_ctx '+'2'
+		)
 	os.system(
-	    'python3 bin/forge '+
-	    '--fasta '+arg.fasta+' '+
-	    '--gff3 '+arg.gff3+' '+
-	    '--model '+'mRNA2'+' '+
-	    '--hmm '+arg.mRNA2+' '+
-	    '--source '+arg.work+'C.elegans.mRNA2.source'+' '+
+		'python3 bin/forge '+
+		'--fasta '+arg.fasta+' '+
+		'--gff3 '+arg.gff3+' '+
+		'--model '+'mRNA2'+' '+
+		'--hmm '+arg.mRNA2+' '+
+		'--source '+arg.work+'C.elegans.mRNA2.source'+' '+
 		'--u5_ctx '+'5 '+
 		'--u3_ctx '+'5 '+
 		'--koz_ctx '+'1 '+
 		'--atg_ctx '+'2 '+
-		'--stop_ctx '+'2'
-	    )
+		'--stop_ctx '+'2 '+
+		'--cds_ctx '+'2'
+		)
 	print('Forge Completed')
-elif os.path.exists(arg.hmm)==True:
-	raise OverwriteError('File already exists. Write --overwrite to override')
 
 fasta=toolbox.FASTA_stream(filename = arg.work+'C.elegans.mRNA1.source.fasta')
 gff =toolbox.GFF_file(filename = arg.work+'C.elegans.mRNA1.source.gff')
@@ -78,38 +74,38 @@ gff =toolbox.GFF_file(filename = arg.work+'C.elegans.mRNA1.source.gff')
 GFF3_genes = {}
 dnas = []
 for entry in fasta:
-    dna = sequence.DNA(seq=entry.seq, name=entry.id)
-    dnas.append(dna)
-    gffs = gff.get(chrom=dna.name)
-    for g in gffs:
-        if g.type == 'ATG':
-            GFF3_genes.update({entry.id:g.beg})
+	dna = sequence.DNA(seq=entry.seq, name=entry.id)
+	dnas.append(dna)
+	gffs = gff.get(chrom=dna.name)
+	for g in gffs:
+		if g.type == 'ATG':
+			GFF3_genes.update({entry.id:g.beg})
 
 #mRNA1 model
-mRNA1_genes = []
+mRNA1_genes = {}
 mRNA1_hmm = hmm.HMM.read(arg.work+'C.elegans.mRNA1.hmm')
 mRNA1_hmm.convert2log()
 for dna in dnas:
-    mRNA1 = decode.Viterbi(model=mRNA1_hmm,dna=dna)
-    path = mRNA1.generate_path()
-    features = path.features()
-    for f in features:
-        if f.type == 'ATG':
-            mRNA1_genes.append(f.beg)
+	mRNA1 = decode.Viterbi(model=mRNA1_hmm,dna=dna)
+	path = mRNA1.generate_path()
+	features = path.features()
+	for f in features:
+		if f.type == 'ATG':
+			mRNA1_genes.update({f.dna.name:f.beg})
 
 #mRNA2 model
-mRNA2_genes = []
+mRNA2_genes = {}
 mRNA2_hmm = hmm.HMM.read(arg.work+'C.elegans.mRNA2.hmm')
 mRNA2_hmm.convert2log()
 for dna in dnas:
-    mRNA2 = decode.Viterbi(model=mRNA2_hmm,dna=dna)
-    path = mRNA2.generate_path()
-    features = path.features()
-    for f in features:
-        if f.type == 'ATG':
-            mRNA2_genes.append(f.beg)
+	mRNA2 = decode.Viterbi(model=mRNA2_hmm,dna=dna)
+	path = mRNA2.generate_path()
+	features = path.features()
+	for f in features:
+		if f.type == 'ATG':
+			mRNA2_genes.update({f.dna.name:f.beg})
 
 #Report
 print('Id'+'\t \t \t \t'+'LORF'+'\t'+'mRNA1'+'\t'+'mRNA2')
-for i, key in enumerate(GFF3_genes.keys()):
-    print(key + '\t' + str(GFF3_genes[key])+'\t'+str(mRNA1_genes[i])+'\t'+str(mRNA2_genes[i]))
+for key in GFF3_genes.keys():
+	print(key + '\t' + str(GFF3_genes[key])+'\t'+str(mRNA1_genes[key])+'\t'+str(mRNA2_genes[key]))
