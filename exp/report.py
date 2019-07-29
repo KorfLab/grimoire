@@ -36,14 +36,14 @@ lorf_mRNA2_diff = 0
 mRNA1_mRNA2_diff = 0
 all_diff = 0
 total = 0
-report_entries = []
+diff_entries = []
 
 with open(arg.eval,'r') as eval:
     for line in eval:
         line = line.replace('\r','')
         line = line.replace('\n','')
         line = line.split('\t')
-        if len(line)<4: continue
+        if len(line)!=4: continue
         entry = Eval_entry(id=line[0],lorf=line[1],mRNA1=line[2],mRNA2=line[3])
         #Eval difference in predicton
         if (entry.lorf != entry.mRNA1):
@@ -58,27 +58,26 @@ with open(arg.eval,'r') as eval:
         if entry.diff == True:
             all_diff += 1
             if arg.report:
-                report_entries.append(entry)
+                diff_entries.append(entry)
         total += 1
 
 outfasta = []
 if entry.diff == True:
     if arg.report:
         with open(arg.report,'w+') as report:
-            for entry in report_entries:
+            for entry in diff_entries:
                 report.write(entry.id+'\t'+entry.lorf+'\t'+entry.mRNA1+'\t'+entry.mRNA2+'\n')
         if not arg.infasta or not arg.outfasta:
             raise ReportError('Did not input all necessary arguments')
         fasta = toolbox.FASTA_file(arg.infasta)
-        for entry in report_entries:
+        for entry in diff_entries:
             #ISSUE: THIS PART BREAKS SUPER EASILY IF ID DOES NOT 100% MATCH
-            entry.id = entry.id.replace('gene','remapped')
             fasta_entry = fasta.get(entry.id)
             #at this point, all seq are nt
             length = len(fasta_entry.seq)
-            lorf_seq = fasta_entry.seq[int(entry.lorf):int(length)]
-            mRNA1_seq = fasta_entry.seq[int(entry.mRNA1):int(length)]
-            mRNA2_seq = fasta_entry.seq[int(entry.mRNA2):int(length)]
+            lorf_seq = fasta_entry.seq[int(entry.lorf)-1:int(length)]
+            mRNA1_seq = fasta_entry.seq[int(entry.mRNA1)-1:int(length)]
+            mRNA2_seq = fasta_entry.seq[int(entry.mRNA2)-1:int(length)]
             #translate nt to pro
             lorf_seq = sequence.translate_str(lorf_seq)
             mRNA1_seq = sequence.translate_str(mRNA1_seq)
