@@ -80,11 +80,18 @@ if entry.diff == True:
             mRNA2_seq = fasta_entry.seq[int(entry.mRNA2)-1:int(length)]
             #translate nt to pro
             lorf_seq = sequence.translate_str(lorf_seq)
+            lorf_stop = lorf_seq.find('*')
+            lorf_seq = lorf_seq[0:lorf_stop]
             mRNA1_seq = sequence.translate_str(mRNA1_seq)
+            mRNA1_stop = mRNA1_seq.find('*')
+            mRNA1_seq = mRNA1_seq[0:mRNA1_stop]
             mRNA2_seq = sequence.translate_str(mRNA2_seq)
-            lorf = toolbox.FASTA_entry(id=entry.id+'-lorf', desc='LORF', seq=lorf_seq)
-            mRNA1 = toolbox.FASTA_entry(id=entry.id+'-m1', desc='mRNA1', seq=mRNA1_seq)
-            mRNA2 = toolbox.FASTA_entry(id=entry.id+'-m2', desc='mRNA2', seq=mRNA2_seq)
+            mRNA2_stop = mRNA2_seq.find('*')
+            mRNA2_seq = mRNA2_seq[0:mRNA2_stop]
+
+            lorf = toolbox.FASTA_entry(id=entry.id+'-lorf', desc=str(len(lorf_seq)), seq=lorf_seq)
+            mRNA1 = toolbox.FASTA_entry(id=entry.id+'-m1', desc=str(len(lorf_seq)), seq=mRNA1_seq)
+            mRNA2 = toolbox.FASTA_entry(id=entry.id+'-m2', desc=str(len(lorf_seq)), seq=mRNA2_seq)
             outfasta.append(lorf)
             outfasta.append(mRNA1)
             outfasta.append(mRNA2)
