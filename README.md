@@ -38,7 +38,7 @@ Contributors
 + Hannah Lyman
 + Alex Kramer
 + Jack Yu
-+ Joy Liu
++ Qijia "Joy" Liu
 
 Acknowledgements
 ----------------
