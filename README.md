@@ -18,17 +18,18 @@ The code is designed with the folllowing analyses in mind:
 
 Programs:
 
-+ milwa - reveals genes (light)
-+ calfo/latumapic - describes contents of genome annotation (x-ray vision, location?)
-+ kandi - finds specific genes (locate soul)
-+ dumapic - displays HMM graphically (clarity)
-+ halito - builds small HMMs (little fire)
-+ mahalito -builds big models (big fire)
-+ morlis - creates fake sequences (fear)
++ milwa - HMM decoder (light)
++ lomilwa - GHMM decoder
++ halito - builds HMMs (little fire)
++ mahalito - builds GHMMs (big fire)
++ calfo - describes contents of genome annotation (x-ray vision)
++ dumapic - compares annotation (clarity)
++ morlis - grapher/emitter utility (fear)
 + malor - moves genes on chromosomes onto mini chromosomes (apport)
 + porfic - sanitizes the gff/gtf/bed12 to gff3 (shield)
-+ ?????? - compares predicted genes
-+ ?????? - converts transcripts to CDS for those special models (lomilwa?)
++ latumapic - genome segmenter (location)
++ kandi - profile-HMM/alignment based gene finder (locate soul)
+
 
 Contributors
 ------------
