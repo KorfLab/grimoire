@@ -18,18 +18,24 @@ The code is designed with the folllowing analyses in mind:
 
 Programs:
 
-+ milwa - HMM decoder (light)
-+ lomilwa - GHMM decoder
-+ halito - builds HMMs (little fire)
-+ mahalito - builds GHMMs (big fire)
-+ calfo - describes contents of genome annotation (x-ray vision)
-+ dumapic - compares annotation (clarity)
-+ morlis - grapher/emitter utility (fear)
-+ malor - moves genes on chromosomes onto mini chromosomes (apport)
-+ porfic - sanitizes the gff/gtf/bed12 to gff3 (shield)
-+ latumapic - genome segmenter (location)
-+ kandi - profile-HMM/alignment based gene finder (locate soul)
-
+| Name      | Meaning    | Function                              |
+|:----------|:-----------|:--------------------------------------|
+| kalki     | blessings  | gff3 sanitizer (gff3io)
+| milwa     | light      | hmm buider (forge)
+| dumapic   | clarity    | hmm grapher (hmm_grapher)
+| calfo     | x-ray      | genome reporter (fathom)
+| halito    | fire       | hmm decoder (gene_finder)
+| mahalito  | big fire   | 2-pass gene decoder
+| lahalito  | torch      | full genome decoder
+| tiltowait | explosion  | multi-genome decoder
+| zilwan    | dispel     | profile/alignment decoder (pro-snap)
+| morlis    | fear       | sequence generator (emitter)
+| haman     | change     | genome slicer (chromify) 
+| mahaman   | change     | multi-genome slicer
+| malor     | apport     | lift-over?
+| latumapic | id         | 
+| kandi     | locate     | 
+| porfic    | shield     | 
 
 Contributors
 ------------
