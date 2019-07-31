@@ -19,6 +19,7 @@ is scanned once to record offsets.
 import math
 import re
 import gzip
+import operator
 from functools import reduce
 
 class ToolboxError(Exception):
@@ -66,9 +67,10 @@ def generate_kmers(alphabet='nt', k=1, pseudo=0):
 
 	table = {}
 	if (alphabet == 'nt') :
-		_kmers(DNA.canonical, table, '', 4, k, pseudo)
+		_kmers(['A', 'C', 'G', 'T'], table, '', 4, k, pseudo)
 	elif (alphabet == 'aa') :
-		_kmers(Protein.canonical, table, '', 20, k, pseudo)
+		_kmers(['A', 'C', 'G', 'T', 'R', 'Y', 'M', 'K', 'W', 'S', 'B', 'D', 'H', 'V', 'N'],
+		table, '', 20, k, pseudo)
 	return table
 
 GCODE = {
