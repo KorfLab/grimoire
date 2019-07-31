@@ -1,12 +1,7 @@
 """
 Sequence
 
-This module contains classes and functions used to make/interpret sequences.
-
-The following functions are provided in Sequence:
- 	* generate_kmers
-	* revcomp_str
-	* translate_str
+This module contains classes and used to make/interpret sequences.
 
 The following classes and methods are provided in Sequence:
 	* BioSequence
@@ -18,19 +13,10 @@ The following classes and methods are provided in Sequence:
 	* Protein
 		* Protein.check_alphabet
 """
+import grimoire.toolbox as toolbox
 
 class SequenceError(Exception):
 	pass
-
-##########################
-### naked definitions  ###
-##########################
-
-
-
-###############
-### Classes ###
-###############
 
 class BioSequence:
 	"""Generic parent class of biological sequences"""
@@ -94,14 +80,13 @@ class DNA(BioSequence):
 
 	def revcomp(self):
 		"""Return reverse compliment sequence"""
-		anti = revcomp_str(self.seq)
+		anti = toolbox.revcomp_str(self.seq)
 		return DNA(seq=anti)
 
 	def translate(self, table='standard'):
 		"""Return translated protein sequence"""
-		pro = translate_str(self.seq)
+		pro = toolbox.translate_str(self.seq)
 		return Protein(seq=pro)
-
 
 class Protein(BioSequence):
 	"""Class for protein sequences. Uppercase only. 20 aa + X and *"""
