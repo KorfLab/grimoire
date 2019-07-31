@@ -23,6 +23,10 @@ from functools import reduce
 
 class ToolboxError(Exception):
 	pass
+	
+def prod(iterable):
+	"""Returns product of the elements in an iterable (e.g. k for k in list)"""
+	return reduce(operator.mul, iterable, 1)
 
 def log(p):
 	"""Returns the value in log base e with a minimum value of -999"""
@@ -35,312 +39,116 @@ def sumlog(v1, v2):
 	if v1 < v2: v1, v2 = v2, v1
 	return math.log(1 + math.exp(v2 - v1)) + v1
 
-def prod(iterable):
-	"""Returns product of the elements in an iterable (e.g. k for k in list)"""
-	return reduce(operator.mul, iterable, 1)
+def _kmers(alphabet, table, key, n, k, v):
+	if (k == 0) :
+		if key not in table:
+			table[key] = v
+			return
 
-class GFF_entry:
-	"""Class representing a GFF entry (row)"""
+	for i in range(n):
+		t = key + alphabet[i]
+		_kmers(alphabet, table, t, n, k - 1, v)
 
-	def __init__(self, column):
-		"""
-		Parameters
-		----------
-		column: list
-			A list of columns in GFF file
-		"""
+def generate_kmers(alphabet='nt', k=1, pseudo=0):
+	"""Creates a dictionary of all kmers of either nt
+	or aa alphabet.
 
-		self.chrom = column[0]
-		self.source = column[1]
-		self.type = column[2]
-		self.beg = int(column[3])
-		self.end = int(column[4])
-		self.score = column[5]
-		self.strand = column[6]
-		self.phase = column[7]
-		self.attr = column[8]
+	Parameters
+	----------
+	alphabet: str
+		The alphabet used. Either 'nt' or 'aa'
+		(default is 'nt')
+	k: int
+		Any integer. Placeholder for the value in kmer
+	Pseudo:
+		Pseudocount value (default is 0)
+	"""
 
-class GFF_file:
-	"""Class for reading and searching GFF files (slurps all into memory)."""
+	table = {}
+	if (alphabet == 'nt') :
+		_kmers(DNA.canonical, table, '', 4, k, pseudo)
+	elif (alphabet == 'aa') :
+		_kmers(Protein.canonical, table, '', 20, k, pseudo)
+	return table
 
-	def __init__(self, filename):
-		"""
-		Parameters
-		----------
-		filename: str
-			Path to the GFF file
-		"""
+GCODE = {
+	'standard': {
+		'AAA' : 'K',	'AAC' : 'N',	'AAG' : 'K',	'AAT' : 'N',
+		'AAR' : 'K',	'AAY' : 'N',	'ACA' : 'T',	'ACC' : 'T',
+		'ACG' : 'T',	'ACT' : 'T',	'ACR' : 'T',	'ACY' : 'T',
+		'ACK' : 'T',	'ACM' : 'T',	'ACW' : 'T',	'ACS' : 'T',
+		'ACB' : 'T',	'ACD' : 'T',	'ACH' : 'T',	'ACV' : 'T',
+		'ACN' : 'T',	'AGA' : 'R',	'AGC' : 'S',	'AGG' : 'R',
+		'AGT' : 'S',	'AGR' : 'R',	'AGY' : 'S',	'ATA' : 'I',
+		'ATC' : 'I',	'ATG' : 'M',	'ATT' : 'I',	'ATY' : 'I',
+		'ATM' : 'I',	'ATW' : 'I',	'ATH' : 'I',	'CAA' : 'Q',
+		'CAC' : 'H',	'CAG' : 'Q',	'CAT' : 'H',	'CAR' : 'Q',
+		'CAY' : 'H',	'CCA' : 'P',	'CCC' : 'P',	'CCG' : 'P',
+		'CCT' : 'P',	'CCR' : 'P',	'CCY' : 'P',	'CCK' : 'P',
+		'CCM' : 'P',	'CCW' : 'P',	'CCS' : 'P',	'CCB' : 'P',
+		'CCD' : 'P',	'CCH' : 'P',	'CCV' : 'P',	'CCN' : 'P',
+		'CGA' : 'R',	'CGC' : 'R',	'CGG' : 'R',	'CGT' : 'R',
+		'CGR' : 'R',	'CGY' : 'R',	'CGK' : 'R',	'CGM' : 'R',
+		'CGW' : 'R',	'CGS' : 'R',	'CGB' : 'R',	'CGD' : 'R',
+		'CGH' : 'R',	'CGV' : 'R',	'CGN' : 'R',	'CTA' : 'L',
+		'CTC' : 'L',	'CTG' : 'L',	'CTT' : 'L',	'CTR' : 'L',
+		'CTY' : 'L',	'CTK' : 'L',	'CTM' : 'L',	'CTW' : 'L',
+		'CTS' : 'L',	'CTB' : 'L',	'CTD' : 'L',	'CTH' : 'L',
+		'CTV' : 'L',	'CTN' : 'L',	'GAA' : 'E',	'GAC' : 'D',
+		'GAG' : 'E',	'GAT' : 'D',	'GAR' : 'E',	'GAY' : 'D',
+		'GCA' : 'A',	'GCC' : 'A',	'GCG' : 'A',	'GCT' : 'A',
+		'GCR' : 'A',	'GCY' : 'A',	'GCK' : 'A',	'GCM' : 'A',
+		'GCW' : 'A',	'GCS' : 'A',	'GCB' : 'A',	'GCD' : 'A',
+		'GCH' : 'A',	'GCV' : 'A',	'GCN' : 'A',	'GGA' : 'G',
+		'GGC' : 'G',	'GGG' : 'G',	'GGT' : 'G',	'GGR' : 'G',
+		'GGY' : 'G',	'GGK' : 'G',	'GGM' : 'G',	'GGW' : 'G',
+		'GGS' : 'G',	'GGB' : 'G',	'GGD' : 'G',	'GGH' : 'G',
+		'GGV' : 'G',	'GGN' : 'G',	'GTA' : 'V',	'GTC' : 'V',
+		'GTG' : 'V',	'GTT' : 'V',	'GTR' : 'V',	'GTY' : 'V',
+		'GTK' : 'V',	'GTM' : 'V',	'GTW' : 'V',	'GTS' : 'V',
+		'GTB' : 'V',	'GTD' : 'V',	'GTH' : 'V',	'GTV' : 'V',
+		'GTN' : 'V',	'TAA' : '*',	'TAC' : 'Y',	'TAG' : '*',
+		'TAT' : 'Y',	'TAR' : '*',	'TAY' : 'Y',	'TCA' : 'S',
+		'TCC' : 'S',	'TCG' : 'S',	'TCT' : 'S',	'TCR' : 'S',
+		'TCY' : 'S',	'TCK' : 'S',	'TCM' : 'S',	'TCW' : 'S',
+		'TCS' : 'S',	'TCB' : 'S',	'TCD' : 'S',	'TCH' : 'S',
+		'TCV' : 'S',	'TCN' : 'S',	'TGA' : '*',	'TGC' : 'C',
+		'TGG' : 'W',	'TGT' : 'C',	'TGY' : 'C',	'TTA' : 'L',
+		'TTC' : 'F',	'TTG' : 'L',	'TTT' : 'F',	'TTR' : 'L',
+		'TTY' : 'F',	'TRA' : '*',	'YTA' : 'L',	'YTG' : 'L',
+		'YTR' : 'L',	'MGA' : 'R',	'MGG' : 'R',	'MGR' : 'R',
+	}
+}
 
-		self._chroms = {}
-		self._types = {}
-		gz = False
-		fp = None
-		if re.search('\.gz$', filename):
-			fp = gzip.open(filename)
-			gz = True
-		else:
-			fp = open(filename, 'r')
+def revcomp_str(seq):
+	"""
+	Returns the reverse compliment of a string (assumed to be nt)
 
-		while (1):
-			line = fp.readline()
-			if gz: line = str(line, 'utf-8')
-			if line == '': break
-			if line[0:1] == '#': continue
-			col = line.split('\t')
-			if len(col) < 8: continue
-			chrom = col[0]
-			type = col[2]
-			entry = GFF_entry(col)
-			if chrom not in self._chroms: self._chroms[chrom] = []
-			self._chroms[chrom].append(entry)
-			if type not in self._types: self._types[type] = []
-			self._types[type].append(entry)
-			self.chroms = list(self._chroms.keys())
-			self.types = list(self._types.keys())
-		fp.close()
+	Parameters
+	----------
+	seq: str
+		Given sequence
+	"""
 
-	def get(self, type=None, chrom=None, beg=None, end=None):
-		"""
-		Retrieves GFF entries with given parameters. If parameter isn't
-		specified, all are returned
+	comp = str.maketrans('ACGTRYMKWSBDHV', 'TGCAYRKMWSVHDB')
+	anti = seq.translate(comp)[::-1]
+	return anti
 
-		Parameters
-		----------
-		type: str
-			Type of GFF entry (e.g. exon, gene) (default is None)
-		chrom: str
-			Chromosome of interest (default is None)
-		beg: int
-			Beginning coordinate (default is None)
-		end: int
-			Ending coordinate (default is None)
-		"""
+def translate_str(seq, table='standard'):
+	"""
+	Translate a string (of nucleotides) into protein
 
-		type_search = {}
-		if type:
-			if type not in self._types:
-				raise ToolboxError('type not defined: ' + type)
-			type_search[type] = True
-		else:
-			for t in self._types: type_search[t] = True
+	Parameters
+	----------
+	seq: str
+		Given sequence
+	table: str
+		Given translation table (default is 'standard')
+	"""
 
-		chrom_search = []
-		if chrom:
-			if chrom in self._chroms:
-				chrom_search.append(chrom)
-		else:
-			chrom_search = self.chroms
-
-		beg = -1 if not beg else beg
-		end = math.inf if not end else end
-		if beg > end:
-			raise ToolboxError('beg > end: ' + beg + '-' + end)
-
-		found = []
-		for c in chrom_search:
-			for entry in self._chroms[c]:
-				if entry.type in type_search:
-					if entry.beg >= beg and entry.end <= end:
-						found.append(entry)
-
-		return found
-
-class GFF_stream:
-	"""Class for iterating through GFF records"""
-
-	def __init__(self, filename=None, filepointer=None):
-		"""
-		Use either a path to file or filepointer object.
-
-		Parameters
-		----------
-		filename: str
-			Path to GFF file
-
-		filepointer:
-			Filepointer
-		"""
-
-		self.fp = None
-		self.gz = False
-
-		if filename != None:
-			if re.search('\.gz$', filename):
-				self.fp = gzip.open(filename)
-				self.gz = True
-			else:
-				self.fp = open(filename, 'r')
-		elif filepointer != None:
-			self.fp = filepointer
-		else:
-			raise ToolboxError('no file or filepointer given')
-
-	def __iter__(self):
-		return self
-
-	def __next__(self):
-		return self.next()
-
-	def next(self):
-		"""
-		Returns the next row in the GFF file/stream.
-		"""
-
-		line = self.fp.readline()
-		if self.gz: line = str(line, 'utf-8')
-		if line == '':
-			self.fp.close()
-			raise StopIteration()
-		if line[0:1] == '#': return self.next()
-		col = line.split('\t')
-		if len(col) < 8: return self.next()
-		chrom = col[0]
-		type = col[2]
-		return GFF_entry(col)
-
-class FASTA_entry:
-	"""Class representing a FASTA entry"""
-
-	def __init__(self, id, desc, seq):
-		"""
-		Parameters
-		----------
-		id: str
-			Identifier of current FASTA entry
-		desc: str
-			Description/Info of entry (often empty)
-		seq: str
-			Sequence of entry
-		"""
-
-		self.id = id
-		self.desc = desc
-		self.seq = seq
-
-class FASTA_file:
-	"""Class for reading a FASTA file with random access"""
-
-	def __init__(self, filename):
-		"""
-		Reads in FASTA file. Raises errors on duplicate ids.
-
-		Parameters
-		----------
-		filename: str
-			Path to FASTA file
-		"""
-
-		self.filename = filename
-		if re.search('\.gz$', filename):
-			raise ToolboxError('.gz files not supported in FASTA_file')
-		self.offset = {} # indexes identifiers to file offsets
-		self.ids = []
-		self.file = open(self.filename, 'r')
-		while (True):
-			line = self.file.readline()
-			if line == '': break
-			if line[0:1] == '>':
-				m = re.search('>\s*(\S+)', line)
-				if m[1] in self.offset:
-					raise ToolboxError('duplicate id: ' + m[1])
-				self.ids.append(m[1])
-				self.offset[m[1]] = self.file.tell() - len(line)
-		self.file.close()
-
-	def get(self, id):
-		"""
-		Retrieves FASTA entry with given identifier.
-
-		Parameters
-		----------
-		id: str
-			Identifier name
-		"""
-
-		self.file = open(self.filename, 'r')
-		self.file.seek(self.offset[id])
-		header = self.file.readline()
-		m = re.search('>\s*(\S+)\s*(.*)', header)
-		id = m[1]
-		desc = m[2]
-		seq = []
-		while (True):
-			line = self.file.readline()
-			if line[0:1] == '>': break
-			if line == '': break
-			line = line.replace(' ', '')
-			seq.append(line.strip())
-		self.file.close()
-		return FASTA_entry(id, desc, "".join(seq))
-
-class FASTA_stream:
-	"""Class for iterating through a FASTA file"""
-
-	def __init__(self, filename=None, filepointer=None):
-		"""
-		Use path to file or file pointer.
-
-		Parameters
-		----------
-		filename: str
-			Path to file
-		filepointer:
-			File pointer object
-		"""
-
-		self.fp = None
-		self.gz = False
-
-		if filename != None:
-			if re.search('\.gz$', filename):
-				self.fp = gzip.open(filename)
-				self.gz = True
-			else:
-				self.fp = open(filename, 'r')
-		elif filepointer != None:
-			self.fp = filepointer
-		else:
-			raise ToolboxError('no file or filepointer given')
-		self.lastline = ''
-		self.done = False
-
-	def __iter__(self):
-		return self
-
-	def __next__(self):
-		return self.next()
-
-	def next(self):
-		"""
-		Retrieves the next entry of the FASTA file/stream.
-		"""
-
-		if self.done: raise StopIteration()
-		header = None
-		if self.lastline[0:1] == '>':
-			header = self.lastline
-		else:
-			header = self.fp.readline()
-			if self.gz: header = str(header, 'utf-8')
-
-		m = re.search('>\s*(\S+)\s*(.*)', header)
-		id = m[1]
-		desc = m[2]
-		seq = []
-
-		while (True):
-			line = self.fp.readline()
-			if self.gz: line = str(line, 'utf-8')
-			if line[0:1] == '>':
-				self.lastline = line
-				break
-			if line == '':
-				self.done = True
-				self.fp.close()
-				break
-
-			line = line.replace(' ', '')
-			seq.append(line.strip())
-
-		return FASTA_entry(id, desc, "".join(seq))
-
+	pro = []
+	for i in range(0, len(seq), 3):
+		codon = seq[i:i+3]
+		if codon in GCODE[table]: pro.append(GCODE[table][codon])
+		else: pro.append('X')
+	return "".join(pro)
