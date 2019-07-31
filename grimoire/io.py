@@ -1,3 +1,8 @@
+import re
+import gzip
+
+class IOError(Exception):
+	pass
 
 class GFF_entry:
 	"""Class representing a GFF entry (row)"""
@@ -79,7 +84,7 @@ class GFF_file:
 		type_search = {}
 		if type:
 			if type not in self._types:
-				raise ToolboxError('type not defined: ' + type)
+				raise IOErrorboxError('type not defined: ' + type)
 			type_search[type] = True
 		else:
 			for t in self._types: type_search[t] = True
@@ -94,7 +99,7 @@ class GFF_file:
 		beg = -1 if not beg else beg
 		end = math.inf if not end else end
 		if beg > end:
-			raise ToolboxError('beg > end: ' + beg + '-' + end)
+			raise IOError('beg > end: ' + beg + '-' + end)
 
 		found = []
 		for c in chrom_search:
@@ -133,7 +138,7 @@ class GFF_stream:
 		elif filepointer != None:
 			self.fp = filepointer
 		else:
-			raise ToolboxError('no file or filepointer given')
+			raise IOError('no file or filepointer given')
 
 	def __iter__(self):
 		return self
@@ -192,7 +197,7 @@ class FASTA_file:
 
 		self.filename = filename
 		if re.search('\.gz$', filename):
-			raise ToolboxError('.gz files not supported in FASTA_file')
+			raise IOError('.gz files not supported in FASTA_file')
 		self.offset = {} # indexes identifiers to file offsets
 		self.ids = []
 		self.file = open(self.filename, 'r')
@@ -202,7 +207,7 @@ class FASTA_file:
 			if line[0:1] == '>':
 				m = re.search('>\s*(\S+)', line)
 				if m[1] in self.offset:
-					raise ToolboxError('duplicate id: ' + m[1])
+					raise IOError('duplicate id: ' + m[1])
 				self.ids.append(m[1])
 				self.offset[m[1]] = self.file.tell() - len(line)
 		self.file.close()
@@ -260,7 +265,7 @@ class FASTA_stream:
 		elif filepointer != None:
 			self.fp = filepointer
 		else:
-			raise ToolboxError('no file or filepointer given')
+			raise IOError('no file or filepointer given')
 		self.lastline = ''
 		self.done = False
 
