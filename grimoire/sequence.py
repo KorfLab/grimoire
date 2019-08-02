@@ -1,17 +1,6 @@
 """
 Sequence
 
-This module contains classes and used to make/interpret sequences.
-
-The following classes and methods are provided in Sequence:
-	* BioSequence
-		* BioSequence.fasta
-	* DNA
-		* DNA.check_alphabet
-		* DNA.revcomp
-		* DNA.translate
-	* Protein
-		* Protein.check_alphabet
 """
 import grimoire.toolbox as toolbox
 
