@@ -126,17 +126,17 @@ class GFF_stream:
 			Filepointer
 		"""
 
-		self.fp = None
-		self.gz = False
+		self._fp = None
+		self._gz = False
 
 		if filename != None:
 			if re.search('\.gz$', filename):
-				self.fp = gzip.open(filename)
-				self.gz = True
+				self._fp = gzip.open(filename)
+				self._gz = True
 			else:
-				self.fp = open(filename, 'r')
+				self._fp = open(filename, 'r')
 		elif filepointer != None:
-			self.fp = filepointer
+			self._fp = filepointer
 		else:
 			raise IOError('no file or filepointer given')
 
@@ -151,10 +151,10 @@ class GFF_stream:
 		Returns the next row in the GFF file/stream.
 		"""
 
-		line = self.fp.readline()
-		if self.gz: line = str(line, 'utf-8')
+		line = self._fp.readline()
+		if self._gz: line = str(line, 'utf-8')
 		if line == '':
-			self.fp.close()
+			self._fp.close()
 			raise StopIteration()
 		if line[0:1] == '#': return self.next()
 		col = line.split('\t')
@@ -198,9 +198,9 @@ class FASTA_file:
 		self.filename = filename
 		if re.search('\.gz$', filename):
 			raise IOError('.gz files not supported in FASTA_file')
-		self.offset = {} # indexes identifiers to file offsets
+		self._offset = {} # indexes identifiers to file offsets
 		self.ids = []
-		self.file = open(self.filename, 'r')
+		self._fp = open(self.filename, 'r')
 		while (True):
 			line = self.file.readline()
 			if line == '': break
@@ -209,7 +209,7 @@ class FASTA_file:
 				if m[1] in self.offset:
 					raise IOError('duplicate id: ' + m[1])
 				self.ids.append(m[1])
-				self.offset[m[1]] = self.file.tell() - len(line)
+				self._offset[m[1]] = self.fp.tell() - len(line)
 		self.file.close()
 
 	def get(self, id):
@@ -222,15 +222,15 @@ class FASTA_file:
 			Identifier name
 		"""
 
-		self.file = open(self.filename, 'r')
-		self.file.seek(self.offset[id])
-		header = self.file.readline()
+		self._fp = open(self.filename, 'r')
+		self._fp.seek(self._offset[id])
+		header = self._fp.readline()
 		m = re.search('>\s*(\S+)\s*(.*)', header)
 		id = m[1]
 		desc = m[2]
 		seq = []
 		while (True):
-			line = self.file.readline()
+			line = self._fp.readline()
 			if line[0:1] == '>': break
 			if line == '': break
 			line = line.replace(' ', '')
@@ -253,20 +253,20 @@ class FASTA_stream:
 			File pointer object
 		"""
 
-		self.fp = None
-		self.gz = False
+		self._fp = None
+		self._gz = False
 
 		if filename != None:
 			if re.search('\.gz$', filename):
-				self.fp = gzip.open(filename)
-				self.gz = True
+				self._fp = gzip.open(filename)
+				self._gz = True
 			else:
-				self.fp = open(filename, 'r')
+				self._fp = open(filename, 'r')
 		elif filepointer != None:
-			self.fp = filepointer
+			self._fp = filepointer
 		else:
 			raise IOError('no file or filepointer given')
-		self.lastline = ''
+		self._lastline = ''
 		self.done = False
 
 	def __iter__(self):
@@ -282,11 +282,11 @@ class FASTA_stream:
 
 		if self.done: raise StopIteration()
 		header = None
-		if self.lastline[0:1] == '>':
-			header = self.lastline
+		if self._lastline[0:1] == '>':
+			header = self._lastline
 		else:
-			header = self.fp.readline()
-			if self.gz: header = str(header, 'utf-8')
+			header = self._fp.readline()
+			if self._gz: header = str(header, 'utf-8')
 
 		m = re.search('>\s*(\S+)\s*(.*)', header)
 		id = m[1]
@@ -294,14 +294,14 @@ class FASTA_stream:
 		seq = []
 
 		while (True):
-			line = self.fp.readline()
-			if self.gz: line = str(line, 'utf-8')
+			line = self._fp.readline()
+			if self._gz: line = str(line, 'utf-8')
 			if line[0:1] == '>':
-				self.lastline = line
+				self._lastline = line
 				break
 			if line == '':
 				self.done = True
-				self.fp.close()
+				self._fp.close()
 				break
 
 			line = line.replace(' ', '')
