@@ -12,7 +12,7 @@ import sys
 import operator
 import gzip
 
-import grimoire.toolbox as toolbox
+import grimoire.io as io
 import grimoire.sequence as sequence
 
 class GenomeError(Exception):
@@ -39,8 +39,8 @@ class Genome:
 
 		self.species = species
 		self.chromosomes = []
-		ff = toolbox.FASTA_stream(fasta)
-		gf = toolbox.GFF_file(gff3)
+		ff = io.FASTA_stream(fasta)
+		gf = io.GFF_file(gff3)
 
 		mRNA_parts = ['CDS', 'exon']
 		for entry in ff:
@@ -100,7 +100,7 @@ class Genomic:
 
 		self.fp = None
 		self.gz = False
-		self.gff = toolbox.GFF_file(gff)
+		self.gff = io.GFF_file(gff)
 		self.check = check_alphabet
 
 		if re.search('\.gz$', fasta):
