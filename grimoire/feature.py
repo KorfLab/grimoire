@@ -1,3 +1,5 @@
+
+
 class Performance:
 	"""Class for Performance evaluation"""
 
@@ -62,24 +64,6 @@ class Performance:
 			for s2 in self.feature[s1]: total += self.feature[s1][s2]
 			for s2 in self.feature[s1]:
 				print('',s2, self.feature[s1][s2] / total)
-
-def overlap(f1, f2):
-	"""
-	Determine if two features overlap
-
-	Parameters
-	----------
-	f1: object
-		Feature 1
-	f2: object
-		Feature 2
-	"""
-
-	if f1.dna.name == f2.dna.name:
-		if f1.beg >= f2.beg and f1.beg <= f2.end: return True
-		if f1.end >= f2.beg and f1.end <= f2.end: return True
-		if f1.beg <= f2.beg and f1.end >= f2.end: return True
-	return False
 
 class Feature:
 	"""Class representing a sequence feature, which may have children"""
@@ -203,6 +187,24 @@ class Feature:
 			string += '\n'.join(stuff) + '\n'
 		return string
 
+	def overlap(self, f2):
+		"""
+		Determine if two features overlap
+
+		Parameters
+		----------
+		f1: object
+			Feature 1
+		f2: object
+			Feature 2
+		"""
+
+		if self.dna.name == f2.dna.name:
+			if self.beg >= f2.beg and self.beg <= f2.end: return True
+			if self.end >= f2.beg and self.end <= f2.end: return True
+			if self.beg <= f2.beg and self.end >= f2.end: return True
+		return False
+	
 	def __str__(self):
 		return self.gff()
 
