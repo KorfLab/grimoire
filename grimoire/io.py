@@ -1,20 +1,196 @@
+"""
+Classes for reading standard bioinformatics file formats.
+"""
+
 import re
 import gzip
 
-class IOError(Exception):
+
+
+class FASTA_error(Exception):
+	pass
+
+class FASTA_entry:
+	"""Class representing a FASTA entry"""
+
+	def __init__(self, id, desc, seq):
+		"""
+		Parameters & Attributes
+		-----------------------
+		+ id   `str` unique id
+		+ desc `str` free text description, which may be None
+		+ seq  `str` sequence of symbols
+		"""
+
+		self.id = id
+		self.desc = desc
+		self.seq = seq
+
+	def string(self, wrap=80):
+		"""
+		Returns a string formatted as a fasta file.
+		
+		Parameters
+		----------
+		+ wrap=`int` number of characters per line
+		"""
+		
+		s = '>'
+		if self.id: s += self.id
+		if self.desc: s += ' ' + self.desc
+		s += '\n'
+		for i in range(0, len(self.seq), wrap):
+			s += self.seq[i:i+wrap] + '\n'
+		return s
+
+	def __str__(self):
+		return self.string()
+
+class FASTA_file:
+	"""Class for reading a FASTA file with random access"""
+
+	def __init__(self, filename):
+		"""
+		+ ids - list of identifiers
+		"""
+
+		self.filename = filename
+		if re.search(r'\.gz$', filename):
+			raise NotImplementedError('.gz files not supported in FASTA_file')
+		self._offset = {} # indexes identifiers to file offsets
+		self.ids = []
+		self._fp = open(self.filename, 'r')
+		while (True):
+			line = self._fp.readline()
+			if line == '': break
+			if line[0:1] == '>':
+				m = re.search(r'>\s*(\S+)', line)
+				if m[1] in self._offset:
+					raise FASTA_error('duplicate id: ' + m[1])
+				self.ids.append(m[1])
+				self._offset[m[1]] = self._fp.tell() - len(line)
+		self._fp.close()
+
+	def get(self, id):
+		"""
+		help
+		"""
+
+		self._fp = open(self.filename, 'r')
+		self._fp.seek(self._offset[id])
+		header = self._fp.readline()
+		m = re.search(r'>\s*(\S+)\s*(.*)', header)
+		id = m[1]
+		desc = m[2]
+		seq = []
+		while (True):
+			line = self._fp.readline()
+			if line[0:1] == '>': break
+			if line == '': break
+			line = line.replace(' ', '')
+			seq.append(line.strip())
+		self._fp.close()
+		return FASTA_entry(id, desc, "".join(seq))
+
+class FASTA_stream:
+	"""Class for iterating through a FASTA file"""
+
+	def __init__(self, filename=None, filepointer=None):
+		"""
+		stream
+		"""
+
+		self._fp = None
+		self._gz = False
+
+		if filename != None:
+			if re.search(r'\.gz$', filename):
+				self._fp = gzip.open(filename)
+				self._gz = True
+			else:
+				self._fp = open(filename, 'r')
+		elif filepointer != None:
+			self._fp = filepointer
+		else:
+			raise IOError('no file or filepointer given')
+		self._lastline = ''
+		self.done = False
+
+	def __iter__(self):
+		return self
+
+	def __next__(self):
+		return self.next()
+
+	def next(self):
+		"""
+		Retrieves the next entry of the FASTA file/stream.
+		"""
+
+		if self.done: raise StopIteration()
+		header = None
+		if self._lastline[0:1] == '>':
+			header = self._lastline
+		else:
+			header = self._fp.readline()
+			if self._gz: header = str(header, 'utf-8')
+
+		m = re.search(r'>\s*(\S+)\s*(.*)', header)
+		id = m[1]
+		desc = m[2]
+		seq = []
+
+		while (True):
+			line = self._fp.readline()
+			if self._gz: line = str(line, 'utf-8')
+			if line[0:1] == '>':
+				self._lastline = line
+				break
+			if line == '':
+				self.done = True
+				self._fp.close()
+				break
+
+			line = line.replace(' ', '')
+			seq.append(line.strip())
+
+		return FASTA_entry(id, desc, "".join(seq))
+
+class GFF_skip(Exception):
+	pass
+
+class GFF_error(Exception):
 	pass
 
 class GFF_entry:
-	"""Class representing a GFF entry (row)"""
+	"""
+	Represents a GFF entry (row).
+	
+	Attributes:
+	
+	+ chrom - chromosome (string)
+	+ source - entity that created this feature (arbitrary)
+	+ type - string describing feature type (hopefully from SO)
+	+ beg - 1-based int
+	+ end - 1-based int
+	+ score - number or '.' if not defined
+	+ strand - either '+' or '-' or '.' if not defined
+	+ phase - 0, 1, or 2, or '.' if not defined
+	+ attr - structured string representing extra information (e.g. grouping)
+	"""
 
-	def __init__(self, column):
-		"""
-		Parameters
-		----------
-		column: list
-			A list of columns in GFF file
-		"""
+	def __init__(self, line):
+		"""Parameter: a line from a GFF file"""
 
+		if line[0:1] == '#':
+			raise GFF_skip
+		if line[0:1] == '\n':
+			raise GFF_skip
+			
+		column = line.split('\t')
+		if len(column) < 8:
+			raise GFF_error('badly formatted gff')
+			
 		self.chrom = column[0]
 		self.source = column[1]
 		self.type = column[2]
@@ -23,24 +199,28 @@ class GFF_entry:
 		self.score = column[5]
 		self.strand = column[6]
 		self.phase = column[7]
-		self.attr = column[8]
+		if len(column) == 9:
+			self.attr = column[8]
 
 class GFF_file:
-	"""Class for reading and searching GFF files (slurps all into memory)."""
+	"""
+	Reading and searching GFF files (slurps all into memory).
+	
+	##Attributes
+	
+	+ chroms - a list of chromosomes
+	+ types - a list of types
+	
+	"""
 
 	def __init__(self, filename):
-		"""
-		Parameters
-		----------
-		filename: str
-			Path to the GFF file
-		"""
+		"""Parameter: path to GFF file, which may be compressed."""
 
 		self._chroms = {}
 		self._types = {}
 		gz = False
 		fp = None
-		if re.search('\.gz$', filename):
+		if re.search(r'\.gz$', filename):
 			fp = gzip.open(filename)
 			gz = True
 		else:
@@ -50,35 +230,33 @@ class GFF_file:
 			line = fp.readline()
 			if gz: line = str(line, 'utf-8')
 			if line == '': break
-			if line[0:1] == '#': continue
-			col = line.split('\t')
-			if len(col) < 8: continue
-			chrom = col[0]
-			type = col[2]
-			entry = GFF_entry(col)
-			if chrom not in self._chroms: self._chroms[chrom] = []
-			self._chroms[chrom].append(entry)
-			if type not in self._types: self._types[type] = []
-			self._types[type].append(entry)
-			self.chroms = list(self._chroms.keys())
-			self.types = list(self._types.keys())
+			
+			gff = None
+			try:
+				gff = GFF_entry(line)
+			except GFF_skip:
+				continue
+			except GFF_error:
+				raise GFF_error('badly formatted gff')
+			
+			if gff.chrom not in self._chroms: self._chroms[gff.chrom] = []
+			self._chroms[gff.chrom].append(gff)
+			if gff.type not in self._types: self._types[gff.type] = []
+			self._types[gff.type].append(gff)
+
 		fp.close()
+		self.chroms = list(self._chroms.keys())
+		self.types = list(self._types.keys())
 
 	def get(self, type=None, chrom=None, beg=None, end=None):
 		"""
-		Retrieves GFF entries with given parameters. If parameter isn't
-		specified, all are returned
+		Searches for GFF entries.
 
-		Parameters
-		----------
-		type: str
-			Type of GFF entry (e.g. exon, gene) (default is None)
-		chrom: str
-			Chromosome of interest (default is None)
-		beg: int
-			Beginning coordinate (default is None)
-		end: int
-			Ending coordinate (default is None)
+		Parameters:
+		+ type=str type of GFF entry (e.g. exon), all if not specified
+		+ chrom=str chromosome (e.g. I), all if not specified
+		+ beg=int 1-based begin coordinate, all if not specified
+		+ end=int 1-based end coordinate, all if not specified
 		"""
 
 		type_search = {}
@@ -115,22 +293,16 @@ class GFF_stream:
 
 	def __init__(self, filename=None, filepointer=None):
 		"""
-		Use either a path to file or filepointer object.
-
-		Parameters
-		----------
-		filename: str
-			Path to GFF file
-
-		filepointer:
-			Filepointer
+		Parameters:
+		+ filename=str
+		+ filepointer=file-like object
 		"""
 
 		self._fp = None
 		self._gz = False
 
 		if filename != None:
-			if re.search('\.gz$', filename):
+			if re.search(r'\.gz$', filename):
 				self._fp = gzip.open(filename)
 				self._gz = True
 			else:
@@ -148,7 +320,7 @@ class GFF_stream:
 
 	def next(self):
 		"""
-		Returns the next row in the GFF file/stream.
+		Returns the next entry in the GFF file/stream.
 		"""
 
 		line = self._fp.readline()
@@ -156,156 +328,13 @@ class GFF_stream:
 		if line == '':
 			self._fp.close()
 			raise StopIteration()
-		if line[0:1] == '#': return self.next()
-		col = line.split('\t')
-		if len(col) < 8: return self.next()
-		chrom = col[0]
-		type = col[2]
-		return GFF_entry(col)
-
-class FASTA_entry:
-	"""Class representing a FASTA entry"""
-
-	def __init__(self, id, desc, seq):
-		"""
-		Parameters
-		----------
-		id: str
-			Identifier of current FASTA entry
-		desc: str
-			Description/Info of entry (often empty)
-		seq: str
-			Sequence of entry
-		"""
-
-		self.id = id
-		self.desc = desc
-		self.seq = seq
-
-class FASTA_file:
-	"""Class for reading a FASTA file with random access"""
-
-	def __init__(self, filename):
-		"""
-		Reads in FASTA file. Raises errors on duplicate ids.
-
-		Parameters
-		----------
-		filename: str
-			Path to FASTA file
-		"""
-
-		self.filename = filename
-		if re.search('\.gz$', filename):
-			raise IOError('.gz files not supported in FASTA_file')
-		self._offset = {} # indexes identifiers to file offsets
-		self.ids = []
-		self._fp = open(self.filename, 'r')
-		while (True):
-			line = self._fp.readline()
-			if line == '': break
-			if line[0:1] == '>':
-				m = re.search('>\s*(\S+)', line)
-				if m[1] in self._offset:
-					raise IOError('duplicate id: ' + m[1])
-				self.ids.append(m[1])
-				self._offset[m[1]] = self._fp.tell() - len(line)
-		self._fp.close()
-
-	def get(self, id):
-		"""
-		Retrieves FASTA entry with given identifier.
-
-		Parameters
-		----------
-		id: str
-			Identifier name
-		"""
-
-		self._fp = open(self.filename, 'r')
-		self._fp.seek(self._offset[id])
-		header = self._fp.readline()
-		m = re.search('>\s*(\S+)\s*(.*)', header)
-		id = m[1]
-		desc = m[2]
-		seq = []
-		while (True):
-			line = self._fp.readline()
-			if line[0:1] == '>': break
-			if line == '': break
-			line = line.replace(' ', '')
-			seq.append(line.strip())
-		self._fp.close()
-		return FASTA_entry(id, desc, "".join(seq))
-
-class FASTA_stream:
-	"""Class for iterating through a FASTA file"""
-
-	def __init__(self, filename=None, filepointer=None):
-		"""
-		Use path to file or file pointer.
-
-		Parameters
-		----------
-		filename: str
-			Path to file
-		filepointer:
-			File pointer object
-		"""
-
-		self._fp = None
-		self._gz = False
-
-		if filename != None:
-			if re.search('\.gz$', filename):
-				self._fp = gzip.open(filename)
-				self._gz = True
-			else:
-				self._fp = open(filename, 'r')
-		elif filepointer != None:
-			self._fp = filepointer
-		else:
-			raise IOError('no file or filepointer given')
-		self._lastline = ''
-		self.done = False
-
-	def __iter__(self):
-		return self
-
-	def __next__(self):
-		return self.next()
-
-	def next(self):
-		"""
-		Retrieves the next entry of the FASTA file/stream.
-		"""
-
-		if self.done: raise StopIteration()
-		header = None
-		if self._lastline[0:1] == '>':
-			header = self._lastline
-		else:
-			header = self._fp.readline()
-			if self._gz: header = str(header, 'utf-8')
-
-		m = re.search('>\s*(\S+)\s*(.*)', header)
-		id = m[1]
-		desc = m[2]
-		seq = []
-
-		while (True):
-			line = self._fp.readline()
-			if self._gz: line = str(line, 'utf-8')
-			if line[0:1] == '>':
-				self._lastline = line
-				break
-			if line == '':
-				self.done = True
-				self._fp.close()
-				break
-
-			line = line.replace(' ', '')
-			seq.append(line.strip())
-
-		return FASTA_entry(id, desc, "".join(seq))
-
+		
+		gff = None
+		try:
+			gff = GFF_entry(line)
+		except GFF_skip:
+			return self.next()
+		except GFF_error:
+			raise GFF_error('badly formatted gff')
+		
+		return gff

@@ -4,6 +4,11 @@ import os
 import grimoire.io as io
 
 class TestIO(unittest.TestCase):
+
+	def test_FASTA_entry(self):
+		entry = io.FASTA_entry('foo', 'bar', 'ACGT')
+		s = entry.string(wrap=2)
+		self.assertEqual(s, '>foo bar\nAC\nGT\n')
 	
 	def test_FASTA_file(self):
 		if os.system('gunzip -c data/C.elegans.1percent.fasta > data/test.fasta'):
