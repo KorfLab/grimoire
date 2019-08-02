@@ -1,13 +1,17 @@
 import unittest
+import os
 
 import grimoire.io as io
 
 class TestIO(unittest.TestCase):
-	#def test_FASTA_file(self):
-	#	ff = toolbox.FASTA_file('data/C.elegans.1percent.fasta')
-	#	c4 = ff.get('IV')
-	#	self.assertEqual(len(c4.seq), 174938)
-	# test removed because we can't do random access
+	
+	def test_FASTA_file(self):
+		if os.system('gunzip -c data/C.elegans.1percent.fasta > data/test.fasta'):
+			raise 'unable to create test file'
+		ff = io.FASTA_file('data/test.fasta')
+		c4 = ff.get('IV')
+		self.assertEqual(len(c4.seq), 174938)
+		os.system('rm data/test.fasta')
 
 	def test_FASTA_stream(self):
 		ff = io.FASTA_stream('data/A.thaliana.1percent.fasta.gz')

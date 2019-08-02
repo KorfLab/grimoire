@@ -202,15 +202,15 @@ class FASTA_file:
 		self.ids = []
 		self._fp = open(self.filename, 'r')
 		while (True):
-			line = self.file.readline()
+			line = self._fp.readline()
 			if line == '': break
 			if line[0:1] == '>':
 				m = re.search('>\s*(\S+)', line)
-				if m[1] in self.offset:
+				if m[1] in self._offset:
 					raise IOError('duplicate id: ' + m[1])
 				self.ids.append(m[1])
-				self._offset[m[1]] = self.fp.tell() - len(line)
-		self.file.close()
+				self._offset[m[1]] = self._fp.tell() - len(line)
+		self._fp.close()
 
 	def get(self, id):
 		"""
@@ -235,7 +235,7 @@ class FASTA_file:
 			if line == '': break
 			line = line.replace(' ', '')
 			seq.append(line.strip())
-		self.file.close()
+		self._fp.close()
 		return FASTA_entry(id, desc, "".join(seq))
 
 class FASTA_stream:
