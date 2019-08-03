@@ -5,13 +5,11 @@ Classes for reading standard bioinformatics file formats.
 import re
 import gzip
 
-
-
 class FASTA_error(Exception):
 	pass
 
 class FASTA_entry:
-	"""Class representing a FASTA entry"""
+	"""Class representing a FASTA entry."""
 
 	def __init__(self, id, desc, seq):
 		"""
@@ -47,19 +45,25 @@ class FASTA_entry:
 		return self.string()
 
 class FASTA_file:
-	"""Class for reading a FASTA file with random access"""
+	"""Class for reading a FASTA file with random access."""
 
 	def __init__(self, filename):
 		"""
+		Parameters
+		----------
+		+ filename `str` path to file
+		
+		Attributes
+		----------
 		+ ids - list of identifiers
 		"""
 
-		self.filename = filename
+		self._filename = filename
 		if re.search(r'\.gz$', filename):
 			raise NotImplementedError('.gz files not supported in FASTA_file')
 		self._offset = {} # indexes identifiers to file offsets
 		self.ids = []
-		self._fp = open(self.filename, 'r')
+		self._fp = open(self._filename, 'r')
 		while (True):
 			line = self._fp.readline()
 			if line == '': break
@@ -73,10 +77,14 @@ class FASTA_file:
 
 	def get(self, id):
 		"""
-		help
+		Returns a `FASTA_entry` given an id.
+		
+		Parameters
+		----------
+		+ id `str` identifier
 		"""
 
-		self._fp = open(self.filename, 'r')
+		self._fp = open(self._filename, 'r')
 		self._fp.seek(self._offset[id])
 		header = self._fp.readline()
 		m = re.search(r'>\s*(\S+)\s*(.*)', header)
@@ -93,11 +101,16 @@ class FASTA_file:
 		return FASTA_entry(id, desc, "".join(seq))
 
 class FASTA_stream:
-	"""Class for iterating through a FASTA file"""
+	"""Class for iterating through a FASTA file."""
 
 	def __init__(self, filename=None, filepointer=None):
 		"""
-		stream
+		Parameters
+		----------
+		+ filename    `str` name of a file
+		+ filepointer `obj` bytes-like object
+		
+		Specify filename or filepointer, not both
 		"""
 
 		self._fp = None
@@ -163,24 +176,26 @@ class GFF_error(Exception):
 	pass
 
 class GFF_entry:
-	"""
-	Represents a GFF entry (row).
+	"""Represents a GFF entry (row)."""
 	
-	Attributes:
-	
-	+ chrom - chromosome (string)
-	+ source - entity that created this feature (arbitrary)
-	+ type - string describing feature type (hopefully from SO)
-	+ beg - 1-based int
-	+ end - 1-based int
-	+ score - number or '.' if not defined
-	+ strand - either '+' or '-' or '.' if not defined
-	+ phase - 0, 1, or 2, or '.' if not defined
-	+ attr - structured string representing extra information (e.g. grouping)
-	"""
-
 	def __init__(self, line):
-		"""Parameter: a line from a GFF file"""
+		"""
+		Parameters
+		----------
+		+ line `str` a line from a GFF file
+		
+		Attributes
+		----------
+		+ chrom  `str`   chromosome
+		+ source `str`   entity that created this feature (arbitrary)
+		+ type   `str`   string describing feature type (hopefully from SO)
+		+ beg    `int`   1-based coordinate
+		+ end    `int`   1-based coordinate, always bigger than beg
+		+ score  `float` number or '.' if not defined
+		+ strand `str`   either '+' or '-', or '.' if not defined
+		+ phase  `int`   0, 1, or 2, or '.' if not defined
+		+ attr   `str`  structured string for extra information (e.g. grouping)
+		"""
 
 		if line[0:1] == '#':
 			raise GFF_skip
@@ -203,18 +218,19 @@ class GFF_entry:
 			self.attr = column[8]
 
 class GFF_file:
-	"""
-	Reading and searching GFF files (slurps all into memory).
+	"""Reading and searching GFF files (slurps all into memory)."""
 	
-	##Attributes
-	
-	+ chroms - a list of chromosomes
-	+ types - a list of types
-	
-	"""
-
 	def __init__(self, filename):
-		"""Parameter: path to GFF file, which may be compressed."""
+		"""
+		Parameters
+		----------
+		+ filename `str` path to GFF file, which may be gzipped
+		
+		Attributes
+		----------
+		+ chroms - list of chromosome names
+		+ types - list of feature type names
+		"""
 
 		self._chroms = {}
 		self._types = {}
@@ -250,13 +266,14 @@ class GFF_file:
 
 	def get(self, type=None, chrom=None, beg=None, end=None):
 		"""
-		Searches for GFF entries.
+		Searches for GFF entries and returns them in a list of `GFF_entry`.
 
-		Parameters:
-		+ type=str type of GFF entry (e.g. exon), all if not specified
-		+ chrom=str chromosome (e.g. I), all if not specified
-		+ beg=int 1-based begin coordinate, all if not specified
-		+ end=int 1-based end coordinate, all if not specified
+		Parameters
+		----------
+		+ type=`str`  type of GFF entry (e.g. exon), all if not specified
+		+ chrom=`str` chromosome (e.g. I), all if not specified
+		+ beg=`int`   1-based begin coordinate, all if not specified
+		+ end=`int`   1-based end coordinate, all if not specified
 		"""
 
 		type_search = {}
@@ -289,15 +306,18 @@ class GFF_file:
 		return found
 
 class GFF_stream:
-	"""Class for iterating through GFF records"""
+	"""Class for iterating through GFF records."""
 
 	def __init__(self, filename=None, filepointer=None):
 		"""
-		Parameters:
-		+ filename=str
-		+ filepointer=file-like object
+		Parameters
+		----------
+		+ filename    `str` name of a file
+		+ filepointer `obj` bytes-like object
+		
+		Specify filename or filepointer, not both
 		"""
-
+		
 		self._fp = None
 		self._gz = False
 
@@ -320,7 +340,7 @@ class GFF_stream:
 
 	def next(self):
 		"""
-		Returns the next entry in the GFF file/stream.
+		Returns the next `GFF+entry` in the GFF file/stream.
 		"""
 
 		line = self._fp.readline()
