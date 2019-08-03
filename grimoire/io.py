@@ -270,10 +270,10 @@ class GFF_file:
 
 		Parameters
 		----------
-		+ type=`str`  type of GFF entry (e.g. exon), all if not specified
-		+ chrom=`str` chromosome (e.g. I), all if not specified
-		+ beg=`int`   1-based begin coordinate, all if not specified
-		+ end=`int`   1-based end coordinate, all if not specified
+		+ type=  `str`  type of GFF entry (e.g. exon), all if not specified
+		+ chrom= `str` chromosome (e.g. I), all if not specified
+		+ beg=   `int`   1-based begin coordinate, all if not specified
+		+ end=   `int`   1-based end coordinate, all if not specified
 		"""
 
 		type_search = {}

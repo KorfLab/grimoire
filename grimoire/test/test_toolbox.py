@@ -27,9 +27,6 @@ class TestToolbox(unittest.TestCase):
 	def test_translate_str(self):
 		s = 'ATAGCGAAT'
 		self.assertEqual(toolbox.translate_str(s), 'IAN')
-		
-		
+				
 if __name__ == '__main__':
 	unittest.main(verbosity=2)
-
-
