@@ -25,8 +25,8 @@ class Feature:
 		+ phase=  `.`     may be {0, 1, 2} or '.' for undefined
 		+ score=  `float` often unspecified as `.`
 		+ source= `.`     creator of feature (e.g. WormBase)
-		+ id=     `None`  unique identifier, optional
-		+ pid=    `None`  used for grouping this child to parent
+		+ id=     `str`   unique identifier, optional
+		+ pid=    `str`   a parent id or list of parent ids
 		
 		Attributes
 		----------
@@ -43,7 +43,11 @@ class Feature:
 		self.type = type
 		self.phase = phase
 		self.id = id
-		self.pid = pid
+		self.pid = []
+		if pid:
+			if   isinstance(pid, list): self.pid = pid
+			elif isinstance(pid, str):  self.pid.append(pid)
+			else: raise FeatureError('pid must be string or list of strings')
 		self.score = score
 		self.source = source
 		self.issues = {}
@@ -77,6 +81,18 @@ class Feature:
 		self._validate()
 		self.validated = True
 
+	def add_parent(self, pid):
+		"""
+		Add a parent identifier to a `Feature` object
+		
+		Parameters
+		----------
+		+ pid `str` parent identifier token (e.g. gene name)
+		"""
+		
+		if id not in self.pid:
+			self.pid.append(id)
+
 	def add_child(self, child):
 		"""
 		Add a child to `Feature` object. Unsets validated flag.
@@ -105,11 +121,11 @@ class Feature:
 
 		attr = ''
 		if self.id and self.pid:
-			attr = 'ID=' + self.id + ';Parent=' + self.pid
+			attr = 'ID=' + self.id + ';Parent=' + ','.join(self.pid)
 		elif self.id:
 			attr = 'ID=' + self.id
 		elif self.pid:
-			attr = 'Parent=' + self.pid
+			attr = 'Parent=' + ','.join(self.pid)
 
 		string = '\t'.join([self.dna.name, self.source, self.type,
 			str(self.beg), str(self.end), str(self.score),

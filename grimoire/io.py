@@ -4,6 +4,7 @@ Classes for reading standard bioinformatics file formats.
 
 import re
 import gzip
+import math
 
 class FASTA_error(Exception):
 	pass
@@ -358,3 +359,4 @@ class GFF_stream:
 			raise GFF_error('badly formatted gff')
 		
 		return gff
+
