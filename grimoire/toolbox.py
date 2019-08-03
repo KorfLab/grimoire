@@ -1,19 +1,5 @@
 """
-Toolbox
-
-This module contains a few math utility functions and classes for the I/O of
-GFF and FASTA files.
-
-There are 2 flavors of how to read GFF and FASTA files:
-	* File-based: GFF_file, FASTA_file
-	* Stream-based: GFF_stream, FASTA_stream
-
-Stream-based reading is generally preferred as they use fewer resources.
-GFF_file lets you retrieve records by searching for attributes, but the
-class reads the entire file into memory.
-FASTA_file gives you random access to records via sequence ids. The file
-is scanned once to record offsets.
-
+Miscellaneous functions for operating on numbers and strings.
 """
 
 import math
@@ -26,17 +12,17 @@ class ToolboxError(Exception):
 	pass
 	
 def prod(iterable):
-	"""Returns product of the elements in an iterable (e.g. k for k in list)"""
+	"""Returns product of the elements in an iterable (e.g. k for k in list)."""
 	return reduce(operator.mul, iterable, 1)
 
 def log(p):
-	"""Returns the value in log base e with a minimum value of -999"""
+	"""Returns the value in log base e with a minimum value of -999."""
 	if p < 0: raise ValueError('p < 0: ' + str(p))
 	if p == 0: return -999
 	else:      return math.log(p)
 
 def sumlog(v1, v2):
-	"""Returns the sum of two logspaced values"""
+	"""Returns the sum of two logspaced values in logspace."""
 	if v1 < v2: v1, v2 = v2, v1
 	return math.log(1 + math.exp(v2 - v1)) + v1
 
@@ -51,18 +37,13 @@ def _kmers(alphabet, table, key, n, k, v):
 		_kmers(alphabet, table, t, n, k - 1, v)
 
 def generate_kmers(alphabet='nt', k=1, pseudo=0):
-	"""Creates a dictionary of all kmers of either nt
-	or aa alphabet.
+	"""Creates a dictionary of all kmers of either nt or aa alphabet.
 
 	Parameters
 	----------
-	alphabet: str
-		The alphabet used. Either 'nt' or 'aa'
-		(default is 'nt')
-	k: int
-		Any integer. Placeholder for the value in kmer
-	Pseudo:
-		Pseudocount value (default is 0)
+	+ alphabet `str` nt or aa
+	+ k        `int` length of -kmer
+	+ pseudo   `int` pseudocount
 	"""
 
 	table = {}
@@ -124,12 +105,11 @@ GCODE = {
 
 def revcomp_str(seq):
 	"""
-	Returns the reverse compliment of a string (assumed to be nt)
+	Returns the reverse compliment.
 
 	Parameters
 	----------
-	seq: str
-		Given sequence
+	+ seq `str` nucleotide sequence
 	"""
 
 	comp = str.maketrans('ACGTRYMKWSBDHV', 'TGCAYRKMWSVHDB')
@@ -138,14 +118,12 @@ def revcomp_str(seq):
 
 def translate_str(seq, table='standard'):
 	"""
-	Translate a string (of nucleotides) into protein
+	Translate a nucleotide sequence into protein
 
 	Parameters
 	----------
-	seq: str
-		Given sequence
-	table: str
-		Given translation table (default is 'standard')
+	+ seq   `str` nucleotide sequence
+	+ table `str` flavor of translation table
 	"""
 
 	pro = []

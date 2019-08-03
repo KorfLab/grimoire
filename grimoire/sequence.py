@@ -1,6 +1,5 @@
 """
-Sequence
-
+Classes for represnting biological sequences.
 """
 import grimoire.toolbox as toolbox
 
@@ -8,7 +7,7 @@ class SequenceError(Exception):
 	pass
 
 class BioSequence:
-	"""Generic parent class of biological sequences"""
+	"""Parent base class for all biological sequences."""
 
 	def fasta(self, wrap=80):
 		"""
@@ -16,9 +15,7 @@ class BioSequence:
 
 		Parameters
 		----------
-		wrap: int
-			Number of characters before wrapping/
-			new line
+		+ wrap `int` number of characters per line
 		"""
 
 		s = '>'
@@ -39,28 +36,22 @@ class DNA(BioSequence):
 	canonical = ['A', 'C', 'G', 'T']
 	extended = ['A', 'C', 'G', 'T', 'R', 'Y', 'M', 'K', 'W', 'S', 'B', 'D', 'H', 'V', 'N']
 
-	def __init__(self, name=None, seq=None, desc=None, species=None):
+	def __init__(self, name=None, seq=None, desc=None):
 		"""
-		Parameters
-		----------
-		name: str
-			Name of Sequence
-		seq: str
-			The string of letters
-		desc: str
-			Description of sequence (default is None)
-		species: str
-			Specie of sequence (default is None)
+		Parameters & Attributes
+		-----------------------
+		+ name `str` ideally a unique identifier
+		+ desc `str` free text description of sequence
+		+ seq  `str` nucleotide sequence
 		"""
 
 		self.name = name
 		self.seq = seq
 		self.desc = desc
-		self.species = species
 		self.features = []
 
 	def check_alphabet(self):
-		"""Check if sequence is in given alphabet"""
+		"""Check if sequence is in given alphabet, throws `SeqeunceError`"""
 
 		for i in range(len(self.seq)):
 			nt = self.seq[i:i+1]
@@ -68,17 +59,17 @@ class DNA(BioSequence):
 				raise SequenceError('letter not in DNA alphabet: ' + nt)
 
 	def revcomp(self):
-		"""Return reverse compliment sequence"""
+		"""Returns a reverse compliment sequence with no name or desc"""
 		anti = toolbox.revcomp_str(self.seq)
 		return DNA(seq=anti)
 
-	def translate(self, table='standard'):
-		"""Return translated protein sequence"""
+	def translate(self):
+		"""Return translated protein sequence with no name or desc"""
 		pro = toolbox.translate_str(self.seq)
 		return Protein(seq=pro)
 
 class Protein(BioSequence):
-	"""Class for protein sequences. Uppercase only. 20 aa + X and *"""
+	"""Class for protein sequences. Uppercase only. 20 aa + X and *."""
 
 	canonical = ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N',
 		'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y']
@@ -87,16 +78,11 @@ class Protein(BioSequence):
 
 	def __init__(self, name=None, seq=None, desc=None, species=None):
 		"""
-		Parameters
-		----------
-		name: str
-			Name of Sequence (default is None)
-		seq: str
-			The actual sequence (default is None)
-		desc: str
-			Description of sequence (default is None)
-		species: str
-			Specie of sequence (default is None)
+		Parameters & Attributes
+		-----------------------
+		+ name `str` ideally a unique identifier
+		+ seq  `str` amino acid sequence
+		+ desc `str` free text description
 		"""
 
 		self.name = name
@@ -105,7 +91,7 @@ class Protein(BioSequence):
 		self.species = species
 
 	def check_alphabet(self):
-		"""Check if sequence is in given alphabet"""
+		"""Check if sequence is in given alphabet. Throws `SequenceError`"""
 		for i in range(len(self.seq)):
 			aa = self.seq[i:i+1]
 			if aa not in self.extended:
