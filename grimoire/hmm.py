@@ -1,5 +1,5 @@
 """
-HMM(Hidden Markov Model)
+HMM (Hidden Markov Model)
 
 This module contains classes and functions used to create HMMs.
 It is assumed that the sequences inputted are in the list format.
@@ -33,29 +33,20 @@ import random
 
 import grimoire.sequence as sequence
 import grimoire.toolbox as toolbox
+import grimoire.io as io
+from grimoire.feature import Feature
 
 class HMMError(Exception):
 	pass
 
-##########################
-### naked definitions  ###
-##########################
-
-def emission_model(context=1, alphabet='nt'):
+def emission_model(context=0, alphabet='nt'):
 	"""
-	Makes an empty emission model with specified context and alphabet.
-
-	Table is in dictionary format.
-
+	Returns an empty emission table/dict with specified context and alphabet.
+	
     Parameters
     ----------
-    context: int
-        The level of context, or the number of previous states taken into
-		account when calculating the emission probabilities. Value must be a
-		nonzero whole number (default is 1)
-    alphabet: str
-		The type of alphabet for model. Takes input nucleotides 'nt' or amino
-		acids 'aa' but only 'nt' is suppoorted in the HMM currently.
+	+ context=  `int` order of the Markov model (0 or greater)
+	+ alphabet= `str` either 'nt' or 'aa' (but really 'aa'?)
     """
 
 	letters = None
@@ -64,13 +55,13 @@ def emission_model(context=1, alphabet='nt'):
 	else: raise HMMError('alphabet error: ', alphabet)
 
 	if (context > 0):
-		table = sequence.generate_kmers(alphabet=alphabet, k=context)
+		table = toolbox.generate_kmers(alphabet=alphabet, k=context)
 		for k in table:
 			table[k] = {}
 			for a in letters:
 				table[k][a] = 0
 	elif (context == 0) :
-		table = sequence.generate_kmers(alphabet=alphabet, k=1, pseudo=0)
+		table = toolbox.generate_kmers(alphabet=alphabet, k=1, pseudo=0)
 	else :
 		raise HMMError('negative context')
 
@@ -78,18 +69,12 @@ def emission_model(context=1, alphabet='nt'):
 
 def train_emission(seqs, context=0):
 	"""
-	Train an emission table.
+	Train an emission table for a single sequence (e.g. UTR).
 
-	Returns a dictionary (context=0 or dictionary of dictionaries.
-
-    Parameters
-    ----------
-	seqs: list
-		A list of all the sequences to be modeled
-    context: int
-        The level of context, or the number of previous symbols taken into
-		account when calculating the emission probabilities. Value must be a
-		nonzero whole number (default is 0)
+	Parameters
+	----------
+	+ seqs    `list` list of sequences of type `str`
+	+ context= `int` order of the Markov model (0 or greater)
     """
 
 	count = emission_model(context=context)
@@ -124,18 +109,10 @@ def train_emissions(seqs, context=0):
 	"""
 	Train a list of emission tables. Usually for use with connected states.
 
-	This function outputs the emission frequencies as a list of dictionaries.
-	If context = 0, outputs list with a single dictionary.
-	If context > 0, outputs list with multiple dictionaries.
-
-    Parameters
-    ----------
-	seqs: list
-		A list of training sequences.
-    context: int
-        The level of context, or the number of previous symbols taken into
-		account when calculating the emission probabilities. Value must be a
-		nonzero whole number (default is 0)
+	Parameters
+	----------
+	+ seqs     `list` list of sequences of type `str`
+	+ context= `int` order of the Markov model (0 or greater)
     """
 
 	counts = []
@@ -181,20 +158,14 @@ def train_emissions(seqs, context=0):
 
 def train_cds(seqs, context=0):
 	"""
-	Train the coding sequence (CDS) emission model..
+	Train the coding sequence (CDS) emission model. Using a context of 2 or
+	greater will ensure there are no in-frame stop codons (provided the
+	sequences don't have in-frame stop codons).
 
-	This function outputs the emission frequencies as a list of dictionaries.
-	If context = 0, outputs list with a single dictionary.
-	If context > 0, outputs list with multiple dictionaries.
-
-    Parameters
-    ----------
-	seqs: list
-		A list of sequences for training the model.
-    context: int
-        The level of context, or the number of previous states taken into
-		account when calculating the emission probabilities. Value must be a
-		nonzero whole number (default is 1)
+	Parameters
+	----------
+	+ seqs     `list` list of sequences of type `str`
+	+ context= `int`  order of the Markov model (0 or greater)
     """
 
 	counts = []
@@ -238,14 +209,12 @@ def train_cds(seqs, context=0):
 
 def state_factory(prefix, emissions):
 	"""
-	Create a list of related state objects (e.g. splice donor site)
+	Create a list of related state objects (e.g. splice donor site).
 
 	Parameters
 	----------
-	prefix: str
-		State prefix (e.g. ACC, DON, GEN)
-	emissions: list
-		A list of emission probabilities
+	+ prefix    `str`  name of the state (e.g. ACC, DON)
+	+ emissions `dict` table from `train_emissions()`
 	"""
 
 	state_list = []
@@ -265,21 +234,17 @@ def state_factory(prefix, emissions):
 		state_list.append(state)
 	return(state_list)
 
-def null_state_factory(file=None, context=None):
+def null_state_factory(file=None, context=0):
 	"""
-	Create the null state object.
+	Create the null state object (usually from entire genome).
 
 	Parameters
 	----------
-	file: str
-		File path, which may be compressed
-	context: int
-        The level of context, or the number of previous states taken into
-		account when calculating the emission probabilities. Value must be a
-		nonzero whole number (default is None)
+	+ file    `str` path to fasta file, which may be gzipped
+	+ context `int` order of the Markov model (0 or greater)
 	"""
 
-	fasta = toolbox.FASTA_stream(filename=file)
+	fasta = io.FASTA_stream(filename=file)
 	count = emission_model(context=context)
 	freq = {}
 
@@ -317,8 +282,7 @@ def connect_all (states) :
 
 	Parameters
 	----------
-	states: list
-		A list of state objects
+	+ states `list` state objects, probably all related (e.g. donors)
 	"""
 
 	for i in range(len(states)-1) :
@@ -330,41 +294,26 @@ def connect2 (s1, s2, p) :
 
 	Parameters
 	----------
-	s1: object
-		State 1
-	s2: object
-		State 2
-	p: float
-		transition probability
+	+ s1 `State` state 1
+	+ s2 `State` state 2
+	+ p  `float` transition probability
 	"""
 
 	s1.next[s2.name] = p
-    
-###############
-### Classes ###
-###############
 
 class State:
-	"""Class for HMM States"""
+	"""Class representing HMM States and their associated transitions."""
 
 	def __init__(self, name=None, context=None, emits=None, init=0, term=0, next=None):
 		"""
 		Parameters
 		----------
-		name: str
-			Name of State, required
-		context: int
-			The level of context, or the number of previous states taken into
-			account when calculating the emission probabilities. Value must be a
-			nonzero whole number (default is None)
-		emits: float
-			Singular emission probability for the state.
-		init:  float
-			Probability of having the HMM start at this state (default is 0)
-		term: float
-			Probability of having the HMM end at this state (default is 0)
-		next: dictionary
-			Dictionary of all next states (default is empty dictionary)
+		+ name    `str`   name of the state, must be unique in the model
+		+ context `int`   order of the Markov emission model (0 or greater)
+		+ emits   `obj`   emission table/dict
+		+ init    `float` probability to start in this state
+		+ term    `float` probability to end in this state
+		+ next    `dict`  dictionary of connected states and probabilities
 		"""
 
 		self.name = name
@@ -387,19 +336,16 @@ class HMMdecoder(json.JSONEncoder):
 		return o.__dict__
 
 class HMM:
-	"""Class for HMMs"""
+	"""Class for HMMs, which is mostly a container for `State` objects."""
+	
 	def __init__(self, name=None, log=False, states=None, null=None):
 		"""
 		Parameters
 		----------
-		name: str
-		 	Name of HMM
-		log: bool
-			HMM is in Logspace
-		states: list
-			List of HMM states
-		null: object
-			State representing null model
+		+ name   `str`   name of the HMM (arbitrary)
+		+ log    `bool`  flag to indicate if the model is in logspace
+		+ states `list`  list of `State` objects
+		+ null   `State` the null state used for calculated scores
 		"""
 
 		self.name = name
@@ -410,12 +356,11 @@ class HMM:
 	@classmethod
 	def read(cls, filename):
 		"""
-		Read in HMM file
+		File-based constructor for HMMs that are in the file system.
 
 		Parameters
 		----------
-		filename: str
-			Path to HMM file, which may be compressed
+		+ filename `str` path to the HMM file, which may be gzipped
 		"""
 
 		d = None
@@ -449,12 +394,11 @@ class HMM:
 
 	def write(self, filename):
 		"""
-		Write in HMM file
+		Write the HMM file to the file system.
 
 		Parameters
 		----------
-		filename: str
-			Path to the HMM output file, which may be compressed
+		+ filename `str` path to the outputfile (.gz will compress)
 		"""
 
 		if re.search('\.gz$', filename):
@@ -466,7 +410,7 @@ class HMM:
 
 	def convert2log(self):
 		"""
-		Converts the HMM into logspace
+		Converts the HMM into logspace, which is critical for long sequences.
 		"""
 
 		if self.log:
@@ -489,7 +433,7 @@ class HMM:
 	def macro_labels(self):
 		"""
 		Returns a list of label names stripped of the numeric identifier.
-		For example ACC-0 becomes ACC.
+		For example [ACC-0, ACC-1] becomes ACC.
 		"""
 		label = {}
 		for state in self.states:
@@ -497,25 +441,20 @@ class HMM:
 			label[macro] = True
 		return list(label.keys())
 
-
 class DecodeError(Exception):
 	pass
 
 class Parse:
-	"""Class representing a parse through a sequence"""
+	"""Class representing a parse through a sequence."""
 	
 	def __init__(self, score=None, path=None, freq=None, decoder=None):
 		"""
 		Parameters
 		----------
-		score: float
-			Usually a log-odds ratio vs. null model
-		path: list
-		 	State path (a list of state labels)
-		freq: float
-			Frequency of path occurring (should be set if stochastic)
-		decoder: object
-			Decoder that produced the path
+		+ score= `float` usually a log-odds ratio vs. null model parse
+		+ path=  `list`  a list of state labels
+		+ freq=  `float` frequency of taking this path if there are multiples
+		+ decoder= `obj` decoder object that produced the path
 		"""
 
 		self.score = score
@@ -524,7 +463,7 @@ class Parse:
 		self.decoder = decoder
 
 	def features(self):
-		"""Compile into a list of genome Feature objects"""
+		"""Returns parse as a list of `Feature` objects."""
 
 		dna = self.decoder.dna
 		labels = self.decoder.model.macro_labels()
@@ -546,22 +485,22 @@ class Parse:
 			for i in range(beg, len(mypath)):
 				if mypath[beg] != mypath[i]:
 					end = i-1
-					features.append(genome.Feature(dna, beg+1, end+1, '+',
+					features.append(Feature(dna, beg+1, end+1, '+',
 						mypath[beg]))
 					beg = end+1
 					break
 				elif i == len(mypath) -1:
-					features.append(genome.Feature(dna, beg+1, i+1, '+',
+					features.append(Feature(dna, beg+1, i+1, '+',
 						mypath[beg]))
 					end = len(mypath) +1
 		return features
 
 class HMM_NT_decoder:
-	"""Base class for the HMM Nucleotide Decoders"""
+	"""Base class for the HMM nucleotide decoders."""
 
-	def state_map(self):
+	def _state_map(self):
 		"""
-		A dictionary to look up states by name (used internally)
+		Creates a dictionary to look up states by name (used internally)
 		key: state name (str), value: state (object)
 		"""
 
@@ -570,7 +509,7 @@ class HMM_NT_decoder:
 			smap[state.name] = state
 		return smap
 
-	def transition_map(self):
+	def _transition_map(self):
 		"""
 		Reverse of the state.next dictionary (used internally)
 		"""
@@ -585,8 +524,8 @@ class HMM_NT_decoder:
 				tmap[next][state.name] = state.next[next]
 		return tmap
 
-	def set_null_score(self):
-		"""Generate/set the score for the null model."""
+	def _set_null_score(self):
+		"""Generate/set the score for the null model. Must be set once."""
 
 		self.null_score = 0 if self.model.log else 1
 		for i in range(len(self.dna.seq)):
@@ -600,10 +539,8 @@ class HMM_NT_decoder:
 
 		Parameters
 		----------
-		state_name: str
-			Name of state
-		i: int
-			Position of state
+		+ state_name `str` name of the state
+		+ i          `int` position in the sequence (1-based coordinates)
 		"""
 
 		nt = self.dna.seq[i:i+1]
@@ -637,8 +574,7 @@ class HMM_NT_decoder:
 
 		Parameters
 		----------
-		path: list
-			List of state names
+		+ path `list` of state names
 		"""
 		
 		# should this be state.next or tmap?
@@ -689,16 +625,14 @@ class HMM_NT_decoder:
 			print()
 
 class Viterbi(HMM_NT_decoder):
-	"""Standard Viterbi in probabilty or log space"""
+	"""Standard Viterbi decoding in probabilty or log space."""
 
 	def __init__(self, model=None, dna=None):
 		"""
 		Parameters
 		----------
-		model: object
-			HMM object
-		dna: object
-			DNA object
+		+ model= `HMM`
+		+ dna=   `DNA`
 		"""
 
 		self.model = model
@@ -708,13 +642,13 @@ class Viterbi(HMM_NT_decoder):
 		self.score = None
 		self.path = None
 		self.matrix = None
-		self.tmap = self.transition_map()
-		self.smap = self.state_map()
-		self.set_null_score()
+		self.tmap = self._transition_map()
+		self.smap = self._state_map()
+		self._set_null_score()
 		
 		if len(self.dna.seq) > 100 and not self.model.log:
 			sys.stderr.write('underflowing? use logspace model')
-
+		
 		# initialize viterbi matrix
 		v = []
 		for i in range(len(self.dna.seq)):
@@ -746,7 +680,7 @@ class Viterbi(HMM_NT_decoder):
 						trace = prev
 				v[i][here]['score'] = max
 				v[i][here]['trace'] = trace
-
+		
 		# set terminal probabilities
 		for s in self.model.states:
 			if self.model.log: v[-1][s.name]['score'] += s.term
@@ -781,18 +715,15 @@ class Viterbi(HMM_NT_decoder):
 		return(Parse(path=self.path, score=self.score, decoder=self))
 
 class StochasticViterbi(HMM_NT_decoder):
-	"""Viterbi supporting multiple sub-optimal trace-backs"""
+	"""Viterbi supporting multiple sub-optimal trace-backs."""
 
 	def __init__(self, model=None, dna=None, seed=None):
 		"""
 		Parameters
 		----------
-		model: object
-			HMM object
-		dna: object
-			DNA object
-		seed: int
-			Random seed for reproducibility
+		+ model= `HMM`
+		+ dna=   `DNA`
+		+ seed=  `int` random seed for reproducibility
 		"""
 
 		self.model = model
@@ -805,9 +736,9 @@ class StochasticViterbi(HMM_NT_decoder):
 		self.matrix = None
 
 		if self.seed: random.seed(self.seed)
-		self.tmap = self.transition_map()
-		self.smap = self.state_map()
-		self.set_null_score()
+		self.tmap = self._transition_map()
+		self.smap = self._state_map()
+		self._set_null_score()
 
 		# initialize matrix
 		v = []
@@ -1019,16 +950,14 @@ class ForwardBackward(HMM_NT_decoder):
 		"""
 		Parameters
 		----------
-		model: object
-			HMM object
-		dna: object
-			DNA object
+		+ model= `HMM`
+		+ dna=   `DNA`
 		"""
 
 		self.model = model
 		self.dna = dna
-		self.tmap = self.transition_map()
-		self.smap = self.state_map()
+		self.tmap = self._transition_map()
+		self.smap = self._state_map()
 		self.matrix = None
 		prod = toolbox.prod
 		sumlog = toolbox.sumlog
@@ -1092,10 +1021,8 @@ class ForwardBackward(HMM_NT_decoder):
 
 		Parameters
 		----------
-		state_name: str
-			State name of interest
-		i: int
-			Position in the sequence
+		+ state_name `str` name of the state
+		+ i          `int` position in sequence (1-based)
 		"""
 
 		return self.matrix[state_name][i]['posterior']
