@@ -13,7 +13,7 @@ class TestGenome(unittest.TestCase):
 			fasta='data/C.elegans.1percent.fasta.gz',
 			gff='data/C.elegans.1percent.gff3.gz')
 		for chrom in gen:
-			genes = genome.build_genes(chrom)
+			genes = chrom.ftable.build_genes()
 			for g in genes:
 				if g.issues: gerr += 1
 				for t in g.transcripts():

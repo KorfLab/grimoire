@@ -12,64 +12,6 @@ import grimoire.io as io
 from grimoire.sequence import DNA
 from grimoire.feature import Feature, Gene, mRNA, ncRNA
 
-def build_genes(dna):
-	"""
-	Returns gene objects from a `DNA` object using its feature table. `Gene`
-	objects contain `Transcript` objects which may be of subclass `mRNA` or
-	`ncRNA` depending on if they are coding. If the feature table has both
-	exon and CDS objects, `build_genes()` will attempt to construct `mRNA`
-	objects.
-	
-	In order for the exon/CDS features to be grouped into transcripts and
-	then into genes, the GFF must properly specify ID and Parent_ID as in
-	the GFF3 spec.
-	
-	Parameter
-	---------
-	+ dna `grimoire.DNA` DNA object with features
-	"""
-	
-	genes = {}
-	mRNAs = {}
-	parts = []
-	for f in dna.features:
-		if f.type == 'gene':
-			if f.id == None:
-				raise FeatureError('genes need ids')
-			genes[f.id] = Gene(dna, f.beg, f.end, f.strand, f.type, id=f.id)
-		elif f.type == 'mRNA':
-			if f.id == None:
-				raise FeatureError('mRNAs need ids')
-			if f.pid == None:
-				raise FeatureError('mRNAs need pids')
-			mRNAs[f.id] = mRNA(dna, f.beg, f.end, f.strand, f.type,
-				id=f.id, pid=f.pid)
-		elif f.type == 'exon' or f.type == 'CDS':
-			if f.pid == None:
-				raise FeatureError('exons and CDSs need parents')
-			parts.append(f)
-	
-	# add parts to mRNAs
-	for f in parts:
-		for pid in f.pid:
-			if pid in mRNAs:
-				mRNAs[pid].add_child(f)
-
-	# add mRNAs to genes
-	for txid in mRNAs:
-		f = mRNAs[txid]
-		if len(f.pid) != 1:
-			raise FeatureError('mRNAs should have exactly one parent id')
-		pid = f.pid[0]
-		if pid in genes:
-			genes[pid].add_child(f)
-	
-	# perform sanity checks on all genes
-	for gid in genes:
-		genes[gid].validate()
-	
-	return list(genes.values())
-
 class GenomeError(Exception):
 	pass
 
@@ -154,7 +96,7 @@ class Reader:
 				if ',' in pm[1]: pid = pm[1].split(',')
 				else:            pid = pm[1]
 			
-			dna.features.append(Feature(dna, g.beg, g.end, g.strand,
+			dna.ftable.add_feature(Feature(dna, g.beg, g.end, g.strand,
 				g.type, source=g.source, score=g.score, id=id, pid=pid))
 
 		return dna

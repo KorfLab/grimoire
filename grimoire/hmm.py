@@ -896,7 +896,7 @@ class Transcoder(HMM_NT_decoder):
 	
 		cds_len = None # for tracking phase
 		path = []
-		for f in self.dna.features:
+		for f in self.dna.ftable.features:
 			if self.label_count[f.type] == 1:
 				for i in range(f.beg -1, f.end):
 					path.append(f.type)

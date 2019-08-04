@@ -20,7 +20,7 @@ class TestHMM(unittest.TestCase):
 			gff='data/C.elegans.1percent.gff3.gz',
 			fasta='data/C.elegans.1percent.fasta.gz')
 		for chrom in gen:
-			genes = genome.build_genes(chrom)
+			genes = chrom.ftable.build_genes()
 			gen_seqs.append(chrom.seq)
 			for gene in genes:
 				if gene.issues: continue
@@ -113,9 +113,9 @@ class TestHMM(unittest.TestCase):
 	
 	def test_Transcoder(self):
 		dna = sequence.DNA(name='test', seq='AAAGTGAGCCCC')
-		dna.features.append(Feature(dna, 1, 3, '+', 'GEN'))
-		dna.features.append(Feature(dna, 4, 9, '+', 'DON'))
-		dna.features.append(Feature(dna, 10, 12, '+', 'GEN'))
+		dna.ftable.add_feature(Feature(dna, 1, 3, '+', 'GEN'))
+		dna.ftable.add_feature(Feature(dna, 4, 9, '+', 'DON'))
+		dna.ftable.add_feature(Feature(dna, 10, 12, '+', 'GEN'))
 		tc = hmm.Transcoder(model=self.hmm, dna=dna)
 		self.assertEqual(tc.score, 1.250948871669515)
 		

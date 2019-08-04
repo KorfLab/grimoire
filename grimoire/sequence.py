@@ -2,6 +2,7 @@
 Classes for represnting biological sequences.
 """
 import grimoire.toolbox as toolbox
+from grimoire.feature_table import FeatureTable
 
 class SequenceError(Exception):
 	pass
@@ -21,7 +22,6 @@ class BioSequence:
 		s = '>'
 		if self.name: s += self.name
 		if self.desc: s += ' ' + self.desc
-		if self.species: s += '[' + self.species + ']'
 		s += '\n'
 		for i in range(0, len(self.seq), wrap):
 			s += self.seq[i:i+wrap] + '\n'
@@ -48,7 +48,7 @@ class DNA(BioSequence):
 		self.name = name
 		self.seq = seq
 		self.desc = desc
-		self.features = []
+		self.ftable = FeatureTable()
 
 	def check_alphabet(self):
 		"""Check if sequence is in given alphabet, throws `SeqeunceError`"""
@@ -88,7 +88,6 @@ class Protein(BioSequence):
 		self.name = name
 		self.seq = seq
 		self.desc = desc
-		self.species = species
 
 	def check_alphabet(self):
 		"""Check if sequence is in given alphabet. Throws `SequenceError`"""
@@ -96,3 +95,4 @@ class Protein(BioSequence):
 			aa = self.seq[i:i+1]
 			if aa not in self.extended:
 				raise SequenceError('letter not in protein alphabet: ' + aa)
+
