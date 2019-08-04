@@ -15,16 +15,28 @@ The code is designed with the folllowing analyses in mind:
 
 + Gene structure prediction using hidden Markov models and variants
 + Genome annotation quality control
++ Structure-function relationships in sequences (including IME)
 
-Programs:
+Style
+-----
+
++ Generally, follow the python style guide
++ Initial indents are with tabs not hard spaces
++ Docstrings are designed to look nice with pdoc3
+
+Programs
+--------
+
+Program names are themed after spell names from the classic RPG
+"Wizardry: Proving Grounds of the Mad Overlord."
 
 | Name      | Meaning    | Function                              |
 |:----------|:-----------|:--------------------------------------|
 | kalki     | blessings  | gff3 sanitizer (gff3io)
 | milwa     | light      | hmm buider (forge)
-| dumapic   | clarity    | hmm grapher (hmm_grapher)
+| dumapic   | clarity    | hmm grapher 
 | calfo     | x-ray      | genome reporter (fathom)
-| halito    | fire       | hmm decoder (gene_finder)
+| halito    | fire       | hmm decoder
 | mahalito  | big fire   | 2-pass gene decoder
 | lahalito  | torch      | full genome decoder
 | tiltowait | explosion  | multi-genome decoder
@@ -40,11 +52,11 @@ Programs:
 Contributors
 ------------
 
-+ Ian Korf
-+ Hannah Lyman
-+ Alex Kramer
-+ Jack Yu
-+ Qijia "Joy" Liu
++ Ian Korf (iankorf)
++ Hannah Lyman (hslyman)
++ Alex Kramer (aklreaxmer)
++ Qijia Liu (joyliu-q)
++ Jack Yu (Angraygs)
 
 Acknowledgements
 ----------------
