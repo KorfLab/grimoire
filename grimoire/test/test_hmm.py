@@ -6,6 +6,7 @@ import os
 import grimoire.sequence as sequence
 import grimoire.genome as genome
 import grimoire.hmm as hmm
+from grimoire.feature import Feature
 
 class TestHMM(unittest.TestCase):
 
@@ -74,7 +75,7 @@ class TestHMM(unittest.TestCase):
 		self.assertEqual(ft[1].type, 'DON')
 		self.assertEqual(ft[1].beg, 5)
 
-	def test_Decode_Viterbi_logspace(self):
+	def test_Viterbi_logspace(self):
 		dna = sequence.DNA(name='test', seq='AAAAGTAAGTTTTT')
 		m = copy.deepcopy(self.hmm)
 		m.convert2log()
@@ -82,14 +83,14 @@ class TestHMM(unittest.TestCase):
 		p = v.generate_path()
 		self.assertEqual(p.score, 1.5763805776787159)
 
-	def test_Decode_StochasticViterbi(self):
+	def test_StochasticViterbi(self):
 		dna = sequence.DNA(name='test', seq='TTTTTGTAAGTAAGTTTTT')
 		v = hmm.StochasticViterbi(model=self.hmm, dna=dna, seed=1)
 		ps = v.generate_paths(1000)
 		self.assertEqual(ps[0].score, 4.600333948735676)
 		self.assertEqual(ps[0].freq, 0.459)
 
-	def test_Decode_StochasticViterbi_logspace(self):
+	def test_StochasticViterbi_logspace(self):
 		dna = sequence.DNA(name='test', seq='TTTTTGTAAGTAAGTTTTT')
 		m = copy.deepcopy(self.hmm)
 		m.convert2log()
@@ -98,7 +99,7 @@ class TestHMM(unittest.TestCase):
 		self.assertEqual(ps[0].score, 1.5261288984112191)
 		self.assertEqual(ps[0].freq, 0.459)
 
-	def test_Decode_ForwardBackward(self):
+	def test_ForwardBackward(self):
 		dna = sequence.DNA(name='test', seq='AGT')
 		p = hmm.ForwardBackward(model=self.hmm, dna=dna)
 		self.assertAlmostEqual(p.posterior(state_name='GEN', i=0),
@@ -109,6 +110,18 @@ class TestHMM(unittest.TestCase):
 			0.0031969999999999998, places=8)
 		self.assertAlmostEqual(p.posterior(state_name='GEN', i=2),
 			0.0180164507345262, places=8)
+	
+	def test_Transcoder(self):
+		dna = sequence.DNA(name='test', seq='AAAGTGAGCCCC')
+		dna.features.append(Feature(dna, 1, 3, '+', 'GEN'))
+		dna.features.append(Feature(dna, 4, 9, '+', 'DON'))
+		dna.features.append(Feature(dna, 10, 12, '+', 'GEN'))
+		tc = hmm.Transcoder(model=self.hmm, dna=dna)
+		self.assertEqual(tc.score, 1.250948871669515)
+		
+	def test_Parse(self):
+		pass
+		# needs testing, by maybe reorganizing instead
 	
 if __name__ == '__main__':
 	unittest.main(verbosity=2)

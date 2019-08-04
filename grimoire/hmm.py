@@ -1,26 +1,5 @@
 """
-HMM (Hidden Markov Model)
-
-This module contains classes and functions used to create HMMs.
-It is assumed that the sequences inputted are in the list format.
-
-The following functions are provided to help build the model.
- 	* emission_model
-	* train_emission
-	* train_emissions
-	* train_cds
-	* state_factory
-	* null_state_factory
-	* connect_all
-	* connect2
-
-The following classes and methods are provided in HMM:
-	* State - Class for HMM States
-	* HMM - Class for HMMs
-		* HMM.read
-		* HMM.write
-		* HMM.convert2log
-		* HMM.macro_labels
+Classes for building and decoding HMMs and variants.
 """
 
 import json
@@ -332,6 +311,7 @@ class State:
 		return(json.dumps(self.__dict__, indent = 4))
 
 class HMMdecoder(json.JSONEncoder):
+	"""Used for json-based io"""
 	def default(self, o):
 		return o.__dict__
 
@@ -364,7 +344,7 @@ class HMM:
 		"""
 
 		d = None
-		if re.search('\.gz$', filename):
+		if re.search(r'\.gz$', filename):
 			with gzip.open(filename, mode='r') as fp:
 				d = json.loads(fp.read())
 		else:
@@ -401,7 +381,7 @@ class HMM:
 		+ filename `str` path to the outputfile (.gz will compress)
 		"""
 
-		if re.search('\.gz$', filename):
+		if re.search(r'\.gz$', filename):
 			with gzip.open(filename, mode='w') as fp:
 				fp.write(json.dumps(self.__dict__, indent=4, cls=HMMdecoder))
 		else:
@@ -437,7 +417,7 @@ class HMM:
 		"""
 		label = {}
 		for state in self.states:
-			macro = re.search('(\w+)', state.name)[1]
+			macro = re.search(r'(\w+)', state.name)[1]
 			label[macro] = True
 		return list(label.keys())
 
@@ -898,21 +878,21 @@ class Transcoder(HMM_NT_decoder):
 		"""
 		Parameters
 		----------
-		model: HMM
-			An HMM, probably converted to log space
+		+ model `HMM` usually converted to logspace
+		+ dna   `DNA` 
 		"""
 		
 		self.model = model
 		self.dna = dna
-		self.smap = self.state_map()
-		self.tmap = self.transition_map()
+		self.smap = self._state_map()
+		self.tmap = self._transition_map()
 		self.label_count = {}
 		for state in model.states:
-			stub = re.search('(\w+)', state.name)[1]
+			stub = re.search(r'(\w+)', state.name)[1]
 			if stub not in self.label_count:
 				self.label_count[stub] = 0
 			self.label_count[stub] += 1
-		self.set_null_score()
+		self._set_null_score()
 	
 		cds_len = None # for tracking phase
 		path = []

@@ -18,7 +18,7 @@ def build_genes(dna):
 	objects contain `Transcript` objects which may be of subclass `mRNA` or
 	`ncRNA` depending on if they are coding. If the feature table has both
 	exon and CDS objects, `build_genes()` will attempt to construct `mRNA`
-	objects (otherwise `ncRNA`).
+	objects.
 	
 	In order for the exon/CDS features to be grouped into transcripts and
 	then into genes, the GFF must properly specify ID and Parent_ID as in
@@ -90,7 +90,7 @@ class Reader:
 		self._gff = io.GFF_file(gff)
 		self._check = check
 
-		if re.search('\.gz$', fasta):
+		if re.search(r'\.gz$', fasta):
 			self._fp = gzip.open(fasta)
 			self._gz = True
 		else:
@@ -117,7 +117,7 @@ class Reader:
 			header = self._fp.readline()
 			if self._gz: header = str(header, 'utf-8')
 
-		m = re.search('>\s*(\S+)\s*(.*)', header)
+		m = re.search(r'>\s*(\S+)\s*(.*)', header)
 		id = m[1]
 		desc = m[2]
 		seq = []
