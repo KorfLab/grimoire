@@ -16,7 +16,7 @@ class BioSequence:
 
 		Parameters
 		----------
-		+ wrap `int` number of characters per line
+		+ wrap= `int` number of characters per line
 		"""
 
 		s = '>'
@@ -40,9 +40,9 @@ class DNA(BioSequence):
 		"""
 		Parameters & Attributes
 		-----------------------
-		+ name `str` ideally a unique identifier
-		+ desc `str` free text description of sequence
-		+ seq  `str` nucleotide sequence
+		+ name= `str` ideally a unique identifier
+		+ desc= `str` free text description of sequence
+		+ seq=  `str` nucleotide sequence
 		"""
 
 		self.name = name
@@ -80,9 +80,9 @@ class Protein(BioSequence):
 		"""
 		Parameters & Attributes
 		-----------------------
-		+ name `str` ideally a unique identifier
-		+ seq  `str` amino acid sequence
-		+ desc `str` free text description
+		+ name= `str` ideally a unique identifier
+		+ desc= `str` free text description
+		+ seq=  `str` amino acid sequence
 		"""
 
 		self.name = name

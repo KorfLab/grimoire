@@ -56,7 +56,7 @@ class FASTA_file:
 		
 		Attributes
 		----------
-		+ ids - list of identifiers
+		+ ids	`list` identifiers of entries in file
 		"""
 
 		self._filename = filename
@@ -108,8 +108,8 @@ class FASTA_stream:
 		"""
 		Parameters
 		----------
-		+ filename    `str` name of a file
-		+ filepointer `obj` bytes-like object
+		+ filename=    `str` name of a file
+		+ filepointer= `obj` bytes-like object
 		
 		Specify filename or filepointer, not both
 		"""
@@ -164,7 +164,6 @@ class FASTA_stream:
 				self.done = True
 				self._fp.close()
 				break
-
 			line = line.replace(' ', '')
 			seq.append(line.strip())
 
@@ -229,8 +228,8 @@ class GFF_file:
 		
 		Attributes
 		----------
-		+ chroms - list of chromosome names
-		+ types - list of feature type names
+		+ chroms	`list` chromosome names
+		+ types		`list` feature type names
 		"""
 
 		self._chroms = {}
@@ -313,8 +312,8 @@ class GFF_stream:
 		"""
 		Parameters
 		----------
-		+ filename    `str` name of a file
-		+ filepointer `obj` bytes-like object
+		+ filename=    `str` name of a file
+		+ filepointer= `obj` bytes-like object
 		
 		Specify filename or filepointer, not both
 		"""
@@ -341,7 +340,7 @@ class GFF_stream:
 
 	def next(self):
 		"""
-		Returns the next `GFF+entry` in the GFF file/stream.
+		Returns the next `GFF_entry` in the GFF file/stream.
 		"""
 
 		line = self._fp.readline()

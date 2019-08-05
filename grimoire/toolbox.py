@@ -13,8 +13,7 @@ class ToolboxError(Exception):
 	
 def prod(iterable):
 	"""Returns product of the elements in an iterable."""
-	# when 3.8 is standard, switch to math.prod
-	return reduce(operator.mul, iterable)
+	return reduce(operator.mul, iterable) # replace with math.prod when  3.8 is standard
 
 def log(p):
 	"""Returns the value in log base e with a minimum value of -999."""
@@ -42,9 +41,9 @@ def generate_kmers(alphabet='nt', k=1, pseudo=0):
 
 	Parameters
 	----------
-	+ alphabet `str` 'nt' or 'aa'
-	+ k        `int` length of -kmer
-	+ pseudo   `int` pseudocount
+	+ alphabet= `str` 'nt' or 'aa'
+	+ k=        `int` length of -kmer
+	+ pseudo=   `int` pseudocount
 	"""
 
 	table = {}
@@ -124,7 +123,7 @@ def translate_str(seq, table='standard'):
 	Parameters
 	----------
 	+ seq   `str` nucleotide sequence
-	+ table `str` flavor of translation table
+	+ table= `str` flavor of translation table
 	"""
 
 	pro = []
