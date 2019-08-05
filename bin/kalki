@@ -1,23 +1,46 @@
 #!/usr/bin/env python3
-'''
-GFF3io
-
-Takes a file and converts it into the GFF3 format. Currently supports WormBase,
-FlyBase, Tair, Araport, and GTF format.
-
-For gzip files, use gunzip -c to pipe input to GFF3io
-For other files, use cat to pipe input to GFF3io
-'''
 
 import argparse
 import re
 import sys
+
 import grimoire.toolbox as toolbox
 
-parser = argparse.ArgumentParser(description='GFF3 gene feature selector')
+extended_help = """
+%(prog)s is used for sanitizing annotation file formats to ensure that they
+work with grimoire. Currently, the only types of features reported are of
+the following types:
+
+	gene - a feature that groups transcripts
+	mRNA - a feature that groups exons and CDSs
+	exon - the part of the mRNA not spliced into introns
+	CDS  - the part of the mRNA that codes for protein
+
+The following sources are supported:
+
+	wb   - WormBase GFF3 (tested with WS270)
+	fb   - FlyBase GFF3 (tested with release 6)
+	tair - TAIR GFF3 (tested with TAIR10)
+	ap   - Araport bed12 (tested with araport11)
+	gtf  - Ensemble-based GTF
+	
+%(prog)s reads from STDIN, so make sure you pipe to %(prog)s rather than
+assuming it will open a file for you. For example:
+
+	cat whatever.gff | %(prog)s
+	gunzip -c whatever.gff.gz | %(prog)s
+"""
+
+parser = argparse.ArgumentParser(
+	description='Annotation file sanitizer.',
+	formatter_class=argparse.RawDescriptionHelpFormatter,
+	epilog=extended_help)
 parser.add_argument('--source', required=True, type=str,
 	metavar='<string>', help='wb|fb|tair|ap|gtf')
 arg = parser.parse_args()
+
+class KalkiError(Exception):
+	pass
 
 types = {
 	'gene' : True,
@@ -26,7 +49,8 @@ types = {
 	'CDS' : True,
 }
 
-if arg.source == 'wb':
+
+def convert_from_wormbase():
 	for line in sys.stdin:
 		if line[0:1] == '#': continue
 		col = line.rstrip().split('\t')
@@ -35,7 +59,7 @@ if arg.source == 'wb':
 			if m: continue
 			print(line, end='')
 
-if arg.source == 'fb':
+def convert_from_flybase():
 	for line in sys.stdin:
 		if line[0:1] == '#':
 			if line[0:7] == '##FASTA':break
@@ -47,7 +71,7 @@ if arg.source == 'fb':
 			if m: continue
 			print(line, end='')
 
-if arg.source == 'tair':
+def convert_from_tair():
 	for line in sys.stdin:
 		if line[0:1] == '#': continue
 		col = line.rstrip().split('\t')
@@ -56,7 +80,7 @@ if arg.source == 'tair':
 			if m: continue
 			print(line, end='')
 
-if arg.source == 'ap':
+def convert_from_araport():
 	genes = {}
 	for line in sys.stdin:
 		col = line.split('\t')
@@ -102,8 +126,7 @@ if arg.source == 'ap':
 				print('\t'.join([chr_id, 'araport', 'CDS', str(cb),
 					str(ce), score, strand, '.', attr]))
 
-#GTF to GFF3
-if arg.source == 'gtf':
+def convert_from_gtf():
 	genes = {}
 	add_stop = None
 	file = []
@@ -156,3 +179,13 @@ if arg.source == 'gtf':
 		updated_line = "\t".join([entry.chrom,entry.source,entry.type,
 			str(entry.beg),str(entry.end),entry.score,entry.strand,entry.phase,entry.attr])
 		print(updated_line)
+
+
+if __name__ == '__main__':
+	if   arg.source == 'wb':   convert_from_wormbase()
+	elif arg.source == 'fb':   convert_from_flybase()
+	elif arg.source == 'tair': convert_from_tair()
+	elif arg.source == 'ap':   convert_from_araport()
+	elif arg.source == 'gtf':  convert_from_gtf()
+	else: raise KalkiError('unrecognized source: ' + arg.source)
+	
