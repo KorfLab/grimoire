@@ -15,7 +15,7 @@ The code is designed with the folllowing analyses in mind:
 
 + Gene structure prediction using hidden Markov models and variants
 + Genome annotation quality control
-+ Structure-function relationships in sequences (including IME)
++ Structure-function relationships in sequences (e.g. IME)
 
 Style
 -----
@@ -30,24 +30,23 @@ Programs
 Program names are themed after spell names from the classic RPG
 "Wizardry: Proving Grounds of the Mad Overlord."
 
-| Name      | Meaning    | Function                              |
-|:----------|:-----------|:--------------------------------------|
-| kalki     | blessings  | gff3 sanitizer (gff3io)
-| milwa     | light      | hmm buider (forge)
+| Name      | Meaning    | Function                               |
+|:----------|:-----------|:---------------------------------------|
+| kalki     | blessings  | annotation sanitizer (gff3, gtf, bed12)
+| calfo     | x-ray      | genome annotation reporter
+| haman     | change     | genome slicer
+| milwa     | light      | hmm buider
 | dumapic   | clarity    | hmm grapher 
-| calfo     | x-ray      | genome reporter (fathom)
-| halito    | fire       | hmm decoder
+| halito    | fire       | basic hmm decoder
 | mahalito  | big fire   | 2-pass gene decoder
-| lahalito  | torch      | full genome decoder
-| tiltowait | explosion  | multi-genome decoder
-| zilwan    | dispel     | profile/alignment decoder (pro-snap)
-| morlis    | fear       | sequence generator (emitter)
-| haman     | change     | genome slicer (chromify) 
-| mahaman   | change     | multi-genome slicer
-| malor     | apport     | lift-over?
-| latumapic | id         | 
-| kandi     | locate     | 
-| porfic    | shield     | 
+| latumapic | identify   | annotation comparer
+| morlis    | fear       | sequence generator
+| mahaman   | change     | (planned multi-genome slicer)
+| malor     | apport     | (planned genome lifter)
+| lahalito  | torch      | (planned full genome decoder)
+| tiltowait | explosion  | (planned multi-genome decoder)
+| zilwan    | dispel     | (planned profile/alignment decoder)
+| kandi     | locate     | (planned regional compiler)
 
 Contributors
 ------------
