@@ -69,7 +69,7 @@ class DNA(BioSequence):
 		return Protein(seq=pro)
 
 class Protein(BioSequence):
-	"""Class for protein sequences. Uppercase only. 20 aa + X and *."""
+	"""Class for protein sequences. Uppercase only. 20 aa + 'X' and '*'."""
 
 	canonical = ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N',
 		'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y']
