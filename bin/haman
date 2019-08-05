@@ -9,20 +9,23 @@ from grimoire.genome import Reader
 
 ## Command line stuff ##
 
-parser = argparse.ArgumentParser(description='Converts to single strand genes')
+parser = argparse.ArgumentParser(description='Remaps chromosome sequences and features to smaller regions.')
 parser.add_argument('--fasta', required=True, type=str,
 	metavar='<path>', help='path to input fasta file')
 parser.add_argument('--gff3', required=True, type=str,
 	metavar='<path>', help='path to input GFF3 file')
 parser.add_argument('--out', required=True, type=str,
 	metavar='<str>', help='output name for fasta and gff')
+parser.add_argument('--segment', required=True, type=str,
+	metavar='<str>', help='gene|intergenic')
 parser.add_argument('--split', required=False, type=int, default=1,
 	metavar='<int>', help='split into <int> parts [%(default)d]')
 parser.add_argument('--padding', required=False, type=int, default=100,
 	metavar='<int>', help='length of flanking sequence [%(default)d]')
 arg = parser.parse_args()
 
-## Main ##
+class HamanError(Exception):
+	pass
 
 def chromify(g, beg, end):
 	dna = DNA(seq=g.dna.seq[beg:end], name=g.id + '-remapped')
@@ -37,27 +40,36 @@ def chromify(g, beg, end):
 	if g.strand == '-':
 		dna.revcomp()
 	return dna
-	
-fp = []
-if arg.split:
-	for i in range(arg.split):
-		fp.append({
-			'gf':open(arg.out + '-' + str(i) + '.gff3', 'w+'),
-			'ff':open(arg.out + '-' + str(i) + '.fasta', 'w+'),
-		})
 
-count = 0
-genome = Reader(gff=arg.gff3, fasta=arg.fasta)
-for chrom in genome:
-	for gene in chrom.ftable.build_genes():
-		if gene.issues: continue
-		if len(gene.transcripts()) == 0: continue # RNA genes?
-		rbeg = gene.beg - arg.padding -1
-		rend = gene.end + arg.padding +1
-		if rbeg < 1 or rend > len(chrom.seq): continue
-		dna = chromify(gene, rbeg, rend)
-		set = count % arg.split
-		count += 1
-		fp[set]['gf'].write(dna.ftable.gff() + '\n')
-		fp[set]['ff'].write(dna.fasta())
-		
+def segment_by_genes():
+
+	fp = []
+	if arg.split:
+		for i in range(arg.split):
+			fp.append({
+				'gf':open(arg.out + '-' + str(i) + '.gff3', 'w+'),
+				'ff':open(arg.out + '-' + str(i) + '.fasta', 'w+'),
+			})
+
+	count = 0
+	genome = Reader(gff=arg.gff3, fasta=arg.fasta)
+	for chrom in genome:
+		for gene in chrom.ftable.build_genes():
+			if gene.issues: continue
+			if len(gene.transcripts()) == 0: continue # RNA genes?
+			rbeg = gene.beg - arg.padding -1
+			rend = gene.end + arg.padding +1
+			if rbeg < 1 or rend > len(chrom.seq): continue
+			dna = chromify(gene, rbeg, rend)
+			set = count % arg.split
+			count += 1
+			fp[set]['gf'].write(dna.ftable.gff() + '\n')
+			fp[set]['ff'].write(dna.fasta())
+
+if __name__ == '__main__':
+	if arg.segment == 'gene':
+		segment_by_genes()
+	elif arg.segment == 'intergenic':
+		raise NotImplemented('planned but not yet done')
+	else:
+		raise HamanError('unknown segmentation type: ' + arg.segment)
