@@ -4,7 +4,8 @@ import argparse
 import sys
 
 from grimoire.sequence import DNA
-from grimoire.genome import Genome, Feature, mRNA, ProteinCodingGene
+from grimoire.feature import Feature, mRNA, Gene
+from grimoire.genome import Reader
 
 ## Command line stuff ##
 
@@ -23,20 +24,20 @@ arg = parser.parse_args()
 
 ## Main ##
 
-def chromify(feature, beg, end):
-	dna = DNA(seq=feature.dna.seq[beg:end], name=feature.id + '-remapped')
-	gene = ProteinCodingGene(dna, feature.beg -beg, feature.end -beg,
-		feature.strand, 'gene', id=feature.parent_id)
-	tx = mRNA(dna, feature.beg -beg, feature.end -beg,
-		feature.strand, 'mRNA', id=feature.id, parent_id=gene.id)
-	for child in feature.children:
-		tx.add_child(Feature(dna, child.beg -beg, child.end -beg,
-			child.strand, child.type, parent_id=child.parent_id))
-	gene.add_child(tx)
-	dna.features.append(gene)
-	if feature.strand == '-': dna.revcomp()
+def chromify(g, beg, end):
+	dna = DNA(seq=g.dna.seq[beg:end], name=g.id + '-remapped')
+	dna.ftable.add_feature(Feature(dna, g.beg -beg, g.end -beg, g.strand,
+		'gene', id=g.id))
+	for t in g.transcripts():
+		dna.ftable.add_feature(Feature(dna, t.beg -beg, t.end -beg,
+			t.strand, t.type, id=t.id, pid=t.pid))
+		for f in t.children:
+			dna.ftable.add_feature(Feature(dna, f.beg -beg, f.end -beg,
+				f.strand, f.type, pid=f.pid))
+	if g.strand == '-':
+		dna.revcomp()
 	return dna
-
+	
 fp = []
 if arg.split:
 	for i in range(arg.split):
@@ -46,19 +47,17 @@ if arg.split:
 		})
 
 count = 0
-gen = Genome(gff3=arg.gff3, fasta=arg.fasta)
-for chr in gen.chromosomes:
-	for gene in chr.features:
-		if not gene.mRNAs(): continue
-		tx = gene.mRNAs()[0]
-		if tx.issues: continue
-		rbeg = tx.beg - arg.padding -1
-		rend = tx.end + arg.padding +1
-		if rbeg < 1 or rend > len(chr.seq): continue
-		dna = chromify(tx, rbeg, rend)
+genome = Reader(gff=arg.gff3, fasta=arg.fasta)
+for chrom in genome:
+	for gene in chrom.ftable.build_genes():
+		if gene.issues: continue
+		if len(gene.transcripts()) == 0: continue # RNA genes?
+		rbeg = gene.beg - arg.padding -1
+		rend = gene.end + arg.padding +1
+		if rbeg < 1 or rend > len(chrom.seq): continue
+		dna = chromify(gene, rbeg, rend)
 		set = count % arg.split
 		count += 1
-		fp[set]['gf'].write(dna.features[0].gff())
+		fp[set]['gf'].write(dna.ftable.gff() + '\n')
 		fp[set]['ff'].write(dna.fasta())
-
 		

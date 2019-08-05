@@ -34,6 +34,18 @@ class FeatureTable:
 		
 		self.features.append(feature)
 
+	def revcomp(self):
+		for f in self.features:
+			f._revcomp()
+
+	def gff(self):
+		"""Returns the feature table formatted as GFF"""
+		
+		lines = []
+		for f in self.features:
+			lines.append(f.gff())
+		return '\n'.join(lines)
+
 	def build_genes(self):
 		"""
 		Returns a list of `Gene` objects. Currently, only `mRNA` objects

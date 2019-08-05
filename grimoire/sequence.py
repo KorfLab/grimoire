@@ -59,9 +59,9 @@ class DNA(BioSequence):
 				raise SequenceError('letter not in DNA alphabet: ' + nt)
 
 	def revcomp(self):
-		"""Returns a reverse compliment sequence with no name or desc"""
-		anti = toolbox.revcomp_str(self.seq)
-		return DNA(seq=anti)
+		"""Reverse-complements the feature and its feature table."""
+		self.seq = toolbox.revcomp_str(self.seq)
+		self.ftable.revcomp()
 
 	def translate(self):
 		"""Return translated protein sequence with no name or desc"""

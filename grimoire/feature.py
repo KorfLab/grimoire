@@ -74,6 +74,16 @@ class Feature:
 				if child.issues:
 					self.issues['child_issues'] = True
 
+	def _revcomp(self):
+		if  self.strand  == '+': self.starnd = '-'
+		elif self.strand == '-': self.strand = '+'
+		new_beg = len(self.dna.seq) - self.end + 1
+		new_end = len(self.dna.seq) - self.beg + 1
+		self.beg = new_beg
+		self.end = new_end
+		for child in self.children:
+			child._revcomp()
+
 	def validate(self):
 		"""Check `Feature` instance for common errors."""
 
