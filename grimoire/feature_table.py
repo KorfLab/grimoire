@@ -11,13 +11,13 @@ class FeatureTableError(Exception):
 	pass
 
 class FeatureTable:
-	"""A collection of features from the same parent DNA"""
+	"""A collection of features from the same parent DNA."""
 	
 	def __init__(self, features=None):
 		"""
 		Parameters
 		----------
-		+ features `list` of `Feature` objects (optional)
+		+ features= `list` of `Feature` objects (optional)
 		"""
 		
 		if features:
@@ -29,7 +29,7 @@ class FeatureTable:
 		"""
 		Parameters
 		----------
-		+ feature - an object of type `Feature`
+		+ feature `Feature` object
 		"""
 		
 		self.features.append(feature)
@@ -54,7 +54,8 @@ class FeatureTable:
 		`Gene`, `Transcript`, `mRNA`, and `ncRNA` objects.
 
 	
-		In order for the exon/CDS features to be grouped into transcripts and then into genes, the features must use the `Feature`
+		In order for the exon/CDS features to be grouped into transcripts
+		and then into genes, the features must use the `Feature`
 		id and pid attributes correctly.
 		"""
 	
