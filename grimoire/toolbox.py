@@ -13,8 +13,7 @@ class ToolboxError(Exception):
 	
 def prod(iterable):
 	"""Returns product of the elements in an iterable."""
-	# when 3.8 is standard, switch to math.prod
-	return reduce(operator.mul, iterable)
+	return reduce(operator.mul, iterable) # replace with math.prod when  3.8 is standard
 
 def log(p):
 	"""Returns the value in log base e with a minimum value of -999."""
