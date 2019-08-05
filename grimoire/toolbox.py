@@ -41,9 +41,9 @@ def generate_kmers(alphabet='nt', k=1, pseudo=0):
 
 	Parameters
 	----------
-	+ alphabet `str` 'nt' or 'aa'
-	+ k        `int` length of -kmer
-	+ pseudo   `int` pseudocount
+	+ alphabet= `str` 'nt' or 'aa'
+	+ k=        `int` length of -kmer
+	+ pseudo=   `int` pseudocount
 	"""
 
 	table = {}
@@ -123,7 +123,7 @@ def translate_str(seq, table='standard'):
 	Parameters
 	----------
 	+ seq   `str` nucleotide sequence
-	+ table `str` flavor of translation table
+	+ table= `str` flavor of translation table
 	"""
 
 	pro = []
