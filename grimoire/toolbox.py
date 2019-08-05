@@ -12,8 +12,9 @@ class ToolboxError(Exception):
 	pass
 	
 def prod(iterable):
-	"""Returns product of the elements in an iterable (e.g. k for k in list)."""
-	return reduce(operator.mul, iterable, 1)
+	"""Returns product of the elements in an iterable."""
+	# when 3.8 is standard, switch to math.prod
+	return reduce(operator.mul, iterable)
 
 def log(p):
 	"""Returns the value in log base e with a minimum value of -999."""
@@ -41,7 +42,7 @@ def generate_kmers(alphabet='nt', k=1, pseudo=0):
 
 	Parameters
 	----------
-	+ alphabet `str` nt or aa
+	+ alphabet `str` 'nt' or 'aa'
 	+ k        `int` length of -kmer
 	+ pseudo   `int` pseudocount
 	"""
