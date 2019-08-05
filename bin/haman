@@ -9,7 +9,16 @@ from grimoire.genome import Reader
 
 ## Command line stuff ##
 
-parser = argparse.ArgumentParser(description='Remaps chromosome sequences and features to smaller regions.')
+extended_help = """
+%(prog)s is used for converting chromosome-based genomic data into smaller
+pieces. This is useful in a training environment when you want to create
+cross-validation training and testing sets.
+"""
+
+parser = argparse.ArgumentParser(
+	description='Segments chromosome sequences and features.',
+	formatter_class=argparse.RawDescriptionHelpFormatter,
+	epilog=extended_help)
 parser.add_argument('--fasta', required=True, type=str,
 	metavar='<path>', help='path to input fasta file')
 parser.add_argument('--gff3', required=True, type=str,
@@ -17,7 +26,7 @@ parser.add_argument('--gff3', required=True, type=str,
 parser.add_argument('--out', required=True, type=str,
 	metavar='<str>', help='output name for fasta and gff')
 parser.add_argument('--segment', required=True, type=str,
-	metavar='<str>', help='gene|intergenic')
+	metavar='<str>', help='feature type (e.g. gene)')
 parser.add_argument('--split', required=False, type=int, default=1,
 	metavar='<int>', help='split into <int> parts [%(default)d]')
 parser.add_argument('--padding', required=False, type=int, default=100,
@@ -69,7 +78,10 @@ def segment_by_genes():
 if __name__ == '__main__':
 	if arg.segment == 'gene':
 		segment_by_genes()
-	elif arg.segment == 'intergenic':
+	elif arg.segment == 'region':
 		raise NotImplemented('planned but not yet done')
 	else:
 		raise HamanError('unknown segmentation type: ' + arg.segment)
+
+# There might be a better way to do this by simply taking all the gff
+# in any region. Why build genes at all?
