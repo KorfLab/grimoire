@@ -75,7 +75,7 @@ class Feature:
 					self.issues['child_issues'] = True
 
 	def _revcomp(self):
-		if  self.strand  == '+': self.starnd = '-'
+		if  self.strand  == '+': self.strand = '-'
 		elif self.strand == '-': self.strand = '+'
 		new_beg = len(self.dna.seq) - self.end + 1
 		new_end = len(self.dna.seq) - self.beg + 1

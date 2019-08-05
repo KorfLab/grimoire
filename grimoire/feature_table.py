@@ -35,11 +35,12 @@ class FeatureTable:
 		self.features.append(feature)
 
 	def revcomp(self):
+		"""Reverse complements features in table."""
 		for f in self.features:
 			f._revcomp()
 
 	def gff(self):
-		"""Returns the feature table formatted as GFF"""
+		"""Returns the feature table formatted as GFF."""
 		
 		lines = []
 		for f in self.features:
