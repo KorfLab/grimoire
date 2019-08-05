@@ -22,11 +22,11 @@ def emission_model(context=0, alphabet='nt'):
 	"""
 	Returns an empty emission table/dict with specified context and alphabet.
 	
-    Parameters
-    ----------
+	Parameters
+	----------
 	+ context=  `int` order of the Markov model (0 or greater)
 	+ alphabet= `str` either 'nt' or 'aa' (but really 'aa'?)
-    """
+	"""
 
 	letters = None
 	if alphabet == 'nt': letters = sequence.DNA.canonical
@@ -54,7 +54,7 @@ def train_emission(seqs, context=0):
 	----------
 	+ seqs    `list` list of sequences of type `str`
 	+ context= `int` order of the Markov model (0 or greater)
-    """
+	"""
 
 	count = emission_model(context=context)
 	freq = {}
@@ -92,7 +92,7 @@ def train_emissions(seqs, context=0):
 	----------
 	+ seqs     `list` list of sequences of type `str`
 	+ context= `int` order of the Markov model (0 or greater)
-    """
+	"""
 
 	counts = []
 	freqs = []
@@ -145,7 +145,7 @@ def train_cds(seqs, context=0):
 	----------
 	+ seqs     `list` list of sequences of type `str`
 	+ context= `int`  order of the Markov model (0 or greater)
-    """
+	"""
 
 	counts = []
 	freqs = []
