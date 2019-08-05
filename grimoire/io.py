@@ -56,7 +56,7 @@ class FASTA_file:
 		
 		Attributes
 		----------
-		+ ids - list of identifiers
+		+ ids	`list` identifiers of entries in file
 		"""
 
 		self._filename = filename
@@ -340,7 +340,7 @@ class GFF_stream:
 
 	def next(self):
 		"""
-		Returns the next `GFF+entry` in the GFF file/stream.
+		Returns the next `GFF_entry` in the GFF file/stream.
 		"""
 
 		line = self._fp.readline()
