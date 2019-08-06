@@ -4,26 +4,39 @@ import argparse
 import sys
 
 import grimoire.genome as genome
-import grimoire.toolbox as toolbox
-import grimoire.sequence as sequence
-import grimoire.hmm as hmm
-import grimoire.decode as decode
 
-## Command line w/ Argparse ##
-parser = argparse.ArgumentParser(description='Performance evaluation program')
+## Command line stuff ##
+
+extended_help = """
+%(prog)s is used for comparing sequence features between two sources. In
+a gene prediction setting this would be predictions vs. reference, but
+it could also be two genome annotation pipelines or two versions
+produced at different times. All of the features must reference the same
+exact chromosomes.
+"""
+
+parser = argparse.ArgumentParser(
+	description='Compares two sets of genome annotations.',
+	formatter_class=argparse.RawDescriptionHelpFormatter,
+	epilog=extended_help)
 parser.add_argument('--fasta', required=True, type=str,
 	metavar='<path>', help='path to fasta file')
 parser.add_argument('--file1', required=True, type=str,
 	metavar='<path>', help='path to file1 in gff')
 parser.add_argument('--file2', required=True, type=str,
 	metavar='<path>', help='path to file2 in gff')
-parser.add_argument('--type_map', required=False, type=str,
-	metavar='<path>', help='file of feature type mappings (where different)')
 arg = parser.parse_args()
 
-genome = genome.Genomic(fasta=arg.fasta, gff=arg.file1)
-for chrom in genome:
-	print(chrom.name)
-	for f in chrom.features:
-		print(f.type)
 
+if __name__ == '__main__':
+
+	g1 = genome.Reader(fasta=arg.fasta, gff=arg.file1)
+	g2 = genome.Reader(fasta=arg.fasta, gff=arg.file2)
+	
+	same, diff = 0, 0
+	for c1, c2 in zip(g1, g2):
+		cmp = c1.ftable.compare(c2.ftable)
+		same += cmp['nt_same']
+		diff += cmp['nt_diff']
+
+	print(diff, same, diff + same)

@@ -10,9 +10,9 @@ from grimoire.genome import Reader
 ## Command line stuff ##
 
 extended_help = """
-%(prog)s is used for converting chromosome-based genomic data into smaller
-pieces. This is useful in a training environment when you want to create
-cross-validation training and testing sets.
+%(prog)s is used for converting chromosome-based genomic data into
+%smaller pieces. This is useful in a training environment when you want
+%to create cross-validation training and testing sets.
 """
 
 parser = argparse.ArgumentParser(

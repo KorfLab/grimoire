@@ -7,11 +7,11 @@ import sys
 import grimoire.toolbox as toolbox
 
 extended_help = """
-%(prog)s is used for sanitizing annotation file formats to ensure that they
-work with grimoire. Currently, the only types of features reported are of
-the following types:
+%(prog)s is used for sanitizing annotation file formats to ensure that
+they work with grimoire. Currently, the only types of features used are
+of the following types:
 
-	gene - a feature that groups transcripts
+	gene - a feature that groups mRNA transcripts
 	mRNA - a feature that groups exons and CDSs
 	exon - the part of the mRNA not spliced into introns
 	CDS  - the part of the mRNA that codes for protein
@@ -24,11 +24,11 @@ The following sources are supported:
 	ap   - Araport bed12 (tested with araport11)
 	gtf  - Ensemble-based GTF
 	
-%(prog)s reads from STDIN, so make sure you pipe to %(prog)s rather than
-assuming it will open a file for you. For example:
+%(prog)s reads from STDIN and writes to STDOUT, so make sure you pipe
+to %(prog)s and redirect its output to the file you want.
 
-	cat whatever.gff | %(prog)s
-	gunzip -c whatever.gff.gz | %(prog)s
+	cat dirty.gff | %(prog)s --source <tag> > clean.gff
+	gunzip -c dirty.gff.gz | %(prog)s --source <tag> > clean.gff
 """
 
 parser = argparse.ArgumentParser(

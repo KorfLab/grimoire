@@ -61,7 +61,7 @@ class DNA(BioSequence):
 	def revcomp(self):
 		"""Reverse-complements the feature and its feature table."""
 		self.seq = toolbox.revcomp_str(self.seq)
-		self.ftable.revcomp()
+		self.ftable._revcomp()
 
 	def translate(self):
 		"""Return translated protein sequence with no name or desc"""
