@@ -477,6 +477,18 @@ class Parse:
 
 class HMM_NT_decoder:
 	"""Base class for the HMM nucleotide decoders."""
+	
+	def __init__(self, dna=None, model=None):
+		"""
+		Parameters
+		----------
+		+ model= `HMM`
+		+ dna=   `DNA`
+		"""
+		
+		self.dna = dna
+		self.model = model
+		self.null_score = None
 
 	def _state_map(self):
 		"""
