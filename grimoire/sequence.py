@@ -12,7 +12,7 @@ class BioSequence:
 
 	def fasta(self, wrap=80):
 		"""
-		Returns the object as a string in FASTA format
+		Returns the object as a string in FASTA format.
 
 		Parameters
 		----------
@@ -31,18 +31,25 @@ class BioSequence:
 		return self.fasta()
 
 class DNA(BioSequence):
-	"""Class for DNA sequences. IUPAC alphabet. Uppercase only"""
+	"""Class for DNA sequences. IUPAC alphabet. Uppercase only."""
 
 	canonical = ['A', 'C', 'G', 'T']
 	extended = ['A', 'C', 'G', 'T', 'R', 'Y', 'M', 'K', 'W', 'S', 'B', 'D', 'H', 'V', 'N']
 
 	def __init__(self, name=None, seq=None, desc=None):
 		"""
-		Parameters & Attributes
-		-----------------------
-		+ name= `str` ideally a unique identifier
-		+ desc= `str` free text description of sequence
-		+ seq=  `str` nucleotide sequence
+		Parameters
+		----------
+		+ name=		`str` ideally a unique identifier
+		+ desc=		`str` free text description of sequence
+		+ seq=		`str` nucleotide sequence
+		
+		Attributes
+		----------
+		+ name
+		+ desc
+		+ seq
+		+ ftable	`FeatureTable` object
 		"""
 
 		self.name = name
@@ -51,7 +58,7 @@ class DNA(BioSequence):
 		self.ftable = FeatureTable()
 
 	def check_alphabet(self):
-		"""Check if sequence is in given alphabet, throws `SeqeunceError`"""
+		"""Checks if sequence is in given alphabet. Throws `SequenceError`."""
 
 		for i in range(len(self.seq)):
 			nt = self.seq[i:i+1]
@@ -59,12 +66,12 @@ class DNA(BioSequence):
 				raise SequenceError('letter not in DNA alphabet: ' + nt)
 
 	def revcomp(self):
-		"""Reverse-complements the feature and its feature table."""
+		"""Reverse-complements sequence and feature table."""
 		self.seq = toolbox.revcomp_str(self.seq)
 		self.ftable._revcomp()
 
 	def translate(self):
-		"""Return translated protein sequence with no name or desc"""
+		"""Returns translated sequence as `str` protein sequence with no name or desc."""
 		pro = toolbox.translate_str(self.seq)
 		return Protein(seq=pro)
 
@@ -90,7 +97,7 @@ class Protein(BioSequence):
 		self.desc = desc
 
 	def check_alphabet(self):
-		"""Check if sequence is in given alphabet. Throws `SequenceError`"""
+		"""Check if sequence is in given alphabet. Throws `SequenceError`."""
 		for i in range(len(self.seq)):
 			aa = self.seq[i:i+1]
 			if aa not in self.extended:
