@@ -37,12 +37,12 @@ def _kmers(alphabet, table, key, n, k, v):
 		_kmers(alphabet, table, t, n, k - 1, v)
 
 def generate_kmers(alphabet='nt', k=1, pseudo=0):
-	"""Creates a dictionary of all kmers of either nt or aa alphabet.
+	"""Creates a dictionary of all k-mers of either nucleotide or amino acid alphabet.
 
 	Parameters
 	----------
 	+ alphabet= `str` 'nt' or 'aa'
-	+ k=        `int` length of -kmer
+	+ k=        `int` length of k-mer
 	+ pseudo=   `int` pseudocount
 	"""
 
@@ -105,7 +105,7 @@ GCODE = {
 
 def revcomp_str(seq):
 	"""
-	Returns the reverse compliment.
+	Returns the reverse compliment of a `str` nucleotide sequence.
 
 	Parameters
 	----------
@@ -118,7 +118,7 @@ def revcomp_str(seq):
 
 def translate_str(seq, table='standard'):
 	"""
-	Translate a nucleotide sequence into protein
+	Translates a `str` nucleotide sequence and returns a `str` amino acid sequence.
 
 	Parameters
 	----------
