@@ -17,7 +17,7 @@ class FASTA_entry:
 		Parameters & Attributes
 		-----------------------
 		+ id   `str` unique id
-		+ desc `str` free text description, which may be None
+		+ desc `str` free text description, which may be `None`
 		+ seq  `str` sequence of symbols
 		"""
 
@@ -27,7 +27,7 @@ class FASTA_entry:
 
 	def string(self, wrap=80):
 		"""
-		Returns a string formatted as a fasta file.
+		Returns a string formatted as a FASTA file.
 		
 		Parameters
 		----------
@@ -78,11 +78,11 @@ class FASTA_file:
 
 	def get(self, id):
 		"""
-		Returns a `FASTA_entry` given an id.
+		Returns a `FASTA_entry` corresponding to given identifier.
 		
 		Parameters
 		----------
-		+ id `str` identifier
+		+ id `str` unique identifier
 		"""
 
 		self._fp = open(self._filename, 'r')
@@ -102,7 +102,8 @@ class FASTA_file:
 		return FASTA_entry(id, desc, "".join(seq))
 
 class FASTA_stream:
-	"""Class for iterating through a FASTA file."""
+	"""Class for reading a FASTA file as a stream. Iterable allowing access to
+	`FASTA_entry` objects representing contents of FASTA file."""
 
 	def __init__(self, filename=None, filepointer=None):
 		"""
@@ -111,7 +112,7 @@ class FASTA_stream:
 		+ filename=    `str` name of a file
 		+ filepointer= `obj` bytes-like object
 		
-		Specify filename or filepointer, not both
+		Specify filename or filepointer, not both.
 		"""
 
 		self._fp = None
@@ -134,13 +135,6 @@ class FASTA_stream:
 		return self
 
 	def __next__(self):
-		return self.next()
-
-	def next(self):
-		"""
-		Retrieves the next entry of the FASTA file/stream.
-		"""
-
 		if self.done: raise StopIteration()
 		header = None
 		if self._lastline[0:1] == '>':
@@ -167,7 +161,7 @@ class FASTA_stream:
 			line = line.replace(' ', '')
 			seq.append(line.strip())
 
-		return FASTA_entry(id, desc, "".join(seq))
+		return FASTA_entry(id, desc, "".join(seq))		
 
 class GFF_skip(Exception):
 	pass
@@ -176,7 +170,7 @@ class GFF_error(Exception):
 	pass
 
 class GFF_entry:
-	"""Represents a GFF entry (row)."""
+	"""Class representing a GFF entry (row)."""
 	
 	def __init__(self, line):
 		"""
@@ -194,7 +188,7 @@ class GFF_entry:
 		+ score  `float` number or '.' if not defined
 		+ strand `str`   either '+' or '-', or '.' if not defined
 		+ phase  `int`   0, 1, or 2, or '.' if not defined
-		+ attr   `str`  structured string for extra information (e.g. grouping)
+		+ attr   `str`   structured string for extra information (e.g. grouping)
 		"""
 
 		if line[0:1] == '#':
@@ -220,7 +214,7 @@ class GFF_entry:
 			self.attr = ''
 
 class GFF_file:
-	"""Reading and searching GFF files (slurps all into memory)."""
+	"""Class for reading and searching a GFF file (slurps all into memory)."""
 	
 	def __init__(self, filename):
 		"""
@@ -268,14 +262,14 @@ class GFF_file:
 
 	def get(self, type=None, chrom=None, beg=None, end=None):
 		"""
-		Searches for GFF entries and returns them in a list of `GFF_entry`.
+		Returns list of `GFF_entry` objects matching search criteria.
 
 		Parameters
 		----------
 		+ type=  `str`  type of GFF entry (e.g. exon), all if not specified
-		+ chrom= `str` chromosome (e.g. I), all if not specified
-		+ beg=   `int`   1-based begin coordinate, all if not specified
-		+ end=   `int`   1-based end coordinate, all if not specified
+		+ chrom= `str` 	chromosome (e.g. I), all if not specified
+		+ beg=   `int`  1-based begin coordinate, all if not specified
+		+ end=   `int`  1-based end coordinate, all if not specified
 		"""
 
 		type_search = {}
@@ -308,7 +302,8 @@ class GFF_file:
 		return found
 
 class GFF_stream:
-	"""Class for iterating through GFF records."""
+	"""Class for reading a GFF file as a stream. Iterable allowing access to `GFF_entry`
+	objects representing contents of GFF file."""
 
 	def __init__(self, filename=None, filepointer=None):
 		"""
@@ -317,7 +312,7 @@ class GFF_stream:
 		+ filename=    `str` name of a file
 		+ filepointer= `obj` bytes-like object
 		
-		Specify filename or filepointer, not both
+		Specify filename or filepointer, not both.
 		"""
 		
 		self._fp = None
@@ -338,13 +333,6 @@ class GFF_stream:
 		return self
 
 	def __next__(self):
-		return self.next()
-
-	def next(self):
-		"""
-		Returns the next `GFF_entry` in the GFF file/stream.
-		"""
-
 		line = self._fp.readline()
 		if self._gz: line = str(line, 'utf-8')
 		if line == '':
@@ -360,4 +348,6 @@ class GFF_stream:
 			raise GFF_error('badly formatted gff')
 		
 		return gff
+		
+		
 
