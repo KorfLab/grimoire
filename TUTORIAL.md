@@ -101,7 +101,7 @@ ensure that they will operate with the downstream tools. In some cases,
 the output may be identical to the input.
 
 	gunzip -c at1.gf.gz | kalki --source tair > at1.gff3
-	cat at1.bed | kalki --source gtf > at2.gff3
+	cat at1.bed | kalki --source ap > at2.gff3
 	
 	gunzip -c ce1.gf.gz | kalki --source wb > ce1.gff3
 	gunzip -c ce1.gt.gz | kalki --source gtf > ce2.gff3
@@ -111,6 +111,13 @@ might wonder if they are in fact different? Did any genes change from
 TAIR10 to TAIR11 or from WS270 to WS271. Well, we only have 1% of each
 genome, so we can't answer that fully, but we can check that 1% with
 `latumapic`.
+
+
+
+
+
+
+	latumapic --fasta ce1.fa.gz --file1 ce1.gf.gz --file2 ce1.gff3
 
 
 

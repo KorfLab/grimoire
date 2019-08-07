@@ -216,6 +216,8 @@ class GFF_entry:
 		self.phase = column[7]
 		if len(column) == 9:
 			self.attr = column[8]
+		else:
+			self.attr = ''
 
 class GFF_file:
 	"""Reading and searching GFF files (slurps all into memory)."""

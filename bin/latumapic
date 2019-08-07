@@ -2,8 +2,10 @@
 
 import argparse
 import sys
+import json
 
 import grimoire.genome as genome
+import grimoire.feature_table as ft
 
 ## Command line stuff ##
 
@@ -13,6 +15,11 @@ a gene prediction setting this would be predictions vs. reference, but
 it could also be two genome annotation pipelines or two versions
 produced at different times. All of the features must reference the same
 exact chromosomes.
+
+The --format option allows you to choose how you want the report
+displayed. At level 0, this is simply a trio of numbers counting the
+diff, same, or total. At level 1, there will be feature-level comparisons
+when implemented.
 """
 
 parser = argparse.ArgumentParser(
@@ -25,10 +32,17 @@ parser.add_argument('--file1', required=True, type=str,
 	metavar='<path>', help='path to file1 in gff')
 parser.add_argument('--file2', required=True, type=str,
 	metavar='<path>', help='path to file2 in gff')
+parser.add_argument('--format', required=False, default=0,
+	type=int, metavar='<path>', help='verbosity level')
 arg = parser.parse_args()
 
+class LatumapicError(Exception):
+	pass
 
 if __name__ == '__main__':
+
+	if arg.format > 1:
+		raise LatumapicError('format out of range')
 
 	g1 = genome.Reader(fasta=arg.fasta, gff=arg.file1)
 	g2 = genome.Reader(fasta=arg.fasta, gff=arg.file2)
@@ -38,5 +52,13 @@ if __name__ == '__main__':
 		cmp = c1.ftable.compare(c2.ftable)
 		same += cmp['nt_same']
 		diff += cmp['nt_diff']
+		print(json.dumps(cmp, indent=4))
+		for f1, f2 in c1.ftable.overlaps(c2.ftable):
+			
 
-	print(diff, same, diff + same)
+	if arg.format == 0:
+		print(diff, same, diff + same)
+	elif arg.format == 1:
+		raise NotImplementedError()
+
+

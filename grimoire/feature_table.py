@@ -104,15 +104,19 @@ class FeatureTable:
 		"""
 				
 		# NT-level comparisons
+		length = len(self.features[0].dna.seq)
 		same, diff = 0, 0
-		s, p = [], []
+		s1, s2 = [''] * length, [''] * length
 		for f in self.features:
-			for i in range(f.beg, f.end + 1): s.append(f.type)
+			for i in range(f.beg, f.end + 1):
+				s1[i-1] = f.type
 		for f in other.features:
-			for i in range(f.beg, f.end + 1): p.append(f.type)
-		for i in range(len(s)):
-			if s[i] == p[i]: same += 1
-			else:            diff += 1
+			for i in range(f.beg, f.end + 1):
+				s2[i-1] = f.type
+		
+		for i in range(len(s1)):
+			if s1[i] == s2[i]: same += 1
+			else:              diff += 1
 
 		# Exact-level comparisons
 		exact, inexact = 0, 0
@@ -121,10 +125,10 @@ class FeatureTable:
 
 		# Feature-type-level comparisons
 		matrix = {}
-		for i in range(len(s)):
-			if s[i] not in matrix: matrix[s[i]] = {}
-			if p[i] not in matrix[s[i]]: matrix[s[i]][p[i]] = 0
-			matrix[s[i]][p[i]] += 1
+		for i in range(len(s1)):
+			if s1[i] not in matrix: matrix[s1[i]] = {}
+			if s2[i] not in matrix[s1[i]]: matrix[s1[i]][s2[i]] = 0
+			matrix[s1[i]][s2[i]] += 1
 
 		stats = {
 			'nt_same' : same,
