@@ -2,7 +2,6 @@
 
 import argparse
 import sys
-import json
 
 import grimoire.genome as genome
 import grimoire.feature_table as ft
@@ -51,10 +50,7 @@ if __name__ == '__main__':
 	for c1, c2 in zip(g1, g2):
 		cmp = c1.ftable.compare(c2.ftable)
 		same += cmp['nt_same']
-		diff += cmp['nt_diff']
-		print(json.dumps(cmp, indent=4))
-		for f1, f2 in c1.ftable.overlaps(c2.ftable):
-			
+		diff += cmp['nt_diff']			
 
 	if arg.format == 0:
 		print(diff, same, diff + same)
