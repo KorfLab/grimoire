@@ -31,7 +31,6 @@ class TestFeature(unittest.TestCase):
 		self.assertEqual(str(f), g)
 	
 	def test_Gene_and_Transcripts(self):
-		
 		m = mRNA(self.dna, 11649, 13714, '-', 'mRNA', id='m1')
 		m.add_child(Feature(self.dna, 13335, 13714, '-', 'exon'))
 		m.add_child(Feature(self.dna, 11864, 12940, '-', 'CDS'))
@@ -46,10 +45,10 @@ class TestFeature(unittest.TestCase):
 		n.add_child(Feature(self.dna, 100, 180, '+', 'exon'))
 		n.add_child(Feature(self.dna, 190, 200, '+', 'exon'))
 		n.validate()
-		self.assertEqual(n.issues['short_exon'], True)
-		self.assertEqual(n.issues['short_intron'], True)
-		self.assertEqual(n.issues['donor'], True)
-		self.assertEqual(n.issues['acceptor'], True)
+		self.assertTrue(n.issues['short_exon'])
+		self.assertTrue(n.issues['short_intron'])
+		self.assertTrue(n.issues['donor'])
+		self.assertTrue(n.issues['acceptor'])
 		
 		g = Gene(self.dna, 11649, 13714, '-', 'gene', id='g1')
 		g.add_child(m)
