@@ -24,6 +24,8 @@ class FASTA_entry:
 		self.id = id
 		self.desc = desc
 		self.seq = seq
+		if not self.seq or self.seq == '\n':
+			raise FASTA_error('empty string is not a valid sequence')
 
 	def string(self, wrap=80):
 		"""
@@ -75,6 +77,7 @@ class FASTA_file:
 				self.ids.append(m[1])
 				self._offset[m[1]] = self._fp.tell() - len(line)
 		self._fp.close()
+		if not self.ids: raise FASTA_error('file is not properly formatted FASTA')
 
 	def get(self, id):
 		"""
@@ -144,6 +147,7 @@ class FASTA_stream:
 			if self._gz: header = str(header, 'utf-8')
 
 		m = re.search(r'>\s*(\S+)\s*(.*)', header)
+		if m == None: raise FASTA_error('file is not properly formatted FASTA')
 		id = m[1]
 		desc = m[2]
 		seq = []
@@ -348,6 +352,3 @@ class GFF_stream:
 			raise GFF_error('badly formatted gff')
 		
 		return gff
-		
-		
-

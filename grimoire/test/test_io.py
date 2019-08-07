@@ -17,12 +17,27 @@ class TestIO(unittest.TestCase):
 		c4 = ff.get('IV')
 		self.assertEqual(len(c4.seq), 174938)
 		os.system('rm data/test.fasta')
+		with self.assertRaises(io.FASTA_error):
+			ff = io.FASTA_file('data/README.md')
 
 	def test_FASTA_stream(self):
 		ff = io.FASTA_stream('data/A.thaliana.1percent.fasta.gz')
 		text = ''
 		for e in ff: text += e.id
 		self.assertEqual(text, 'Chr1Chr2Chr3Chr4Chr5ChrMChrC')
+		ff = io.FASTA_stream('data/A.thaliana.1percent.gff3.gz')
+		with self.assertRaises(io.FASTA_error):
+			for e in ff: print(e.id)
+		
+	def test_GFF_entry(self):
+		e = io.GFF_entry('I	WormBase	gene	3747	3909	.	-	.	ID=Gene:WBGene00023193;Name=WBGene00023193;interpolated_map_position=-21.9001;sequence_name=Y74C9A.6;biotype=snoRNA;so_term_name=snoRNA_gene;curie=WB:WBGene00023193;Alias=Y74C9A.6')
+		self.assertEqual(e.source, 'WormBase')
+		with self.assertRaises(io.GFF_skip):
+			c = io.GFF_entry('#comment line')
+		with self.assertRaises(io.GFF_skip):
+			b = io.GFF_entry('\n')
+		with self.assertRaises(io.GFF_error):
+			f = io.GFF_entry('I	WormBase	gene	3747	3909')
 		
 	def test_GFF_file(self):
 		gff = io.GFF_file('data/A.thaliana.1percent.gff3.gz')
