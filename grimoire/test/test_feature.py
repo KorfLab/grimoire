@@ -1,4 +1,5 @@
 import unittest
+import json
 
 import grimoire.io as io
 from grimoire.sequence import DNA
@@ -8,18 +9,25 @@ class TestFeature(unittest.TestCase):
 
 	def setUp(self):
 		ff = io.FASTA_stream('data/A.thaliana.1percent.fasta.gz')
-		entry = ff.next()
-		self.dna = DNA(seq=entry.seq, name=entry.id)
+		for e in ff:
+			self.dna = DNA(seq=e.seq, name=e.id)
+			break
 
 	def test_Feature(self):
 		f = Feature(self.dna, 50, 500, '+', 'exon', id='foo')
-		f.add_child(Feature(self.dna, 350, 353, '+', 'start'))
 		f.validate()
-		f.seq_str()
+		self.assertTrue(f.validated)
+		self.assertEqual(f.issues, {})
+		f.add_child(Feature(self.dna, 350, 353, '+', 'start', pid='foo'))
+		self.assertFalse(f.validated)
+		f.validate()
+		self.assertEqual(f.issues, {})
+		f.add_parent('bar')
+		self.assertEqual(len(f.seq_str()), 451)
 		g = f.gff()
-		s = 'Chr1\t.\texon\t50\t500\t.\t+\t.\tID=foo\nChr1\t.\tstart\t350\t353\t.\t+\t.\t\n'
+		s = 'Chr1\t.\texon\t50\t500\t.\t+\t.\tID=foo;Parent=bar\nChr1\t.\tstart\t350\t353\t.\t+\t.\tParent=foo\n'
 		self.assertEqual(g, s)
-		self.assertEqual(f.overlap(Feature(self.dna, 490, 1000, '-', 'exon')), True)
+		self.assertTrue(f.overlap(Feature(self.dna, 490, 1000, '-', 'exon')))
 		self.assertEqual(str(f), g)
 	
 	def test_Gene_and_Transcripts(self):

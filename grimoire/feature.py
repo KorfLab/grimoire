@@ -85,7 +85,7 @@ class Feature:
 			child._revcomp()
 
 	def validate(self):
-		"""Check `Feature` instance for common errors."""
+		"""Check `Feature` instance for common errors, populating issues."""
 
 		if self.validated: return
 		self._validate()
@@ -93,19 +93,18 @@ class Feature:
 
 	def add_parent(self, pid):
 		"""
-		Add a parent identifier to a `Feature` object.
+		Adds a parent identifier to a `Feature` object.
 		
 		Parameters
 		----------
 		+ pid `str` parent identifier token (e.g. gene name)
 		"""
-		
-		if id not in self.pid:
-			self.pid.append(id)
+		if pid not in self.pid:
+			self.pid.append(pid)
 
 	def add_child(self, child):
 		"""
-		Add a child to `Feature` object. Unsets validated flag.
+		Adds a child to `Feature` object, unsetting validated flag.
 
 		Parameters
 		----------
@@ -115,6 +114,8 @@ class Feature:
 		self.validated = False
 		if not self.id:
 			raise GenomeError('parent feature requires ID')
+		elif not isinstance(child, Feature):
+			raise GenomeError('child feature is not a valid Feature object')
 		else:
 			self.children.append(child)
 
@@ -182,7 +183,7 @@ class Transcript(Feature):
 				self.issues['long_' + type] = True
 
 	def tx_str(self):
-		""""Returns the transcript as a string with introns removed."""
+		"""Returns the transcript as a string with introns removed."""
 		
 		if not self.validated: self.validate()
 		seq = []
@@ -229,11 +230,11 @@ class mRNA(Transcript):
 	def set_rules(self, clade='std'):
 		"""Set rules for mRNA by clade.
 		
-		+ dons - dictionary of donor sites (e.g. GT)
-		+ accs - dictionary of acceptor sites (e.g. AG)
-		+ starts - dictionary of start sites (e.g. ATG)
-		+ stops - dictionary of stop sites (e.g. TAA, TGA, TAG)
-		+ limit - 2d dictionary of length limits
+		+ dons		`dict` allowable donor sites (e.g. GT)
+		+ accs		`dict` allowable acceptor sites (e.g. AG)
+		+ starts	`dict` allowable start sites (e.g. ATG)
+		+ stops		`dict` allowable stop sites (e.g. TAA, TGA, TAG)
+		+ limit		`dict` of `dict`s containing length limits for sub-features
 
 		Parameters
 		----------
@@ -346,6 +347,7 @@ class mRNA(Transcript):
 			if pro[i:i+1] == '*': self.issues['ptc'] = True
 
 	def cds_str(self):
+		"""Returns sequence of coding exons as a string."""
 		if not self.validated: self.validate()
 		seq = []
 		for exon in self.cdss: seq.append(exon.seq_str())
@@ -353,6 +355,7 @@ class mRNA(Transcript):
 		return ''.join(seq)
 
 	def protein_str(self):
+		"""Translates coding sequence and returns protein sequence as a string."""
 		if not self.validated: self.validate()
 		return toolbox.translate_str(self.cds_str())
 
