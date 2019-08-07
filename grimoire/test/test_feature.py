@@ -54,8 +54,8 @@ class TestFeature(unittest.TestCase):
 		g.add_child(m)
 		g.add_child(n)
 		g.validate()
-		self.assertEqual(g.issues['mixed_strands'], True)
-		self.assertEqual(g.issues['child.beg<parent.beg'], True)
+		self.assertTrue(g.issues['mixed_strands'])
+		self.assertTrue(g.issues['child.beg<parent.beg'])
 
 if __name__ == '__main__':
 	unittest.main(verbosity=2)
