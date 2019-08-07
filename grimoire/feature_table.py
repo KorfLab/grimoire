@@ -13,13 +13,14 @@ class FeatureTableError(Exception):
 class FeatureTable:
 	"""A collection of features from the same parent DNA."""
 	
-	def __init__(self, features=None):
+	def __init__(self, dna=None, features=None):
 		"""
 		Parameters
 		----------
+		+ dna=      `list` of `DNA` objects
 		+ features= `list` of `Feature` objects (optional)
 		"""
-		
+		self.dna = dna
 		if features:
 			self.features = features
 		else:
@@ -104,7 +105,7 @@ class FeatureTable:
 		"""
 				
 		# NT-level comparisons
-		length = len(self.features[0].dna.seq)
+		length = len(self.dna.seq)
 		same, diff = 0, 0
 		s1, s2 = [''] * length, [''] * length
 		for f in self.features:
