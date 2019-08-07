@@ -6,15 +6,15 @@ import grimoire.toolbox as toolbox
 class TestToolbox(unittest.TestCase):
 
 	def test_prod(self):
-		l = [1, 2, 3, 4, 5]
-		self.assertEqual(toolbox.prod(l), 120)
+		l = [2, 3.5]
+		self.assertAlmostEqual(toolbox.prod(l), 7)
 		
 	def test_log(self):
-		self.assertEqual(toolbox.log(1), 0)
-		self.assertEqual(toolbox.log(0), -999)
+		self.assertAlmostEqual(toolbox.log(1), 0)
+		self.assertAlmostEqual(toolbox.log(0), -999)
 		
 	def test_sumlog(self):
-		self.assertEqual(toolbox.sumlog(-1, -1), -0.3068528194400547)
+		self.assertAlmostEqual(toolbox.sumlog(-1, -1), -0.3068528194400547)
 
 	def test_generate_kmers(self):
 		k = ''.join(toolbox.generate_kmers(alphabet='nt', k=2).keys())
