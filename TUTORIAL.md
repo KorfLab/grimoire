@@ -113,7 +113,8 @@ genome, so we can't answer that fully, but we can check that 1% with
 `latumapic`.
 
 
-
+Ian: Well, shit. Lots of stuff has changed and I don't know if this is
+actual differences in annotation or problems with kalki.
 
 
 

@@ -55,7 +55,7 @@ class DNA(BioSequence):
 		self.name = name
 		self.seq = seq
 		self.desc = desc
-		self.ftable = FeatureTable()
+		self.ftable = FeatureTable(dna=self)
 
 	def check_alphabet(self):
 		"""Checks if sequence is in given alphabet. Throws `SequenceError`."""
