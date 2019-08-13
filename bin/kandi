@@ -11,29 +11,28 @@ import grimoire.genome as genome
 ## Command line stuff ##
 
 extended_help = """
-%(prog)s is a very simple terminal-based genome browser for examining
-fasta and GFF at arbitrary resolution. It loads all the sequences and
-annotations into memory and is therefore more suitable in a
-test/debugging scenario than browsing complete genomes.
+%(prog)s is a very simple terminal-based genome browser designed for testing
+and debugging seqeunce analysis algorithms. It loads all of the sequences
+and features into memory and is therefore not suitable for complete genomes.
 """
 
 parser = argparse.ArgumentParser(
 	description='Terminal-based genome browser.',
 	formatter_class=argparse.RawDescriptionHelpFormatter,
 	epilog=extended_help)
-parser.add_argument('--fasta', required=True, type=str,
-	metavar='<path>', help='path to input fasta file')
-parser.add_argument('--gff3', required=True, type=str,
-	metavar='<path>', help='path to input GFF3 file')
+parser.add_argument('fasta', nargs=1, help='a fasta file')
+parser.add_argument('gff', nargs='+', help='some gff (or other) files')
 arg = parser.parse_args()
 
 CHR = []
-GENE = []
+GENES = []
 STATE = {
 	'id':None,
 	'beg':None,
 	'end':None,
 	'pos':None,
+	'cx':None,
+	'cy':None,
 }
 
 def show_help(stdscr):
@@ -55,7 +54,7 @@ def show_help(stdscr):
 		stdscr.addstr(15, 5, '+ Use the arrow keys to move the cusor')
 		stdscr.addstr(16, 5, '+ Use the +/- keys to zoom')
 		stdscr.addstr(17, 5, '+ Add the shift key to make bigger steps')
-		stdscr.addstr(18, 5, '+ Use the return key to center the screen')
+		stdscr.addstr(18, 5, '+ Use the return key to focus on a feature')
 	
 		# location & menu
 		loc = '{}:{}-{} {}'.format(
@@ -113,11 +112,6 @@ def show_selector(stdscr):
 		stdscr.refresh()
 		k = stdscr.getch()
 		
-def organize_genes(W):
-	scale = len(STATE['seq']) / W 
-
-
-
 def show_viewer(stdscr):
 	curses.curs_set(2)
 	H, W = stdscr.getmaxyx()
@@ -139,7 +133,7 @@ def show_viewer(stdscr):
 				mat[y].append([])
 				mat[y][x] = None
 
-		for gene in STATE['genes']:
+		for gene in STATE['g1']:
 			c = 5 # color
 			if gene.strand == '-': c = 7
 			beg, end = None, None
@@ -205,8 +199,6 @@ def show_viewer(stdscr):
 		stdscr.refresh()
 		k = stdscr.getch()
 
-
-
 def browser(stdscr):
 
 	# initialize curses	and begin on the help page
@@ -228,21 +220,31 @@ def reset_chrom(idx):
 	STATE['end'] = len(CHR[idx].seq)
 	STATE['pos'] = int(len(CHR[idx].seq) / 2)
 	STATE['seq'] = CHR[idx].seq
-	STATE['features'] = CHR[idx].ftable.features
-	STATE['genes'] = GENE[idx]
+	STATE['f1'] = CHR[idx].ftable.features
+	STATE['g1'] = GENE1[idx]
 	
 if __name__ == '__main__':
-
+	pass
+"""
 	# read sequence and annotation into memory
-	gen = genome.Reader(fasta=arg.fasta, gff=arg.gff3)
+	if arg.file1:
+		gen1 = genome.Reader(fasta=arg.fasta, gff=arg.file1)
+	if arg.file2:
+		gen2 = genome.Reader(fasta=arg.fasta, gff=arg.file2)
+	
 	for chr in gen:
 		CHR.append(chr)
 		genes = chr.ftable.build_genes()
-		GENE.append(genes)
-		
+		GENE1.append(genes)
+	
+	for chr in gen:
+		CHR.append(chr)
+		genes = chr.ftable.build_genes()
+		GENE1.append(genes)
+	
 	# set the default chromosome to the first in the file
 	reset_chrom(0)
 
 	# start the curses session
 	curses.wrapper(browser)
-
+"""
