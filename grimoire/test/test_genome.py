@@ -11,7 +11,7 @@ class TestGenome(unittest.TestCase):
 		ferr = 0
 		gen = genome.Reader(
 			fasta='data/ce270.fa.gz',
-			gff='data/ce270.gff.gz')
+			gff='data/ce270.gff3.gz')
 		for chrom in gen:
 			genes = chrom.ftable.build_genes()
 			for g in genes:

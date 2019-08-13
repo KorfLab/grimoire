@@ -17,7 +17,7 @@ class TestHMM(unittest.TestCase):
 		gen_seqs = []
 
 		gen = genome.Reader(
-			gff='data/ce270.gff.gz',
+			gff='data/ce270.gff3.gz',
 			fasta='data/ce270.fa.gz')
 		for chrom in gen:
 			genes = chrom.ftable.build_genes()

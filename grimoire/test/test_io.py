@@ -43,13 +43,13 @@ class TestIO(unittest.TestCase):
 			f = io.GFF_entry('I	WormBase	gene	3747	3909')
 		
 	def test_GFF_file(self):
-		gff = io.GFF_file('data/at10.gff.gz')
+		gff = io.GFF_file('data/at10.gff3.gz')
 		self.assertIsInstance(gff, io.GFF_file)
 		stuff = gff.get(chrom='Chr1', type='exon', beg=5000, end=9999)
 		self.assertEqual(len(stuff), 20)
 
 	def test_GFF_stream(self):
-		gff = io.GFF_stream('data/ce270.gff.gz')
+		gff = io.GFF_stream('data/ce270.gff3.gz')
 		self.assertIsInstance(gff, io.GFF_stream)
 		count = 0
 		for e in gff:

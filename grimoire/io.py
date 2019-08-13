@@ -216,37 +216,157 @@ class GFF_entry:
 		else:
 			self.attr = ''
 
-class GFF_file:
-	"""Class for reading and searching a GFF file (slurps all into memory)."""
+def _from_GTF(file):
 	
-	def __init__(self, filename=None, filepointer=None):
+	fp = None
+	if re.search(r'\.gz$', file): fp = gzip.open(file)
+	else:                         fp = open(file, 'r')
+		
+	# stuff
+	temp = tempfile.TemporaryFile()
+	gffs = []
+	stops = []
+
+	# parse the file
+	for line in fp:
+		if isinstance(line, bytes): line = line.decode()
+		if line[0:1]=='#': continue
+		col = line.rstrip().split('\t')
+		if len(col) < 9: continue
+			
+		if col[2] == 'gene':
+			id = re.search('gene_id "(\S+)"', col[8])[1]
+			col[8] = 'id=' + id
+			gffs.append(col)
+		elif col[2] == 'transcript':
+			pid = re.search('gene_id "(\S+)"', col[8])[1]
+			tid = re.search('transcript_id "(\S+)"', col[8])[1]
+			col[2] = 'mRNA'
+			col[8] = 'id=' + tid + ';parent_id=' + pid
+			gffs.append(col)
+		elif col[2] == 'exon' or col[2] == 'CDS':
+			pid = re.search('transcript_id "(\S+)"', col[8])[1]
+			col[8] = 'parent_id=' + pid
+			gffs.append(col)
+		elif col[2] == 'stop_codon':
+			stops.append(col[3])
+		
+	for gff in gffs:
+		if gff[2] == 'CDS':
+			if gff[6] == '+':
+				end = int(gff[4])
+				if str(end + 1) in stops:
+					gff[4] = str(end + 3)
+			elif gff[6] == '-':
+				beg = int(gff[3])
+				if str(beg -3) in stops:
+					gff[3] = str(beg -3)
+	
+	# return
+	for gff in gffs: temp.write(str.encode('\t'.join(gff)))
+	temp.seek(0)
+	return temp
+
+def _from_BED12(file):
+
+	fp = None
+	if re.search(r'\.gz$', file): fp = gzip.open(file)
+	else:                         fp = open(file, 'r')
+		
+	# stuff
+	temp = tempfile.TemporaryFile()
+	genes = {}
+	
+	# parse the file
+	for line in fp:
+		if isinstance(line, bytes): line = line.decode()
+		col = line.split('\t')
+		if len(col) < 12: continue
+		
+		chr_id = col[0]
+		chr_beg = int(col[1]) + 1
+		chr_end = int(col[2])
+		txid = col[3]
+		score = col[4]
+		strand = col[5]
+		cds_beg = int(col[6]) + 1
+		cds_end = int(col[7])
+		rgb = col[8]
+		n = int(col[9])
+		sizes = col[10].split(',')
+		starts = col[11].split(',')
+		gid = re.search('(\w+)\.\d+', txid)[1]
+		attr = 'ID=' + txid + ';Parent=' + gid
+		
+		# create the gene feature if necessary
+		if gid not in genes:
+			temp.write(str.encode('\t'.join([chr_id, '.', 'gene', str(chr_beg),
+				str(chr_end), score, strand, '.', 'ID='+gid])))
+			genes[gid] = True
+
+		# create the mRNA feature
+		temp.write(str.encode('\t'.join([chr_id, '.', 'mRNA', str(chr_beg),
+			str(chr_end), score, strand, attr])))
+
+		# create the exons and CDS features
+		for i in range(n):
+			beg = chr_beg + int(starts[i])
+			end = beg + int(sizes[i]) -1
+			attr = 'Parent=' + txid
+			temp.write(str.encode('\t'.join([chr_id, '.', 'exon', str(beg),
+				str(end), score, strand, ',', attr])))
+			if beg <= cds_end and end >= cds_beg:
+				cb, ce = None, None
+				if beg > cds_beg: cb = beg
+				else:             cb = cds_beg
+				if end > cds_end: ce = cds_end
+				else:             ce = end
+				temp.write(str.encode('\t'.join([chr_id, 'araport', 'CDS',
+					str(cb), str(ce), score, strand, '.', attr])))
+	
+	# return the bytes object
+	temp.seek(0)
+	return temp
+
+class GFF_file:
+	"""Class for reading and searching a GFF (and other) annotation files."""
+	
+	def __init__(self, file=None):
 		"""
 		Parameters
 		----------
-		+ filename=    `str` path to file, which may be compressed
-		+ filepointer= `obj` bytes-like object
+		+ file=   `str` path to file, which may be compressed
 		
 		Attributes
 		----------
 		+ chroms	`list` chromosome names
 		+ types		`list` feature type names
+
+		File extensions
+		---------------
+		GFF_file reads GFF3 files natively. It also autoconverts files in GTF
+		and BED12 into GFF3. All conversions are by file extension mappings.
+		
+		+ GFF3: *.gff3, *.gff3.gz
+		+ GTF: *.gtf, *.gtf.gz
+		+ BED12: *.bed, *.bed.gz
 		"""
 		
-		if filename != None:
-			if re.search(r'\.gz$', filename):
-				self._fp = gzip.open(filename)
-			else:
-				self._fp = open(filename, 'r')
-		elif filepointer != None:
-			self._fp = filepointer
-		else:
-			raise IOError('no file or filepointer given')
+		# if it's not GFF3, turn it into GFF3 before proceeding
+		fp = None
+		if   re.search(r'\.gff3\.gz$', file): fp = gzip.open(file)
+		elif re.search(r'\.gff3$',     file): fp = open(file, 'r')
+		elif re.search(r'\.gtf\.gz$',  file): fp = _from_GTF(file)
+		elif re.search(r'\.gtf$',      file): fp = _from_GTF(file)
+		elif re.search(r'\.bed\.gz$',  file): fp = _from_BED12(file)
+		elif re.search(r'\.bed$',      file): fp = _from_BED12(file)
+		else: raise IOError('unknown format: ' + file)
 				
 		self._chroms = {}
 		self._types = {}
 
 		while (1):
-			line = self._fp.readline()
+			line = fp.readline()
 			if isinstance(line, bytes): line = line.decode()
 			if line == '': break
 			
@@ -263,7 +383,7 @@ class GFF_file:
 			if gff.type not in self._types: self._types[gff.type] = []
 			self._types[gff.type].append(gff)
 
-		self._fp.close()
+		fp.close()
 		self.chroms = list(self._chroms.keys())
 		self.types = list(self._types.keys())
 
@@ -354,156 +474,4 @@ class GFF_stream:
 		
 		return gff
 
-class GTF_file:
-	"Class for reading GTF files. Returns GFF_file object."""
-	
-	def __init__(self, filename=None):
-		"""
-		Parameters
-		----------
-		+ filename=    `str` name of a file
-		+ filepointer= `obj` bytes-like object
-		
-		Specify filename or filepointer, not both.
-		"""
-		
-		# set the filepointer
-		fp = None
-		if filename != None:
-			if re.search(r'\.gz$', filename):
-				fp = gzip.open(filename)
-			else:
-				fp = open(filename, 'r')
-		elif filepointer != None:
-			fp = filepointer
-		else:
-			raise IOError('no file or filepointer given')
-		
-		# stuff
-		temp = tempfile.TemporaryFile()
-		gffs = []
-		stops = []
-
-		# parse the file
-		for line in fp:
-			if isinstance(line, bytes): line = line.decode()
-			if line[0:1]=='#': continue
-			col = line.rstrip().split('\t')
-			if len(col) < 9: continue
-			
-			if col[2] == 'gene':
-				id = re.search('gene_id "(\S+)"', col[8])[1]
-				col[8] = 'id=' + id
-				gffs.append(col)
-			elif col[2] == 'transcript':
-				pid = re.search('gene_id "(\S+)"', col[8])[1]
-				tid = re.search('transcript_id "(\S+)"', col[8])[1]
-				col[2] = 'mRNA'
-				col[8] = 'id=' + tid + ';parent_id=' + pid
-				gffs.append(col)
-			elif col[2] == 'exon' or col[2] == 'CDS':
-				pid = re.search('transcript_id "(\S+)"', col[8])[1]
-				col[8] = 'parent_id=' + pid
-				gffs.append(col)
-			elif col[2] == 'stop_codon':
-				stops.append(col[3])
-		
-		for gff in gffs:
-			if gff[2] == 'CDS':
-				if gff[6] == '+':
-					end = int(gff[4])
-					if str(end + 1) in stops:
-						gff[4] = str(end + 3)
-				elif gff[6] == '-':
-					beg = int(gff[3])
-					if str(beg -3) in stops:
-						gff[3] = str(beg -3)
-	
-		# let GFF_file do the work
-		for gff in gffs:
-			temp.write(str.encode('\t'.join(gff)))
-		temp.seek(0)
-		self = GFF_file(filepointer=temp)
-
-
-class BED12_file:
-	"Class for reading BED12 files. Returns GFF_file object."""
-	
-	def __init__(self, filename=None, filepointer=None):
-		"""
-		Parameters
-		----------
-		+ filename=    `str` path to file, which may be compressed
-		+ filepointer= `obj` bytes-like object
-		
-		Specify filename or filepointer, not both.
-		"""
-		
-		# set the filepointer
-		fp = None
-		if filename != None:
-			if re.search(r'\.gz$', filename):
-				fp = gzip.open(filename)
-			else:
-				fp = open(filename, 'r')
-		elif filepointer != None:
-			fp = filepointer
-		else:
-			raise IOError('no file or filepointer given')
-		
-		# stuff
-		temp = tempfile.TemporaryFile()
-		genes = {}
-		
-		# parse the file
-		for line in fp:
-			if isinstance(line, bytes): line = line.decode()
-			col = line.split('\t')
-			if len(col) < 12: continue
-			
-			chr_id = col[0]
-			chr_beg = int(col[1]) + 1
-			chr_end = int(col[2])
-			txid = col[3]
-			score = col[4]
-			strand = col[5]
-			cds_beg = int(col[6]) + 1
-			cds_end = int(col[7])
-			rgb = col[8]
-			n = int(col[9])
-			sizes = col[10].split(',')
-			starts = col[11].split(',')
-			gid = re.search('(\w+)\.\d+', txid)[1]
-			attr = 'ID=' + txid + ';Parent=' + gid	
-
-			# create the gene feature if necessary
-			if gid not in genes:
-				temp.write(str.encode('\t'.join([chr_id, '.', 'gene',
-					str(chr_beg), str(chr_end), score, strand, '.',
-					'ID='+gid])))
-				genes[gid] = True
-	
-			# create the mRNA feature
-			temp.write(str.encode('\t'.join([chr_id, '.', 'mRNA',
-				str(chr_beg), str(chr_end), score, strand, attr])))
-	
-			# create the exons and CDS features
-			for i in range(n):
-				beg = chr_beg + int(starts[i])
-				end = beg + int(sizes[i]) -1
-				attr = 'Parent=' + txid
-				temp.write(str.encode('\t'.join([chr_id, '.', 'exon', str(beg),
-					str(end), score, strand, ',', attr])))
-				if beg <= cds_end and end >= cds_beg:
-					cb, ce = None, None
-					if beg > cds_beg: cb = beg
-					else:             cb = cds_beg
-					if end > cds_end: ce = cds_end
-					else:             ce = end
-					temp.write(str.encode('\t'.join([chr_id, 'araport', 'CDS',
-						str(cb), str(ce), score, strand, '.', attr])))
-		
-		# let GFF_file do the work
-		temp.seek(0)
-		self = GFF_file(filepointer=temp)
 
