@@ -12,6 +12,9 @@ class TestFeatureTable(unittest.TestCase):
 		pass # this is tested in test_genome
 	
 	def test_compare(self):
+		pass
+		"""
+		not sure this is how the comparision function will work
 		dna = DNA(seq='AAAAAAAAAACCCCCCCCCCGGGGGGGGGGTTTTTTTTTT')
 		ft1 = FeatureTable(dna=dna, features=[
 			Feature(dna,  1, 10, '+', 'PolyA'),
@@ -27,6 +30,7 @@ class TestFeatureTable(unittest.TestCase):
 		stats = ft1.compare(ft2)
 		self.assertEqual(stats['nt_same'], 10)
 		self.assertEqual(stats['matrix']['PolyA']['PolyA'], 10)
+		"""
 
 if __name__ == '__main__':
 	unittest.main(verbosity=2)
