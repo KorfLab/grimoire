@@ -13,13 +13,13 @@ class TestFeatureTable(unittest.TestCase):
 	
 	def test_compare(self):
 		dna = DNA(seq='AAAAAAAAAACCCCCCCCCCGGGGGGGGGGTTTTTTTTTT')
-		ft1 = FeatureTable([
+		ft1 = FeatureTable(dna=dna, features=[
 			Feature(dna,  1, 10, '+', 'PolyA'),
 			Feature(dna, 11, 20, '+', 'PolyC'),
 			Feature(dna, 21, 30, '+', 'PolyG'),
 			Feature(dna, 31, 40, '+', 'PolyT')
 		])
-		ft2 = FeatureTable([
+		ft2 = FeatureTable(dna=dna, features=[
 			Feature(dna,  1, 10, '+', 'PolyA'),
 			Feature(dna, 11, 20, '-', 'PolyG'),
 			Feature(dna, 21, 40, '+', 'PolyK')

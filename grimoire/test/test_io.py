@@ -12,7 +12,7 @@ class TestIO(unittest.TestCase):
 		self.assertEqual(s, '>foo bar\nAC\nGT\n')
 	
 	def test_FASTA_file(self):
-		if os.system('gunzip -c data/C.elegans.1percent.fasta > data/test.fasta'):
+		if os.system('gunzip -c data/ce270.fa.gz > data/test.fasta'):
 			raise 'unable to create test file'
 		ff = io.FASTA_file('data/test.fasta')
 		self.assertIsInstance(ff, io.FASTA_file)
@@ -23,11 +23,11 @@ class TestIO(unittest.TestCase):
 			ff = io.FASTA_file('data/README.md')
 
 	def test_FASTA_stream(self):
-		ff = io.FASTA_stream('data/A.thaliana.1percent.fasta.gz')
+		ff = io.FASTA_stream('data/at10.fa.gz')
 		text = ''
 		for e in ff: text += e.id
-		self.assertEqual(text, 'Chr1Chr2Chr3Chr4Chr5ChrMChrC')
-		ff = io.FASTA_stream('data/A.thaliana.1percent.gff3.gz')
+		self.assertEqual(text, 'Chr1Chr2Chr3Chr4Chr5')
+		ff = io.FASTA_stream('data/at10.fa.gz')
 		with self.assertRaises(io.FASTA_error):
 			for e in ff: print(e.id)
 		
@@ -43,13 +43,13 @@ class TestIO(unittest.TestCase):
 			f = io.GFF_entry('I	WormBase	gene	3747	3909')
 		
 	def test_GFF_file(self):
-		gff = io.GFF_file('data/A.thaliana.1percent.gff3.gz')
+		gff = io.GFF_file('data/at10.gff.gz')
 		self.assertIsInstance(gff, io.GFF_file)
 		stuff = gff.get(chrom='Chr1', type='exon', beg=5000, end=9999)
 		self.assertEqual(len(stuff), 20)
 
 	def test_GFF_stream(self):
-		gff = io.GFF_stream('data/C.elegans.1percent.gff3.gz')
+		gff = io.GFF_stream('data/ce270.gff.gz')
 		self.assertIsInstance(gff, io.GFF_stream)
 		count = 0
 		for e in gff:

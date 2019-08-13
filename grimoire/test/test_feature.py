@@ -8,7 +8,7 @@ from grimoire.feature import Feature, mRNA, ncRNA, Gene
 class TestFeature(unittest.TestCase):
 
 	def setUp(self):
-		ff = io.FASTA_stream('data/A.thaliana.1percent.fasta.gz')
+		ff = io.FASTA_stream('data/at10.fa.gz')
 		for e in ff:
 			self.dna = DNA(seq=e.seq, name=e.id)
 			break

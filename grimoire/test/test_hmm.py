@@ -17,8 +17,8 @@ class TestHMM(unittest.TestCase):
 		gen_seqs = []
 
 		gen = genome.Reader(
-			gff='data/C.elegans.1percent.gff3.gz',
-			fasta='data/C.elegans.1percent.fasta.gz')
+			gff='data/ce270.gff.gz',
+			fasta='data/ce270.fa.gz')
 		for chrom in gen:
 			genes = chrom.ftable.build_genes()
 			gen_seqs.append(chrom.seq)
@@ -41,8 +41,7 @@ class TestHMM(unittest.TestCase):
 		hmm.connect2(genome_state, donor_states[0], 0.01)
 		hmm.connect2(donor_states[-1], genome_state, 1)
 
-		null_state = hmm.null_state_factory(
-			file='data/C.elegans.1percent.fasta.gz')
+		null_state = hmm.null_state_factory(file='data/ce270.fa.gz')
 
 		self.hmm = hmm.HMM(name='test', null=null_state,
 			states=donor_states + [genome_state])
