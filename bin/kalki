@@ -4,7 +4,7 @@ import argparse
 import re
 import sys
 
-import grimoire.toolbox as toolbox
+import grimoire.io as io
 
 extended_help = """
 %(prog)s is used for sanitizing annotation file formats to ensure that
@@ -19,10 +19,10 @@ of the following types:
 The following sources are supported:
 
 	wb   - WormBase GFF3 (tested with WS270)
-	fb   - FlyBase GFF3 (tested with release 6)
-	tair - TAIR GFF3 (tested with TAIR10)
-	ap   - Araport bed12 (tested with araport11)
-	gtf  - Ensemble-based GTF
+	fb6   - FlyBase GFF3 (tested with release 6)
+	t10 - TAIR GFF3 (tested with TAIR10)
+	a11   - Araport bed12 (tested with araport11)
+	gtf  - Ensemble-based GTF (tested with WS271)
 	
 %(prog)s reads from STDIN and writes to STDOUT, so make sure you pipe
 to %(prog)s and redirect its output to the file you want.
@@ -35,7 +35,7 @@ parser = argparse.ArgumentParser(
 	description='Annotation file sanitizer.',
 	formatter_class=argparse.RawDescriptionHelpFormatter,
 	epilog=extended_help)
-parser.add_argument('--source', required=True, type=str,
+parser.add_argument('--mode', required=True, type=str,
 	metavar='<string>', help='wb|fb|tair|ap|gtf')
 arg = parser.parse_args()
 
@@ -49,8 +49,7 @@ types = {
 	'CDS' : True,
 }
 
-
-def convert_from_wormbase():
+def convert_as_wormbase270():
 	for line in sys.stdin:
 		if line[0:1] == '#': continue
 		col = line.rstrip().split('\t')
@@ -59,7 +58,7 @@ def convert_from_wormbase():
 			if m: continue
 			print(line, end='')
 
-def convert_from_flybase():
+def convert_as_flybase6():
 	for line in sys.stdin:
 		if line[0:1] == '#':
 			if line[0:7] == '##FASTA':break
@@ -71,16 +70,17 @@ def convert_from_flybase():
 			if m: continue
 			print(line, end='')
 
-def convert_from_tair():
+def convert_as_tair10():
 	for line in sys.stdin:
 		if line[0:1] == '#': continue
 		col = line.rstrip().split('\t')
 		if col[2] in types:
 			m = re.search('pseud', col[2])
 			if m: continue
-			print(line, end='')
+#			col[8] = re.sub(',\S+Protein;', '', col[8])
+			print('\t'.join(col))
 
-def convert_from_araport():
+def convert_as_araport11():
 	genes = {}
 	for line in sys.stdin:
 		col = line.split('\t')
@@ -126,66 +126,50 @@ def convert_from_araport():
 				print('\t'.join([chr_id, 'araport', 'CDS', str(cb),
 					str(ce), score, strand, '.', attr]))
 
-def convert_from_gtf():
-	genes = {}
-	add_stop = None
-	file = []
+def convert_as_gtf():
+	gffs = []
 	stops = []
-	#Process and pull into memory
+
 	for line in sys.stdin:
 		if line[0:1]=='#': continue
 		col = line.rstrip().split('\t')
-		entry = toolbox.GFF_entry(col)
-		if entry.type == 'stop_codon':
-			stops.append(entry)
-			continue
-		file.append(entry)
-	#Post Processing and Check for Formatting
-	for entry in file:
-		#Check for stops
-		for stop in stops:
-			if entry.chrom != stop.chrom: continue
-			if entry.strand != stop.strand: continue
-			if entry.strand == '+':
-				if entry.end == stop.beg - 1:
-					entry.end = entry.end + 3
-				continue
-			if entry.strand == '-':
-				if entry.beg == stop.end + 1:
-					entry.beg = entry.beg - 3
-				continue
-		#Exceptions
-		if entry.type == 'transcript':
-			entry.type = 'mRNA'
-		elif entry.type == 'three_prime_utr' or entry.type == 'five_prime_utr' or entry.type == 'start_codon':
-			del entry
-			continue
-		#Convert Features Colomn to Dictionary
-		attr = entry.attr.split('; ')
-		features = {}
-		for feature in attr:
-			temp = feature.replace('"','')
-			temp = temp.split(' ')
-			features.update({temp[0]:temp[1]})
-		#Rewrite last colomn in GFF3 format
-		if entry.type == 'gene':
-			entry.attr = 'ID=Gene:'+features['gene_id']
-		if entry.type == 'exon':
-			entry.attr = 'Parent=Transcript:'+features['transcript_id']
-		if entry.type == 'mRNA':
-			entry.attr = 'ID=Transcript:'+features['transcript_id']+';Parent=Gene:'+features['gene_id']
-		if entry.type == 'CDS':
-			entry.attr = 'Parent=Transcript:'+features['transcript_id']
-		updated_line = "\t".join([entry.chrom,entry.source,entry.type,
-			str(entry.beg),str(entry.end),entry.score,entry.strand,entry.phase,entry.attr])
-		print(updated_line)
+		if col[2] == 'gene':
+			id = re.search('gene_id "(\S+)"', col[8])[1]
+			col[8] = 'id=' + id
+			gffs.append(col)
+		elif col[2] == 'transcript':
+			pid = re.search('gene_id "(\S+)"', col[8])[1]
+			tid = re.search('transcript_id "(\S+)"', col[8])[1]
+			col[2] = 'mRNA'
+			col[8] = 'id=' + tid + ';parent_id=' + pid
+			gffs.append(col)
+		elif col[2] == 'exon' or col[2] == 'CDS':
+			pid = re.search('transcript_id "(\S+)"', col[8])[1]
+			col[8] = 'parent_id=' + pid
+			gffs.append(col)
+		elif col[2] == 'stop_codon':
+			stops.append(col[3])
+	
+	for gff in gffs:
+		if gff[2] == 'CDS':
+			if gff[6] == '+':
+				end = int(gff[4])
+				if str(end + 1) in stops:
+					gff[4] = str(end + 3)
+			elif gff[6] == '-':
+				beg = int(gff[3])
+				if str(beg -3) in stops:
+					gff[3] = str(beg -3)
+
+	for gff in gffs:
+		print('\t'.join(gff))
 
 
 if __name__ == '__main__':
-	if   arg.source == 'wb':   convert_from_wormbase()
-	elif arg.source == 'fb':   convert_from_flybase()
-	elif arg.source == 'tair': convert_from_tair()
-	elif arg.source == 'ap':   convert_from_araport()
-	elif arg.source == 'gtf':  convert_from_gtf()
+	if   arg.mode == '270': convert_as_wormbase270()
+	elif arg.mode == 'fb6': convert_as_flybase6()
+	elif arg.mode == 't10': convert_as_tair10()
+	elif arg.mode == 'a11': convert_as_araport11()
+	elif arg.mode == 'gtf': convert_as_gtf()
 	else: raise KalkiError('unrecognized source: ' + arg.source)
 	
