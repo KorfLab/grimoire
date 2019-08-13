@@ -236,17 +236,17 @@ def _from_GTF(file):
 			
 		if col[2] == 'gene':
 			id = re.search('gene_id "(\S+)"', col[8])[1]
-			col[8] = 'id=' + id
+			col[8] = 'ID=' + id
 			gffs.append(col)
 		elif col[2] == 'transcript':
 			pid = re.search('gene_id "(\S+)"', col[8])[1]
 			tid = re.search('transcript_id "(\S+)"', col[8])[1]
 			col[2] = 'mRNA'
-			col[8] = 'id=' + tid + ';parent_id=' + pid
+			col[8] = 'ID=' + tid + ';Parent=' + pid
 			gffs.append(col)
 		elif col[2] == 'exon' or col[2] == 'CDS':
 			pid = re.search('transcript_id "(\S+)"', col[8])[1]
-			col[8] = 'parent_id=' + pid
+			col[8] = 'Parent=' + pid
 			gffs.append(col)
 		elif col[2] == 'stop_codon':
 			stops.append(col[3])
@@ -263,7 +263,7 @@ def _from_GTF(file):
 					gff[3] = str(beg -3)
 	
 	# return
-	for gff in gffs: temp.write(str.encode('\t'.join(gff)))
+	for gff in gffs: temp.write(str.encode('\t'.join(gff) + '\n'))
 	temp.seek(0)
 	return temp
 
@@ -301,12 +301,12 @@ def _from_BED12(file):
 		# create the gene feature if necessary
 		if gid not in genes:
 			temp.write(str.encode('\t'.join([chr_id, '.', 'gene', str(chr_beg),
-				str(chr_end), score, strand, '.', 'ID='+gid])))
+				str(chr_end), score, strand, '.', 'ID='+gid]) + '\n'))
 			genes[gid] = True
 
 		# create the mRNA feature
 		temp.write(str.encode('\t'.join([chr_id, '.', 'mRNA', str(chr_beg),
-			str(chr_end), score, strand, attr])))
+			str(chr_end), score, strand, attr]) + '\n'))
 
 		# create the exons and CDS features
 		for i in range(n):
@@ -314,7 +314,7 @@ def _from_BED12(file):
 			end = beg + int(sizes[i]) -1
 			attr = 'Parent=' + txid
 			temp.write(str.encode('\t'.join([chr_id, '.', 'exon', str(beg),
-				str(end), score, strand, ',', attr])))
+				str(end), score, strand, ',', attr]) + '\n'))
 			if beg <= cds_end and end >= cds_beg:
 				cb, ce = None, None
 				if beg > cds_beg: cb = beg
@@ -322,7 +322,7 @@ def _from_BED12(file):
 				if end > cds_end: ce = cds_end
 				else:             ce = end
 				temp.write(str.encode('\t'.join([chr_id, 'araport', 'CDS',
-					str(cb), str(ce), score, strand, '.', attr])))
+					str(cb), str(ce), score, strand, '.', attr]) + '\n'))
 	
 	# return the bytes object
 	temp.seek(0)

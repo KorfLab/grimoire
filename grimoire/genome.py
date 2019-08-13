@@ -23,7 +23,7 @@ class Reader:
 		Parameters
 		----------
 		+ fasta= `str`  path to fasta file (may be compressed)
-		+ gff=  `str`  path to gff file (may be compressed)
+		+ gff=   `str`  path to gff (or other file, may be compressed)
 		+ check= `bool` check that the alphabet conforms to IUPAC DNA
 		"""
 
