@@ -8,15 +8,14 @@ road map for this tutorial.
 
 1. Setting up
 2. Examining genome annotation with `calfo`
-3. Visualizing annotation files with `kalki`
+3. Visualizing annotation files with `kandi`
 4. Creating training and testing sets with `haman`
 5. Building an HMM with `milwa`
 6. Decoding sequences with `halito`
 7. Comparing predictions with `latumapic`
 8. Tuning models to improve accuracy
 
-Disclaimers
------------
+## Disclaimers ##
 
 Before we get to the walk-through, lets take a brief moment to review
 who should and should not use this tutorial. This is a Linux
@@ -51,14 +50,9 @@ an academic lab with limited time and funding. We cannot offer much
 support. We appreciate bug reports and feature requests, but we don't
 intend to offer general Linux, Python, or Git help.
 
----
-
 OK, if you're still around, let's start the tutorial.
 
----
-
-1. Setup
---------
+## 1. Setup ##
 
 It is assumed that you either `pip3` installed the grimoire package
 (probably in a virtual environment) or you are working with a cloned git
@@ -87,34 +81,28 @@ of each genome.
 To keep things tidy, create a working diretory somewhere and make
 symlinks from the files above to your working directory.
 
-2. Examining genome annotation with `calfo`
--------------------------------------------
+## 2. Examining genome annotation with `calfo` ##
 
 This is now the sanity check as well as the reporter
 
 
-3. Visualizing annotation files with `kalki`
---------------------------------------------
+## 3. Visualizing annotation files with `kandi` ##
 
 Or is this a really bad idea
 
-4. Creating training and testing sets with `haman`
---------------------------------------------------
+## 4. Creating training and testing sets with `haman` ##
 
-5. Building an HMM with `milwa`
--------------------------------
+## 5. Building an HMM with `milwa` ##
 
 For debugging purposes, you should run `dumapic`.
 For fun, you can generate sequences with `morlis`.
 
-6. Decoding sequences with `halito`
------------------------------------
+## 6. Decoding sequences with `halito` ##
 
-7. Comparing predictions with `latumapic`
------------------------------------------
+## 7. Comparing predictions with `latumapic` ##
 
-8. Tuning models to improve accuracy
---------------------------------
+
+## 8. Tuning models to improve accuracy ##
 
 + Lexicalized emissions
 + Optimal lengths of features
