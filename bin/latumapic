@@ -48,9 +48,7 @@ if __name__ == '__main__':
 	
 	same, diff = 0, 0
 	for c1, c2 in zip(g1, g2):
-		cmp = c1.ftable.compare(c2.ftable)
-		same += cmp['nt_same']
-		diff += cmp['nt_diff']
+		same, diff = c1.ftable.compare(c2.ftable, 'CDS')
 
 	if arg.format == 0:
 		print(diff, same, diff + same)
