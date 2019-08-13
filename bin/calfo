@@ -5,30 +5,36 @@ import base64
 import io
 import operator
 import statistics
-import sys
 
 import matplotlib.pyplot as plt
 
-import grimoire.genome as genome
-import grimoire.toolbox as toolbox
+from grimoire.genome import Reader
+from grimoire.io import FASTA_stream, GFF_stream
 
-## Command Line ##
+## Command line stuff ##
 
-parser = argparse.ArgumentParser(description='Genome annotation inspector')
+extended_help = """
+%(prog)s provides an overview of a genome annotation as an HTML page. There
+are graphs showing the characteristics of chromosomes and genes as well as
+an overview of some of the errors/non-canonical features.
+"""
+
+parser = argparse.ArgumentParser(
+	description='Genome annotation reporter',
+	formatter_class=argparse.RawDescriptionHelpFormatter,
+	epilog=extended_help)
 parser.add_argument('--fasta', required=True, type=str,
 	metavar='<path>', help='path to fasta file')
-parser.add_argument('--gff3', required=True, type=str,
-	metavar='<path>', help='path to GFF file')
+parser.add_argument('--gff', required=True, type=str,
+	metavar='<path>', help='path to GFF (or other) annotation file')
 parser.add_argument('--title', required=True, type=str,
 	metavar='<path>', help='title of report')
 parser.add_argument('--html', required=True, type=str,
 	metavar='<path>', help='path to html output file')
-parser.add_argument('--json', required=False, type=str,
-	metavar='<path>', help='path to json output file')
 arg = parser.parse_args()
 
-## needs a bunch of formatting options for the figures
-
+class CalfoError(Exception):
+	pass
 
 ####################
 # Global Variables #
@@ -52,7 +58,6 @@ def stats(values):
 		}
 	else:
 		return {'count':0, 'min':'0', 'max':'0', 'med':'0', 'mean':'0', 'stdev':'0'}
-		
 
 def encode_fig(fig):
 	buff = io.BytesIO()
@@ -106,7 +111,6 @@ def bar_chart(data, title):
 
 	return text
 	
-
 ###############################################################################
 # Report Init
 ###############################################################################
@@ -126,7 +130,7 @@ doc.write('<h1>' + arg.title + '</h1>')
 
 doc.write('<h2>Chromosome Report</h2>')
 sizes = {}
-fasta = toolbox.FASTA_stream(arg.fasta)
+fasta = FASTA_stream(arg.fasta)
 for entry in fasta:
 	sizes[entry.id] = len(entry.seq)
 doc.write('Origin: ' + arg.fasta + '<p>')
@@ -137,9 +141,9 @@ doc.write(bar_chart(sizes, 'Chromosome Sizes'))
 ###############################################################################
 
 doc.write('<h2>Genome Annotation Report</h2>')
-gff3 = toolbox.GFF_stream(arg.gff3)
+gff = GFF_stream(arg.gff)
 types = {}
-for entry in gff3:
+for entry in gff:
 	if entry.type not in types: types[entry.type] = 0
 	types[entry.type] += 1
 doc.write(bar_chart(types, 'Feature Types'))
@@ -162,11 +166,22 @@ u3len = [] # 3'utr lengths
 tlen = [] # tx lengths
 clen = [] # cds lengths
 
-gen = genome.Genome(fasta=arg.fasta, gff3=arg.gff3)
-for chr in gen.chromosomes:
-	for gene in chr.features:
+# error reporting stuff
+gene_ok, gene_err = 0, 0
+tx_ok, tx_err = 0, 0
+f_ok, f_err = 0, 0
+gene_issues = {}
+tx_issues = {}
+f_issues = {}
+
+genome = Reader(fasta=arg.fasta, gff=arg.gff)
+for chr in genome:
+	genes = chr.ftable.build_genes()
+	
+	# stats section
+	for gene in genes:
 		tpg.append(len(gene.children))
-		for tx in gene.mRNAs():
+		for tx in gene.transcripts():
 				
 			## count distributions
 			ept.append(len(tx.exons))
@@ -181,6 +196,36 @@ for chr in gen.chromosomes:
 			for i in tx.introns: ilen.append(i.end - i.beg + 1)
 			clen.append(len(tx.cds_str()))
 			tlen.append(tx.end - tx.beg + 1)
+
+	# error section
+	for gene in genes:
+		if not gene.issues: 
+			gene_ok += 1
+		else:
+			gene_err += 1
+			for issue in gene.issues:
+				if issue not in gene_issues: gene_issues[issue] = 0
+				gene_issues[issue] += 1
+		
+		# transcript level
+		for tx in gene.transcripts():
+			if not tx.issues:
+				tx_ok += 1
+			else:
+				tx_err += 1
+				for issue in tx.issues:
+					if issue not in tx_issues: tx_issues[issue] = 0
+					tx_issues[issue] += 1
+			
+			# feature level
+			for f in tx.children:
+				if not f.issues:
+					f_ok += 1
+				else:
+					f_err += 1
+					for issue in f.issues:
+						if issue not in f.issues: f_issues[issue] = 0
+						f_issues[issue] += 1
 
 doc.write(histogram(tpg, 'mRNAs per Gene', 10))
 doc.write(histogram(ept, 'Exons per mRNA', 10))
@@ -200,45 +245,6 @@ doc.write(histogram(u3len, 'UTR3 Lengths', 10))
 
 doc.write('<h2>Protein-coding Gene Annotation Errors</h2>')
 
-gene_ok, gene_err = 0, 0
-tx_ok, tx_err = 0, 0
-f_ok, f_err = 0, 0
-gene_issues = {}
-tx_issues = {}
-f_issues = {}
-
-for chr in gen.chromosomes:
-
-	# gene level
-	for gene in chr.features:
-		if not gene.issues: 
-			gene_ok += 1
-		else:
-			gene_err += 1
-			for issue in gene.issues:
-				if issue not in gene_issues: gene_issues[issue] = 0
-				gene_issues[issue] += 1
-		
-		# transcript level
-		for tx in gene.mRNAs():
-			if not tx.issues:
-				tx_ok += 1
-			else:
-				tx_err += 1
-				for issue in tx.issues:
-					if issue not in tx_issues: tx_issues[issue] = 0
-					tx_issues[issue] += 1
-			
-			# feature level
-			for f in tx.children:
-				if not f.issues:
-					f_ok += 1
-				else:
-					f_err += 1
-					for issue in f.issues:
-						if issue not in f.issues: f_issues[issue] = 0
-						f_issues[issue] += 1
-
 doc.write('Gene errors: {} / {} = {}'.format(gene_err, gene_ok,
 	gene_err /(gene_err + gene_ok)))
 doc.write(bar_chart(gene_issues, 'Gene Errors'))
@@ -250,34 +256,6 @@ doc.write(bar_chart(tx_issues, 'mRNA Errors'))
 doc.write('Component errors: {} / {} = {}'.format(f_err, f_ok,
 	f_err /(f_err + f_ok)))
 doc.write(bar_chart(f_issues, 'Component Errors'))
-
-###############################################################################
-# Protein-Coding Gene Errors : Detailed
-###############################################################################
-
-doc.write('<h2>Detailed Error Report</h2>')
-doc.write('<ul>')
-for chr in gen.chromosomes:
-	for gene in chr.features:
-		if not gene.issues: continue
-		errors = {}
-		for eg in gene.issues.keys():
-			if eg not in errors: errors[eg] = True 
-		
-		for tx in gene.mRNAs():
-			if not tx.issues: continue
-
-			for et in tx.issues.keys():
-				if et not in errors: errors[et] = True
-			
-			for f in tx.children:
-				if not f.issues: continue
-				
-				for ef in f.issues:
-					if ef not in errors: errors[ef] = True
-		doc.write('<li>' + gene.id + ': ')
-		doc.write(', '.join(errors.keys()))
-doc.write('</ul>')
 
 ###############################################################################
 # Footer

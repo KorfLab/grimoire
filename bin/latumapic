@@ -31,8 +31,8 @@ parser.add_argument('--file1', required=True, type=str,
 	metavar='<path>', help='path to file1 in gff')
 parser.add_argument('--file2', required=True, type=str,
 	metavar='<path>', help='path to file2 in gff')
-parser.add_argument('--format', required=False, default=0,
-	type=int, metavar='<path>', help='verbosity level')
+parser.add_argument('--feature', required=False, type=str,
+	metavar='<path>', help='type of feature to compare')
 arg = parser.parse_args()
 
 class LatumapicError(Exception):
@@ -40,19 +40,14 @@ class LatumapicError(Exception):
 
 if __name__ == '__main__':
 
-	if arg.format > 1:
-		raise LatumapicError('format out of range')
-
 	g1 = genome.Reader(fasta=arg.fasta, gff=arg.file1)
 	g2 = genome.Reader(fasta=arg.fasta, gff=arg.file2)
 	
-	same, diff = 0, 0
-	for c1, c2 in zip(g1, g2):
-		same, diff = c1.ftable.compare(c2.ftable, 'CDS')
+	if arg.feature:
+		same, diff = 0, 0
+		for c1, c2 in zip(g1, g2):
+			same, diff = c1.ftable.compare(c2.ftable, arg.feature)
+		print(same, diff, same + diff)
 
-	if arg.format == 0:
-		print(diff, same, diff + same)
-	elif arg.format == 1:
-		raise NotImplementedError()
 
 
