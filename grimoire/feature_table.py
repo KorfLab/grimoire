@@ -98,10 +98,13 @@ class FeatureTable:
 	
 		return list(genes.values())
 
-	def compare(self, other):
+	def compare(self, other, type=None):
 		"""
-		Compares this feature table with some other feature table,
-		returning a dictionary of comparision values.
+		Compares this feature table with some other feature table using
+		some specific type of feature, e.g. CDS.
+		
+		This is currently not well thought-out and not sure what is
+		happening here.
 		"""
 				
 		# NT-level comparisons
@@ -109,9 +112,11 @@ class FeatureTable:
 		same, diff = 0, 0
 		s1, s2 = [''] * length, [''] * length
 		for f in self.features:
+			if f.type != type: continue
 			for i in range(f.beg, f.end + 1):
 				s1[i-1] = f.type
 		for f in other.features:
+			if f.type != type: continue
 			for i in range(f.beg, f.end + 1):
 				s2[i-1] = f.type
 		
@@ -119,26 +124,5 @@ class FeatureTable:
 			if s1[i] == s2[i]: same += 1
 			else:              diff += 1
 
-		# Exact-level comparisons
-		exact, inexact = 0, 0
-		if diff == 0: exact = 1
-		else:         inexact = 1
-
-		# Feature-type-level comparisons
-		matrix = {}
-		for i in range(len(s1)):
-			if s1[i] not in matrix: matrix[s1[i]] = {}
-			if s2[i] not in matrix[s1[i]]: matrix[s1[i]][s2[i]] = 0
-			matrix[s1[i]][s2[i]] += 1
-
-		stats = {
-			'nt_same' : same,
-			'nt_diff' : diff,
-			'exact' : exact,
-			'inexact' : inexact,
-			'matrix' : matrix
-		}
-		
-		return stats
-
+		return same, diff
 
