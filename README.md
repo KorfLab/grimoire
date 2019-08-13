@@ -32,8 +32,8 @@ Program names are themed after spell names from the classic RPG
 
 | Name      | Meaning    | Function                               |
 |:----------|:-----------|:---------------------------------------|
-| kalki     | blessings  | annotation sanitizer (gff3, gtf, bed12)
 | calfo     | x-ray      | genome annotation reporter
+| kandi     | locate     | genome annotation viewer
 | haman     | change     | genome slicer
 | milwa     | light      | hmm buider
 | dumapic   | clarity    | hmm grapher 
@@ -46,7 +46,7 @@ Program names are themed after spell names from the classic RPG
 | lahalito  | torch      | (planned full genome decoder)
 | tiltowait | explosion  | (planned multi-genome decoder)
 | zilwan    | dispel     | (planned profile/alignment decoder)
-| kandi     | locate     | (planned regional compiler)
+
 
 Contributors
 ------------
