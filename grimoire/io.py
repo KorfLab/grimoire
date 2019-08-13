@@ -309,8 +309,8 @@ class GFF_file:
 		return found
 
 class GFF_stream:
-	"""Class for reading a GFF file as a stream. Iterable allowing access to `GFF_entry`
-	objects representing contents of GFF file."""
+	"""Class for reading a GFF file as a stream. Iterable allowing access to
+	`GFF_entry` objects representing contents of GFF file."""
 
 	def __init__(self, filename=None, filepointer=None):
 		"""
@@ -354,8 +354,80 @@ class GFF_stream:
 		
 		return gff
 
+class GTF_file:
+	"Class for reading GTF files. Returns GFF_file object."""
+	
+	def __init__(self, filename=None):
+		"""
+		Parameters
+		----------
+		+ filename=    `str` name of a file
+		+ filepointer= `obj` bytes-like object
+		
+		Specify filename or filepointer, not both.
+		"""
+		
+		# set the filepointer
+		fp = None
+		if filename != None:
+			if re.search(r'\.gz$', filename):
+				fp = gzip.open(filename)
+			else:
+				fp = open(filename, 'r')
+		elif filepointer != None:
+			fp = filepointer
+		else:
+			raise IOError('no file or filepointer given')
+		
+		# stuff
+		temp = tempfile.TemporaryFile()
+		gffs = []
+		stops = []
+
+		# parse the file
+		for line in fp:
+			if isinstance(line, bytes): line = line.decode()
+			if line[0:1]=='#': continue
+			col = line.rstrip().split('\t')
+			if len(col) < 9: continue
+			
+			if col[2] == 'gene':
+				id = re.search('gene_id "(\S+)"', col[8])[1]
+				col[8] = 'id=' + id
+				gffs.append(col)
+			elif col[2] == 'transcript':
+				pid = re.search('gene_id "(\S+)"', col[8])[1]
+				tid = re.search('transcript_id "(\S+)"', col[8])[1]
+				col[2] = 'mRNA'
+				col[8] = 'id=' + tid + ';parent_id=' + pid
+				gffs.append(col)
+			elif col[2] == 'exon' or col[2] == 'CDS':
+				pid = re.search('transcript_id "(\S+)"', col[8])[1]
+				col[8] = 'parent_id=' + pid
+				gffs.append(col)
+			elif col[2] == 'stop_codon':
+				stops.append(col[3])
+		
+		for gff in gffs:
+			if gff[2] == 'CDS':
+				if gff[6] == '+':
+					end = int(gff[4])
+					if str(end + 1) in stops:
+						gff[4] = str(end + 3)
+				elif gff[6] == '-':
+					beg = int(gff[3])
+					if str(beg -3) in stops:
+						gff[3] = str(beg -3)
+	
+		# let GFF_file do the work
+		for gff in gffs:
+			temp.write(str.encode('\t'.join(gff)))
+		temp.seek(0)
+		self = GFF_file(filepointer=temp)
+
+
 class BED12_file:
-	"Class for reading BED12 files into gene-ic features."""
+	"Class for reading BED12 files. Returns GFF_file object."""
 	
 	def __init__(self, filename=None, filepointer=None):
 		"""
