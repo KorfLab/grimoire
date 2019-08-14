@@ -12,6 +12,25 @@ import grimoire.io as io
 from grimoire.sequence import DNA
 from grimoire.feature import Feature, Gene, mRNA, ncRNA
 
+def gff_to_feature(dna, gff):
+	"""Converts a GFF object into a Feature object."""
+	
+	attr = gff.attr.rstrip()
+	
+	id = None
+	im = re.search('ID=([^;]+)', attr)
+	if im:
+		id = im[1].rstrip()
+	
+	pid = None
+	pm = re.search('Parent=([^;]+)', attr)			
+	if pm:
+		if ',' in pm[1]: pid = pm[1].split(',')
+		else:            pid = pm[1]
+			
+	return Feature(dna, gff.beg, gff.end, gff.strand, gff.type,
+		source=gff.source, score=gff.score, id=id, pid=pid)
+
 class GenomeError(Exception):
 	pass
 
@@ -83,21 +102,9 @@ class Reader:
 
 		# add features
 		for g in self._gff.get(chrom=dna.name):
-			attr = g.attr.rstrip()
-			
-			id = None
-			im = re.search('ID=([^;]+)', attr)
-			if im:
-				id = im[1].rstrip()
-			
-			pid = None
-			pm = re.search('Parent=([^;]+)', attr)			
-			if pm:
-				if ',' in pm[1]: pid = pm[1].split(',')
-				else:            pid = pm[1]
-			
-			dna.ftable.add_feature(Feature(dna, g.beg, g.end, g.strand,
-				g.type, source=g.source, score=g.score, id=id, pid=pid))
+			dna.ftable.add_feature(gff_to_feature(dna, g))
+		
+
 
 		return dna
 
