@@ -72,9 +72,8 @@ those are installed (possibly in a virtual environment)
 You also need to install the graphviz executables and have them
 available in your `PATH`.
 
-	brew install graphviz   # Mac via homebrew
-	# linux Ubuntu
-	# linux other?
+	sudo apt install graphviz # Ubuntu, Debian
+	brew install graphviz     # Mac via homebrew
 
 To make sure the `grimoire` pacakage and its dependencies are installed
 correctly, run the unit tests.
@@ -90,7 +89,7 @@ In the `grimoire/data` directory you will find the files we will be
 using in this tutorial. These sequence and annotation files represent 1%
 of the C. elegans genome. The GFF3 and GTF files contain mostly the same
 information, but not exactly. The GFF3 has some RNA genes while the GTF
-has only the coding genes.
+has only coding genes.
 
 	+ `ce270.fa.gz` from WS270
 	+ `ce270.gff3.gz` from WS270
@@ -141,7 +140,7 @@ genes, both files are equivalent.
 ## 3. Examining genome annotation with `calfo` ##
 
 Let's get an overview of the C. elegans genome annotation at release 270
-with `calfo`.
+with `calfo`. we'll create reports for both gff3 and gtf.
 
 	calfo --fasta ce270.fa.gz --gff ce270.gff3.gz --title ce270 --html ce270gff3.html
 	calfo --fasta ce270.fa.gz --gff ce270.gff3.gz --title ce270 --html ce270gtf.html
@@ -156,16 +155,17 @@ features are converted to GFF3 as much as possible.
 
 One of the bioinformatician's most useful debugging tools is their
 powers of observation. However, it is often difficult to observe genome
-annotations when they are thousands of lines of text. That's why there
-are genome browsers. You can load up these gff3/gtf files into a number
-of different browsers, such as Jbrowse, Gbrowse, IGV, Apollo, etc.
-Genome browsers offer the best way to examine annotation at arbitrary
-resolution. However, for this tutorial, we're going to use a suspect
-method: the grimoire program `kandi`. This is a terminal-based genome
-viewer that can be useful in a debugging scenario. There are on-screen
-directions, so go have fun with it.
+annotations when they are represented as thousands of lines of text.
+That's why there are genome browsers. You can load up these gff3/gtf
+files into a number of different browsers, such as Jbrowse, Gbrowse,
+IGV, Apollo, etc. Genome browsers offer the best way to examine
+annotation at arbitrary resolution, but they may require some extra
+formatting or external websites. For this tutorial, we're going to use
+the grimoire genome browser `kandi`. This is a terminal-based genome
+viewer that is useful in a debugging or tutorial setting but is not
+intended for use on whole genomes.
 
-	kandi --fasta ce270.fa.gz --file1 ce270.gff3.gz --file2 ce270.gtf.gz
+	kandi ce270.fa.gz ce270.gff3.gz ce270.gtf.gz
 
 ## 5. Creating training and testing sets with `haman` ##
 
