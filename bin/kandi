@@ -6,14 +6,18 @@ import os
 import curses
 import curses.textpad
 
-import grimoire.genome as genome
+from grimoire.sequence import DNA
+from grimoire.feature_table import FeatureTable
+from grimoire.io import FASTA_stream, GFF_file
+from grimoire.genome import gff_to_feature
 
 ## Command line stuff ##
 
 extended_help = """
 %(prog)s is a very simple terminal-based genome browser designed for testing
-and debugging seqeunce analysis algorithms. It loads all of the sequences
-and features into memory and is therefore not suitable for complete genomes.
+and debugging seqeunce analysis algorithms. It loads all of the
+sequences and features into memory and doesn't do any coordinate
+indexing. It is therefore not suitable for complete genomes.
 """
 
 parser = argparse.ArgumentParser(
@@ -24,18 +28,42 @@ parser.add_argument('fasta', nargs=1, help='a fasta file')
 parser.add_argument('gff', nargs='+', help='some gff (or other) files')
 arg = parser.parse_args()
 
-CHR = []
-GENES = []
-STATE = {
-	'id':None,
-	'beg':None,
-	'end':None,
-	'pos':None,
-	'cx':None,
-	'cy':None,
+#############
+## Globals ##
+#############
+
+D = []  # dnas: indexed in order of FASTA file
+G = []  # genes: indexed by fasta# then gene#
+B = { # browser state
+	'dna':None, # current dna object number
+	'beg':None, # begin coordinate of viewer window
+	'end':None, # end coordinate of viewer window
+	'pos':None, # position of the current focus
+	'foc':None, # identity of the current focus
+	'cx':None,  # cursor x position
+	'cy':None,  # cursor y position
 }
 
-def show_help(stdscr):
+KANDI_HELP = """
+ KANDI help screen
+
+ General
+ + The top of the screen shows current location
+ + The bottom of the screen shows menu items
+
+ Selector
+ + Use the up/down arrow keys to choose a sequence
+ + Use the return key to select a sequence for browsing
+
+ Browser
+ + Use the arrow keys to move the cusor around
+ + Top of screen displays feature information
+ + Use the +/- keys to zoom
+ + Add the shift key to make bigger steps (both left/right and zoom)
+ + Use the return key to set zoom on a feature under cursor
+"""
+
+def help_screen(stdscr):
 	curses.curs_set(0)
 
 	while (1):
@@ -43,38 +71,26 @@ def show_help(stdscr):
 		H, W = stdscr.getmaxyx()
 		
 		# content
-		stdscr.addstr(4, 1, 'KANDI help screen')		
-		stdscr.addstr(6, 1, 'General')
-		stdscr.addstr(7, 5, '+ The top of the screen shows current location')
-		stdscr.addstr(8, 5, '+ The bottom of the screen shows menu items')
-		stdscr.addstr(10, 1, 'Selector')
-		stdscr.addstr(11, 5, '+ Use the arrow keys to move the cusor')
-		stdscr.addstr(12, 5, '+ Use the return key to select chromosome')
-		stdscr.addstr(14, 1, 'Browser')
-		stdscr.addstr(15, 5, '+ Use the arrow keys to move the cusor')
-		stdscr.addstr(16, 5, '+ Use the +/- keys to zoom')
-		stdscr.addstr(17, 5, '+ Add the shift key to make bigger steps')
-		stdscr.addstr(18, 5, '+ Use the return key to focus on a feature')
+		stdscr.addstr(2, 1, KANDI_HELP)
 	
 		# location & menu
-		loc = '{}:{}-{} {}'.format(
-			STATE['id'],STATE['beg'], STATE['end'], STATE['pos'])
+		loc = '{}:{}-{}'.format(B['dna'].name, B['beg'], B['end'])
 		stdscr.addstr(0, 0, loc, curses.color_pair(1))
 		stdscr.addstr(H-1, 0, '(s)elector (v)iewer (q)uit',
 			curses.color_pair(1))
 
 		# action
 		k = stdscr.getch()
-		if   k == ord('s'): show_selector(stdscr)
-		elif k == ord('v'): show_viewer(stdscr)
+		if   k == ord('s'): select_screen(stdscr)
+		elif k == ord('v'): view_screen(stdscr)
 		elif k == ord('q'): sys.exit(0)
 		
 		stdscr.refresh()
 
-def show_selector(stdscr):
+def select_screen(stdscr):
 	curses.curs_set(2)
 	top = 4
-	bot = top + len(CHR) -1
+	bot = top + len(D) -1
 	cx = 3
 	cy = top
 	stdscr.move(cy, cx)
@@ -86,25 +102,23 @@ def show_selector(stdscr):
 		
 		# content
 		stdscr.addstr(2, 1, 'KANDI chromosome selector')	
-		for i in range(len(CHR)):
-			stdscr.addstr(4 + i, 4, CHR[i].name)
+		for i in range(len(D)):
+			stdscr.addstr(4 + i, 4, D[i].name)
 	
 		# location & menu
-		loc = '{}:{}-{} {}'.format(
-			STATE['id'],STATE['beg'], STATE['end'], STATE['pos'])
+		loc = '{}:{}-{}'.format(B['dna'].name, B['beg'], B['end'])
 		stdscr.addstr(0, 0, loc, curses.color_pair(1))
-		stdscr.addstr(H-1, 0, '(b)rowser (h)elp (q)uit',
-			curses.color_pair(1))
+		stdscr.addstr(H-1, 0, '(b)rowser (h)elp (q)uit', curses.color_pair(1))
 
 		# action
-		if   k == ord('h'): show_help(stdscr)
-		elif k == ord('v'): show_viewer(stdscr)
+		if   k == ord('h'): help_screen(stdscr)
+		elif k == ord('v'): view_screen(stdscr)
 		elif k == ord('q'): sys.exit(0)
 		elif k == 258: cy = cy + 1
 		elif k == 259: cy = cy - 1
 		elif k == 10:
-			reset_chrom(cy - top)
-			show_viewer(stdscr)
+			init_chrom(cy - top)
+			view_screen(stdscr)
 		
 		if cy < top: cy = top
 		if cy > bot: cy = bot
@@ -112,7 +126,7 @@ def show_selector(stdscr):
 		stdscr.refresh()
 		k = stdscr.getch()
 		
-def show_viewer(stdscr):
+def view_screen(stdscr):
 	curses.curs_set(2)
 	H, W = stdscr.getmaxyx()
 	cx = int(W/2)
@@ -175,8 +189,8 @@ def show_viewer(stdscr):
 			curses.color_pair(1))
 
 		# action
-		if   k == ord('h'): show_help(stdscr)
-		elif k == ord('s'): show_selector(stdscr)
+		if   k == ord('h'): help_screen(stdscr)
+		elif k == ord('s'): select_screen(stdscr)
 		elif k == ord('q'): sys.exit(0)
 		elif k == 258: cy = cy + 1    # arrow down
 		elif k == 259: cy = cy - 1    # arrow up
@@ -199,7 +213,7 @@ def show_viewer(stdscr):
 		stdscr.refresh()
 		k = stdscr.getch()
 
-def browser(stdscr):
+def init_browser(stdscr):
 
 	# initialize curses	and begin on the help page
 	curses.start_color()
@@ -210,41 +224,42 @@ def browser(stdscr):
 	curses.init_pair(5, curses.COLOR_CYAN, curses.COLOR_BLACK)
 	curses.init_pair(6, curses.COLOR_BLUE, curses.COLOR_BLACK)
 	curses.init_pair(7, curses.COLOR_MAGENTA, curses.COLOR_BLACK)
-	show_help(stdscr)
+	help_screen(stdscr)
 
-def reset_chrom(idx):
+def init_chrom(idx):
 
 	# when a new chromosome is chosen, reset the zoom and cursor
-	STATE['id'] = CHR[idx].name
-	STATE['beg'] = 1
-	STATE['end'] = len(CHR[idx].seq)
-	STATE['pos'] = int(len(CHR[idx].seq) / 2)
-	STATE['seq'] = CHR[idx].seq
-	STATE['f1'] = CHR[idx].ftable.features
-	STATE['g1'] = GENE1[idx]
+	B['dna'] = D[idx]
+	B['beg'] = 1
+	B['end'] = len(D[idx].seq)
+	B['pos'] = int(len(D[idx].seq) / 2)
+	B['foc'] = None
+	B['cx'] = None
+	B['cy'] = None
 	
 if __name__ == '__main__':
-	pass
-"""
-	# read sequence and annotation into memory
-	if arg.file1:
-		gen1 = genome.Reader(fasta=arg.fasta, gff=arg.file1)
-	if arg.file2:
-		gen2 = genome.Reader(fasta=arg.fasta, gff=arg.file2)
+
+	# read sequences
+	fasta = FASTA_stream(arg.fasta[0])
+	for entry in fasta:
+		D.append(DNA(name=entry.id, seq=entry.seq))
 	
-	for chr in gen:
-		CHR.append(chr)
-		genes = chr.ftable.build_genes()
-		GENE1.append(genes)
-	
-	for chr in gen:
-		CHR.append(chr)
-		genes = chr.ftable.build_genes()
-		GENE1.append(genes)
-	
-	# set the default chromosome to the first in the file
-	reset_chrom(0)
+	# read features and build genes
+	for i in range(len(arg.gff)):
+		G.append([])
+		gf = GFF_file(file=arg.gff[i])
+		for dna in D:
+			gffs = gf.get(chrom=dna.name)
+			features = []
+			for gff in gffs:
+				features.append(gff_to_feature(dna, gff))	
+			ft = FeatureTable(dna=dna, features=features)
+			genes = ft.build_genes()
+			G[i].append(genes)
+
+	# initialize for first sequence
+	init_chrom(0)
 
 	# start the curses session
-	curses.wrapper(browser)
-"""
+	curses.wrapper(init_browser)
+
