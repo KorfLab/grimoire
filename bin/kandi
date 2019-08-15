@@ -10,6 +10,7 @@ from grimoire.sequence import DNA
 from grimoire.feature_table import FeatureTable
 from grimoire.io import FASTA_stream, GFF_file
 from grimoire.genome import gff_to_feature
+from grimoire.feature import Feature
 
 ## Command line stuff ##
 
@@ -32,12 +33,17 @@ arg = parser.parse_args()
 ## Globals ##
 #############
 
+class KandiError(Exception): pass
+
 D = []  # dnas: indexed in order of FASTA file
 G = []  # genes: indexed by fasta# then gene#
+F = []  # files: annotation file name
 B = { # browser state
-	'dna':None, # current dna object number
+	'idx':None, # current dna object number
+	'dna':None, # current dna object
 	'beg':None, # begin coordinate of viewer window
 	'end':None, # end coordinate of viewer window
+	'mat':None, # matrix of screen contents
 	'tab':40,   # tab stop for focus data
 	'p':None,   # approximate position of the cursor in sequence coordinates
 	'x':None,   # cursor x position
@@ -127,77 +133,141 @@ def select_screen(stdscr):
 		stdscr.move(B['y'], B['x'])
 		k = stdscr.getch()
 
+def plot_text(stdscr, text, color):
+	mat = B['mat']
+	for y in range(len(mat)):
+		clear = True
+		for x in range(len(mat[y])):
+			if mat[y][x]:
+				clear = False
+				break
+		if clear:
+			stdscr.addstr(y+1, 0, text, curses.color_pair(color))
+			for x in range(len(mat[y])):
+				mat[y][x] = text
+			return
+
+def plot_divider(stdscr):
+	mat = B['mat']
+	for y in range(len(mat)):
+		clear = True
+		for x in range(len(mat[y])):
+			if mat[y][x]:
+				clear = False
+				break
+		if clear:
+			stdscr.addstr(y+1, 0, '-' * B['w'], curses.color_pair(0))
+			for x in range(len(mat[y])):
+				mat[y][x] = ' '
+			return
+
+def plot_gene(stdscr, g):
+	mat = B['mat']
+	beg = B['beg']
+	end = B['end']
+	
+	if g.beg >= beg and g.end <= end:
+		pass
+		# plot both sides
+	elif g.beg >= beg and g.end > end:
+		pass
+		# plot beg, dash end
+	elif g.beg < beg and g.end < end:
+		pass
+		# plot end, dash beg
+	elif g.beg < beg and g.end > end:
+		pass
+		# both side are dashed
+	elif g.beg < beg and g.end < beg:
+		return
+	elif g.beg > end and g.end > end:
+		return
+	else:
+		raise KandiError('should not be possible')	
+		
+		
+	
+	# figure out where the text will be horizontally
+	# find a place to insert gene
+		# always plot transcripts below parent gene
+	
+	
+	
+	"""
+	for y in range(len(mat)):
+		clear = True
+		for x in range(len(mat[y])):
+			if mat[y][x]:
+				clear = False
+				break
+		if clear:
+			stdscr.addstr(y+1, 0, '-' * B['w'], curses.color_pair(0))
+			for x in range(len(mat[y])):
+				mat[y][x] = ' '
+			return
+	"""
+
 def plot_genes(stdscr):
-	pass
+	H, W = stdscr.getmaxyx()
+	curses.flash()
+	region = Feature(B['dna'], B['beg'], B['end'], '.', 'region')
 	
-	"""
-	# plotting matrix setup
-		mat = []
-		max_rows = H -2 # 2 rows reserved for header and footer 
-		for y in range(max_rows):
-			mat.append([])
-			for x in range(W):
-				mat[y].append([])
-				mat[y][x] = None
-
-		for gene in STATE['g1']:
-			c = 5 # color
-			if gene.strand == '-': c = 7
-			beg, end = None, None
-			if gene.beg > STATE['beg'] and gene.beg < STATE['end']:
-				beg = int(gene.beg / scale)
-			if gene.end > STATE['beg'] and gene.end < STATE['end']:
-				end = int(gene.end / scale)
-			if not (beg or end): continue
-
-			for y in range(max_rows):
-				if beg == end:
-					if mat[y][beg] == None:
-						mat[y][beg] = gene
-						stdscr.addstr(y+2, beg, '|', curses.color_pair(c))
-						break
-				elif beg and end:
-					clear = True
-					for x in range (beg, end+1):
-						if mat[y][x] != None:
-							clear = False
-							break
-					if not clear: continue
-					for x in range (beg, end+1): mat[y][x] = gene
-					stdscr.addstr(y+2, beg, '[', curses.color_pair(c))
-					for i in range (beg+1, end):
-						stdscr.addstr(y+2, i, '=', curses.color_pair(c))
-					stdscr.addstr(y+2, end, ']', curses.color_pair(c))
-					break
-				elif beg:
-					pass
-				elif end:
-					pass
-	"""
-
-def feature_at_cursor():
-	return 'stuff'
-	# non-indexed search through genes and features
-
-def zoom(X):
-	L = B['end'] - B['beg'] + 1
-	M = B['beg'] + L / 2
-	L2 = L * X / 2
-	beg = M - L2
-	end = M + L2
+	# reset the plotting matrix
+	B['mat'] = []
+	max_rows = H -2 # 2 rows reserved for header and footer 
+	for y in range(max_rows):
+		B['mat'].append([])
+		for x in range(W):
+			B['mat'][y].append([])
+			B['mat'][y][x] = None
 	
+	# main plotting loop
+	for i in range(len(F)):
+	
+		# plot source file name
+		plot_text(stdscr, F[i], 4)
+		#plot_divider(stdscr)
+
+		# plot genes
+		for genes in G[i]:
+			for gene in genes:
+				if region.overlap(gene):
+					plot_gene(stdscr, gene)
+
+def text_at_cursor():
+	if B['mat']: return B['mat'][B['y']-1][B['x']]
+	else: return None
+
+def zoom(stdscr, scale):
+	# assign new beg and end
+	l1 = B['end'] - B['beg'] + 1
+	m = (B['beg'] + B['end']) / 2
+	z1 = B['end'] - m
+	
+	z2 = z1 * scale
+	b2 = int(m - z2)
+	e2 = int(m + z2)
+
+	# constrain
 	max = len(B['dna'].seq)
-	if beg < 1: beg = 1
-	if end > max: end = max
+	if b2 < 1: b2 = 1
+	if e2 > max: e2 = max
+
+	# minimum zoom is 1
+	l2 = e2 - b2 + 1
+	if l2 < B['w']:
+		if b2 == 1:
+			e2 = B['w']
+		elif e2 == max:
+			b2 = max - B['w'] + 1
+		else:
+			e2 = b2 + B['w'] - 1
+	l2 = e2 - b2 + 1
 	
-	L = end - beg + 1
-	M = beg + L / 2
-	if L < B['w']:
-		beg = M - B['w'] / 2
-		end = M + B['w'] / 2
-	
-	B['beg'] = int(beg)
-	B['end'] = int(end)
+	B['z'] = l2 / B['w']
+	B['beg'] = b2
+	B['end'] = e2
+	plot_genes(stdscr)
 
 def update_state(stdscr):
 	H, W = stdscr.getmaxyx()
@@ -206,20 +276,28 @@ def update_state(stdscr):
 		B['end'] = len(B['dna'].seq)
 		B['x'] = int(W/2)
 		B['y'] = int(H/4)
-	B['z'] = int((B['end'] - B['beg'] + 1) / W)
-	B['p'] = 1 + int(B['x'] * B['z'])
+	
 	B['w'] = W
 	B['h'] = H
-	ftext = feature_at_cursor()
-	foc = '{}-{} ({} bp): {}'.format(
-		B['p'],
-		int(B['p'] + B['z'] -1),
-		int(B['z']),
-		ftext)
-	stdscr.addstr(0, B['tab'], foc, curses.color_pair(5))
+	L = B['end'] - B['beg'] + 1
+	B['z'] = L / W
+	
+	B['p'] = 1 + int(B['x'] * B['z'])
+
+	foc = None
+	if B['z'] == 1:
+		foc = '{} : {}'.format(B['p'], text_at_cursor())
+	else:
+		foc = '{}-{} ({} bp) : {}'.format(
+			B['p'],
+			int(B['p'] + B['z'] -1),
+			int(B['z']),
+			text_at_cursor())
+	
+	stdscr.addstr(0, B['tab'], foc, curses.color_pair(1))
 	stdscr.addstr(0, B['tab'] + len(foc), ' ' * (W - (B['tab'] + len(foc))))
 	stdscr.move(B['y'], B['x'])
-		
+
 def terminal_changed(stdscr):
 	h, w = stdscr.getmaxyx()
 	if w != B['w'] or h != B['h']: return True
@@ -237,14 +315,6 @@ def view_screen(stdscr):
 		if terminal_changed(stdscr):
 			update_state(stdscr)
 			plot_genes(stdscr)
-		
-		# location & menu
-		stdscr.addstr(0, 0, ' ' * B['tab'], curses.color_pair(0))
-		loc = '{}:{}-{} ({} bp)'.format(B['dna'].name, B['beg'], B['end'],
-			B['end'] - B['beg'])
-		stdscr.addstr(0, 0, loc, curses.color_pair(1))
-		stdscr.addstr(B['h']-1, 0, '(s)elector (h)elp (q)uit',
-			curses.color_pair(1))
 
 		# action
 		if   k == ord('h'): help_screen(stdscr)
@@ -257,18 +327,25 @@ def view_screen(stdscr):
 		elif k == 260: B['x'] = B['x'] - 1 # arrow left
 		elif k == 393: B['x'] -= int(B['w']/4)  # shift-arrow left
 		elif k == 10:  pass # set focus string
-		elif k == ord('-'): zoom(2)   # zoom out
-		elif k == ord('_'): zoom(4)   # zoom out a lot
-		elif k == ord('='): zoom(1/2) # zoom in
-		elif k == ord('+'): zoom(1/4) # zoom in a lot
+		elif k == ord('-'): zoom(stdscr, 2)   # zoom out
+		elif k == ord('_'): zoom(stdscr, 8)   # zoom out a lot
+		elif k == ord('='): zoom(stdscr, 1/2) # zoom in
+		elif k == ord('+'): zoom(stdscr, 1/8) # zoom in a lot
+		# space centers on cursor?
 		
 		# limit cursor bounds
 		if B['x'] < 0:         B['x'] = 0
-		if B['x'] > B['w'] -1: B['x'] = B['w'] -2
+		if B['x'] > B['w'] -1: B['x'] = B['w'] -1
 		if B['y'] < 1:         B['y'] = 1
 		if B['y'] > B['h'] -2: B['y'] = B['h'] -2
 				
-		# save state
+		# location & menu
+		stdscr.addstr(0, 0, ' ' * B['tab'], curses.color_pair(0))
+		loc = '{}:{}-{} ({} bp)'.format(B['dna'].name, B['beg'], B['end'],
+			B['end'] - B['beg'] + 1)
+		stdscr.addstr(0, 0, loc, curses.color_pair(1))
+		stdscr.addstr(B['h']-1, 0, '(s)elector (h)elp (q)uit',
+			curses.color_pair(1))
 		update_state(stdscr)
 		k = stdscr.getch()
 
@@ -288,6 +365,7 @@ def init_browser(stdscr):
 def init_chrom(idx):
 
 	# when a new chromosome is chosen, reset browser state
+	B['idx'] = idx
 	B['dna'] = D[idx]
 	B['beg'] = None
 	B['end'] = None
@@ -297,7 +375,7 @@ def init_chrom(idx):
 	B['z'] = None
 	B['w'] = None
 	B['h'] = None
-	
+
 if __name__ == '__main__':
 
 	# read sequences
@@ -308,6 +386,7 @@ if __name__ == '__main__':
 	# read features and build genes
 	for i in range(len(arg.gff)):
 		G.append([])
+		F.append(arg.gff[i])
 		gf = GFF_file(file=arg.gff[i])
 		for dna in D:
 			gffs = gf.get(chrom=dna.name)
