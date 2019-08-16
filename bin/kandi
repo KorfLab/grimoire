@@ -188,6 +188,20 @@ def plot_header(stdscr, text, color):
 			for x in range(B['w']): mat[y][x] = text
 			return
 
+def gcolor(f):
+	if isinstance(f, Gene):
+		if f.strand == '+':     return curses.color_pair(5) # cyan
+		else:                   return curses.color_pair(7) # magenta
+	elif isinstance(f, Feature):
+		if   f.type == 'CDS':   return curses.color_pair(4) # green
+		elif f.type == 'exon':  return curses.color_pair(3) # yellow
+		elif f.type == 'gene':
+			if f.strand == '+': return curses.color_pair(5) # cyan
+			else:               return curses.color_pair(7) # magenta
+		elif f.type == 'mRNA':  return curses.color_pair(6) # blue
+		else:                   return curses.color_pair(2) # red
+	elif isinstance(f, mRNA):   return curses.color_pair(6) # blue
+
 def plot_feature(stdscr, f):
 	rx1 = int(B['beg'] / B['z'])
 	rx2 = int(B['end'] / B['z'])
@@ -224,11 +238,7 @@ def plot_feature(stdscr, f):
 				clear = False
 				break
 		if clear:
-			c = None
-			if   f.strand == '+': c = 5
-			elif f.strand == '-': c = 7
-			else:                 c = 4
-			stdscr.addstr(y+1, fx1, text, curses.color_pair(c))
+			stdscr.addstr(y+1, fx1, text, gcolor(f))
 			for x in range(fx1, fx2+1):
 				mat[y][x] = f
 			break
