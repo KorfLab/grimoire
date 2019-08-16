@@ -51,14 +51,13 @@ B = { # browser state
 	'z':None,   # size of cursor (in letters)
 	'h':None,   # last height of terminal
 	'w':None,   # last width of terminal
-	'bug': 'bug' # debugging text
 }
 
 KANDI_HELP = """
  KANDI help screen
 
  General
- + The top line displays current location and context information
+ + The first line displays current location and context information
  + The bottom line displays menu items
 
  Selector
@@ -143,7 +142,7 @@ def select_screen(stdscr):
 def find_clear_row():
 	for y in range(len(B['mat'])):
 		all_clear = True
-		for x in range(B['row'], B['w']):
+		for x in range(0, B['w']):
 			if B['mat'][y][x]:
 				all_clear = False
 				break
@@ -182,22 +181,31 @@ def plot_feature(stdscr, f):
 	fx2 = int(f.end / B['z']) - rx1
 	
 	min = 0
-	max = B['w']
+	max = B['w'] -1
 
-	if fx1 < min: return
-	if fx1 > max: return
-	if fx2 < min: return
-	if fx2 > max: return
+	if fx1 < min and fx2 < min: return # don't plot out-of-bounds features
+	if fx1 > max and fx2 > max: return
+
+	compL = True
+	compR = True
+	if fx1 < min:
+		fx1 = 0
+		compL = False
+	if fx2 > max:
+		fx2 = max
+		compR = False
 	
 	text = ''
-	for i in range(fx1, fx2):
+	for i in range(fx1, fx2+1):
 		text += '#'
+	if compL: text = '[' + text[1:]
+	if compR: text = text[:-1] + ']'
 	if fx1 == fx2: text = '|'
 	
 	mat = B['mat']
 	for y in range(B['row'], len(mat)):
 		clear = True
-		for x in range(fx1, fx2):
+		for x in range(fx1, fx2+1):
 			if mat[y][x]:
 				clear = False
 				break
@@ -207,10 +215,23 @@ def plot_feature(stdscr, f):
 			elif f.strand == '-': c = 7
 			else:                 c = 4
 			stdscr.addstr(y+1, fx1, text, curses.color_pair(c))
-			for x in range(fx1, fx2):
+			for x in range(fx1, fx2+1):
 				mat[y][x] = f
 			break
-	
+
+def plot_ticks(stdscr):
+	ticks = 10
+	for i in range(ticks):
+		x = int(i * B['w'] / ticks)
+		p = B['beg'] + int(x * B['z'] + B['z']/2) + 1
+		s = '{} {}'.format('|', p)
+		stdscr.addstr(1 + B['row'], x, s, curses.color_pair(0))
+	B['mat'][B['row']][0] = True
+
+def plot_sequence(stdscr):
+	seq = B['dna'].seq[B['beg']:B['end']+1]
+	stdscr.addstr(1 + B['row'], 0, seq, curses.color_pair(0))
+	B['mat'][B['row']][0] = True
 
 def plot_genes(stdscr):
 	H, W = stdscr.getmaxyx()
@@ -227,6 +248,12 @@ def plot_genes(stdscr):
 		for x in range(W):
 			B['mat'][y].append([])
 			B['mat'][y][x] = None
+
+	find_clear_row()
+	plot_ticks(stdscr)
+	if B['z'] == 1:
+		find_clear_row()
+		plot_sequence(stdscr)
 
 	# main plotting loop
 	for i in range(len(F)):
@@ -256,8 +283,6 @@ def zoom(scale):
 	beg = int(beg)
 	end = int(end)
 
-	B['bug'] = str(beg) + ' ' + str(int(c)) + ' ' + str(end)
-
 	# minimum zoom is 1 bp
 	L = end - beg + 1
 	if L < B['w']:
@@ -282,7 +307,7 @@ def update_state(stdscr):
 	
 	foc = None
 	if B['z'] == 1:
-		foc = '{} : {}'.format(B['x'], text_at_cursor())
+		foc = '{} : {}'.format(B['beg'] + B['x'] +1, text_at_cursor())
 	else:
 		x1 = int(B['beg'] + B['x'] * B['z'])
 		x2 = int(B['beg'] + (B['x']+1) * B['z'] -1)
@@ -292,7 +317,6 @@ def update_state(stdscr):
 	stdscr.addstr(0, int(B['w']/2), foc, curses.color_pair(1))
 	stdscr.addstr(0,int(B['w']/2) + len(foc), ' ' * (W - (int(B['w']/2) + len(foc))))
 	
-
 def view_screen(stdscr):
 
 	# initial settings
@@ -315,12 +339,12 @@ def view_screen(stdscr):
 		if   k == ord('h'): help_screen(stdscr)
 		elif k == ord('s'): select_screen(stdscr)
 		elif k == ord('q'): sys.exit(0)
-		elif k == 258: B['y'] = B['y'] + 1 # arrow down
-		elif k == 259: B['y'] = B['y'] - 1 # arrow up
-		elif k == 261: B['x'] = B['x'] + 1 # arrow right
-		elif k == 402: B['x'] += int(B['w']/4)  # shift-arrow right
-		elif k == 260: B['x'] = B['x'] - 1 # arrow left
-		elif k == 393: B['x'] -= int(B['w']/4)  # shift-arrow left
+		elif k == 258: B['y'] += 1    # arrow down
+		elif k == 259: B['y'] -= 1    # arrow up
+		elif k == 261: B['x'] += 1    # arrow right
+		elif k == 402: B['x'] += 20   # shift-arrow right
+		elif k == 260: B['x'] -= 1    # arrow left
+		elif k == 393: B['x'] -= 20   # shift-arrow left
 		elif k == 10:  pass # set zoom on feature?
 		elif k == ord('-'): zoom(2)   # zoom out
 		elif k == ord('_'): zoom(8)   # zoom out a lot
@@ -345,9 +369,6 @@ def view_screen(stdscr):
 			stdscr.clear()
 			update_state(stdscr)
 			plot_genes(stdscr)
-		
-		# temporary debugging string
-		stdscr.addstr(B['h']-1, 40, B['bug'], curses.color_pair(1))
 				
 		# location & menu
 		stdscr.addstr(0, 0, ' ' * int(B['w']/2), curses.color_pair(0))
