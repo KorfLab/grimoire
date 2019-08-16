@@ -39,43 +39,44 @@ D = []  # dnas: indexed in order of FASTA file
 G = []  # genes: indexed by fasta# then gene#
 F = []  # files: annotation file name
 B = { # browser state
-	'idx':None, # current dna object number
-	'dna':None, # current dna object
-	'beg':None, # begin coordinate of viewer window
-	'end':None, # end coordinate of viewer window
-	'mat':None, # matrix of screen contents
-	'row':None, # next plottable row
-	'up':False, # update required
-	'x':None,   # cursor x position
-	'y':None,   # cursor y position
-	'z':None,   # size of cursor (in letters)
-	'h':None,   # last height of terminal
-	'w':None,   # last width of terminal
+	'idx':None,  # current dna object number
+	'dna':None,  # current dna object
+	'beg':None,  # begin coordinate of viewer window
+	'end':None,  # end coordinate of viewer window
+	'mode':None, # gene|mRNA|feature
+	'mat':None,  # matrix of screen contents
+	'row':None,  # next plottable row
+	'update':False,  # update required
+	'x':None,    # cursor x position
+	'y':None,    # cursor y position
+	'z':None,    # size of cursor (in letters)
+	'h':None,    # last height of terminal
+	'w':None,    # last width of terminal
 }
 
 KANDI_HELP = """
  KANDI help screen
 
  General
- + The first line displays current location and context information
- + The bottom line displays menu items
+ + The top line always displays current location and informative text
+ + The bottom line always displays menu choices
 
  Selector
  + Use the up/down arrow keys to choose a sequence
  + Use the return key to select a sequence for browsing
 
  Browser
- + Use the arrow keys to move the cusor around
+ + Use the arrow keys to move the cusor around and space to re-center
  + When the cursor is on a feature, there will be descriptive text at the top
- + Use the +/- keys to zoom
+ + Use the +/- keys to zoom or use 'return' to zoom in on a feature
  + Add the shift key to make bigger steps (both left/right and zoom)
- + Use the return key to zoom in on the feature under cursor
+ + Switch from gene to mRNA to feature mode
 """
 
 def terminal_changed(stdscr):
 	h, w = stdscr.getmaxyx()
 	if w != B['w'] or h != B['h']: return True
-	elif B['up']: return True
+	elif B['update']: return True
 	else: return False
 
 def help_screen(stdscr):
@@ -161,6 +162,19 @@ def text_at_cursor():
 			return '{}:{}-{}'.format(thing.type, thing.beg, thing.end)
 	else: return None
 
+def zoom_at_cursor():
+	if B['mat']:
+		f = B['mat'][B['y']-1][B['x']]
+		if isinstance(f, Gene) or isinstance(f, mRNA) or isinstance(f, Feature):
+			length = f.end - f.beg + 1
+			padding = int(length / 10)
+			B['beg'] = f.beg - padding
+			B['end'] = f.end + padding
+			if B['beg'] < 1: B['beg'] = 0
+			if B['end'] > len(B['dna'].seq): B['end'] = len(B['dna'].seq)
+			B['z'] = B['end'] - B['beg'] + 1
+			B['update'] = True
+
 def plot_header(stdscr, text, color):
 	mat = B['mat']
 	for y in range(B['row'], len(mat)):
@@ -233,7 +247,7 @@ def plot_sequence(stdscr):
 	stdscr.addstr(1 + B['row'], 0, seq, curses.color_pair(0))
 	B['mat'][B['row']][0] = True
 
-def plot_genes(stdscr):
+def plot_glyphs(stdscr):
 	H, W = stdscr.getmaxyx()
 	curses.flash()
 	stdscr.clear()
@@ -260,14 +274,20 @@ def plot_genes(stdscr):
 		find_clear_row()
 		plot_header(stdscr, F[i], 4)
 		B['row'] += 1
-		for genes in G[i][B['idx']]:
-			for gene in genes:
-				plot_feature(stdscr, gene)
+		if B['mode'] == 'gene':
+			for genes in G[i][B['idx']]:
+				for gene in genes:
+					plot_feature(stdscr, gene)
+		elif B['mode'] == 'feature':
+			for f in B['dna'].ftable.features:
+				plot_feature(stdscr, f)
+		elif B['mode'] == 'mRNA':
+			raise KandiError('some day soon')
 
-	B['up'] = False
+	B['update'] = False
 
 def zoom(scale):
-	B['up'] = True # will force replotting of genes
+	B['update'] = True # will force replotting of genes
 	
 	# zoom in on cursor and reset its position
 	c = B['beg'] + B['x'] * B['z'] + B['z']/2
@@ -305,6 +325,13 @@ def update_state(stdscr):
 	L = B['end'] - B['beg'] + 1
 	B['z'] = L / W
 	
+	# location text
+	stdscr.addstr(0, 0, ' ' * int(B['w']), curses.color_pair(0))
+	loc = '{}:{}-{} ({} bp)'.format(B['dna'].name, B['beg'], B['end'],
+		B['end'] - B['beg'] + 1)
+	stdscr.addstr(0, 0, loc, curses.color_pair(1))
+	
+	# focus text
 	foc = None
 	if B['z'] == 1:
 		foc = '{} : {}'.format(B['beg'] + B['x'] +1, text_at_cursor())
@@ -312,10 +339,8 @@ def update_state(stdscr):
 		x1 = int(B['beg'] + B['x'] * B['z'])
 		x2 = int(B['beg'] + (B['x']+1) * B['z'] -1)
 		foc = '{}-{} ({} bp) : {}'.format(
-			x1, x2, int(B['z']), text_at_cursor())
-	
+			x1, x2, int(B['z']), text_at_cursor())	
 	stdscr.addstr(0, int(B['w']/2), foc, curses.color_pair(1))
-	stdscr.addstr(0,int(B['w']/2) + len(foc), ' ' * (W - (int(B['w']/2) + len(foc))))
 	
 def view_screen(stdscr):
 
@@ -330,29 +355,36 @@ def view_screen(stdscr):
 	stdscr.clear()
 	curses.curs_set(2)
 	update_state(stdscr)
-	plot_genes(stdscr)
+	plot_glyphs(stdscr)
 	
 	k = None	
 	while True:
-
-		# action
-		if   k == ord('h'): help_screen(stdscr)
-		elif k == ord('s'): select_screen(stdscr)
-		elif k == ord('q'): sys.exit(0)
+		if   k == 10:zoom_at_cursor() # return zooms on feature
 		elif k == 258: B['y'] += 1    # arrow down
 		elif k == 259: B['y'] -= 1    # arrow up
 		elif k == 261: B['x'] += 1    # arrow right
 		elif k == 402: B['x'] += 20   # shift-arrow right
 		elif k == 260: B['x'] -= 1    # arrow left
 		elif k == 393: B['x'] -= 20   # shift-arrow left
-		elif k == 10:  pass # set zoom on feature?
+		elif k == 32: zoom(1)         # space recenters display
 		elif k == ord('-'): zoom(2)   # zoom out
 		elif k == ord('_'): zoom(8)   # zoom out a lot
 		elif k == ord('='): zoom(1/2) # zoom in
 		elif k == ord('+'): zoom(1/8) # zoom in a lot
-		elif k == 32: zoom(1)
+		elif   k == ord('h'): help_screen(stdscr)
+		elif k == ord('s'): select_screen(stdscr)
+		elif k == ord('q'): sys.exit(0)
+		elif k == ord('g'):
+			B['mode'] = 'gene'
+			B['update'] = True
+		elif k == ord('m'):
+			B['mode'] = 'mRNA'
+			B['update'] = True
+		elif k == ord('f'):
+			B['mode'] = 'feature'
+			B['update'] = True
 		
-		# limit cursor bounds
+		# re-center when cursor exceeds window
 		if B['x'] < 0:
 			B['x'] = 0
 			zoom(1)
@@ -368,15 +400,11 @@ def view_screen(stdscr):
 		if terminal_changed(stdscr):
 			stdscr.clear()
 			update_state(stdscr)
-			plot_genes(stdscr)
+			plot_glyphs(stdscr)
 				
-		# location & menu
-		stdscr.addstr(0, 0, ' ' * int(B['w']/2), curses.color_pair(0))
-		loc = '{}:{}-{} ({} bp)'.format(B['dna'].name, B['beg'], B['end'],
-			B['end'] - B['beg'] + 1)
-		stdscr.addstr(0, 0, loc, curses.color_pair(1))
-		stdscr.addstr(B['h']-1, 0, '(s)elector (h)elp (q)uit',
-			curses.color_pair(1))
+		# menu
+		menu = '(s)elector (g)ene (m)RNA f(eature) (h)elp (q)uit'
+		stdscr.addstr(B['h']-1, 0, menu, curses.color_pair(1))
 		update_state(stdscr)
 		stdscr.move(B['y'], B['x'])
 		k = stdscr.getch()
@@ -401,11 +429,7 @@ def init_chrom(idx):
 	B['dna'] = D[idx]
 	B['beg'] = 1
 	B['end'] = len(D[idx].seq)
-	B['x'] = None
-	B['y'] = None
-	B['z'] = None
-	B['w'] = None
-	B['h'] = None
+	B['mode'] = 'gene'
 
 if __name__ == '__main__':
 
@@ -427,6 +451,7 @@ if __name__ == '__main__':
 			for gff in gffs:
 				features.append(gff_to_feature(dna, gff))	
 			ft = FeatureTable(dna=dna, features=features)
+			dna.ftable = ft
 			genes = ft.build_genes()
 			G[i][j].append(genes)
 
