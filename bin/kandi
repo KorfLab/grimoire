@@ -151,6 +151,18 @@ def find_clear_row():
 			B['row'] = y
 			break
 
+def find_clear_slot(fx1, fx2):
+	mat = B['mat']
+	for y in range(B['row'], len(mat)):
+		clear = True
+		for x in range(fx1, fx2+1):
+			if mat[y][x]:
+				clear = False
+				break
+		if clear:
+			return y
+	return None
+
 def text_at_cursor():
 	if B['mat']:
 		thing = B['mat'][B['y']-1][B['x']]
@@ -189,20 +201,14 @@ def plot_header(stdscr, text, color):
 			return
 
 def gcolor(f):
-	if isinstance(f, Gene):
-		if f.strand == '+':     return curses.color_pair(5) # cyan
-		else:                   return curses.color_pair(7) # magenta
-	elif isinstance(f, Feature):
-		if   f.type == 'CDS':   return curses.color_pair(4) # green
-		elif f.type == 'exon':  return curses.color_pair(3) # yellow
-		elif f.type == 'gene':
-			if f.strand == '+': return curses.color_pair(5) # cyan
-			else:               return curses.color_pair(7) # magenta
-		elif f.type == 'mRNA':  return curses.color_pair(6) # blue
-		else:                   return curses.color_pair(2) # red
-	elif isinstance(f, mRNA):   return curses.color_pair(6) # blue
+	if f.type == 'gene' or f.type == 'mRNA' or f.type == 'intron':
+		if f.strand == '+': return curses.color_pair(5) # cyan
+		else:               return curses.color_pair(7) # magenta
+	elif f.type == 'CDS':   return curses.color_pair(4) # green
+	elif f.type == 'exon':  return curses.color_pair(3) # yellow
+	else:                   return curses.color_pair(2) # red
 
-def plot_feature(stdscr, f):
+def plot_feature(stdscr, f, y):
 	rx1 = int(B['beg'] / B['z'])
 	rx2 = int(B['end'] / B['z'])
 	fx1 = int(f.beg / B['z']) - rx1
@@ -223,37 +229,52 @@ def plot_feature(stdscr, f):
 		fx2 = max
 		compR = False
 	
-	text = ''
-	for i in range(fx1, fx2+1):
-		text += '#'
-	if compL: text = '[' + text[1:]
-	if compR: text = text[:-1] + ']'
-	if fx1 == fx2: text = '|'
+	if y == None:
+		y = find_clear_slot(fx1, fx2)
+	if y == None: return
 	
-	mat = B['mat']
-	for y in range(B['row'], len(mat)):
-		clear = True
-		for x in range(fx1, fx2+1):
-			if mat[y][x]:
-				clear = False
-				break
-		if clear:
-			stdscr.addstr(y+1, fx1, text, gcolor(f))
-			for x in range(fx1, fx2+1):
-				mat[y][x] = f
-			break
+	text = ''
+	if f.type == 'intron':
+		for i in range(fx1, fx2+1):	text += '-'
+		stdscr.addstr(y+1, fx1, text, gcolor(f))
+	elif isinstance(f, mRNA):
+		for intron in f.introns:
+			plot_feature(stdscr, intron, y)
+		for u5 in f.utr5s:
+			plot_feature(stdscr, u5, y)
+		for u3 in f.utr3s:
+			plot_feature(stdscr, u3, y)
+		for exon in f.exons:
+			plot_feature(stdscr, exon, y)
+		for cds in f.cdss:
+			plot_feature(stdscr, cds, y)
+	elif isinstance(f, Gene):
+		for i in range(fx1, fx2+1):	text += '='
+		if compL: text = '[' + text[1:]
+		if compR: text = text[:-1] + ']'
+		if fx1 == fx2: text = '|'
+		stdscr.addstr(y+1, fx1, text, gcolor(f))
+	else:
+		for i in range(fx1, fx2+1):	text += '#'
+		if compL: text = '[' + text[1:]
+		if compR: text = text[:-1] + ']'
+		if fx1 == fx2: text = '|'
+		stdscr.addstr(y+1, fx1, text, gcolor(f))
+	
+	
+	for x in range(fx1, fx2+1): B['mat'][y][x] = f
 
 def plot_ticks(stdscr):
 	ticks = 10
 	for i in range(ticks):
 		x = int(i * B['w'] / ticks)
-		p = B['beg'] + int(x * B['z'] + B['z']/2) + 1
+		p = B['beg'] + int(x * B['z'] + B['z']/2) 
 		s = '{} {}'.format('|', p)
 		stdscr.addstr(1 + B['row'], x, s, curses.color_pair(0))
 	B['mat'][B['row']][0] = True
 
 def plot_sequence(stdscr):
-	seq = B['dna'].seq[B['beg']:B['end']+1]
+	seq = B['dna'].seq[B['beg'] -1:B['end']]
 	stdscr.addstr(1 + B['row'], 0, seq, curses.color_pair(0))
 	B['mat'][B['row']][0] = True
 
@@ -287,12 +308,15 @@ def plot_glyphs(stdscr):
 		if B['mode'] == 'gene':
 			for genes in G[i][B['idx']]:
 				for gene in genes:
-					plot_feature(stdscr, gene)
+					plot_feature(stdscr, gene, None)
 		elif B['mode'] == 'feature':
 			for f in B['dna'].ftable.features:
-				plot_feature(stdscr, f)
+				plot_feature(stdscr, f, None)
 		elif B['mode'] == 'mRNA':
-			raise KandiError('some day soon')
+			for genes in G[i][B['idx']]:
+				for gene in genes:
+					for mRNA in gene.transcripts():
+						plot_feature(stdscr, mRNA, None)
 
 	B['update'] = False
 
@@ -322,11 +346,16 @@ def zoom(scale):
 			beg = max - B['w'] + 1
 		else:
 			end = beg + B['w'] - 1
-	L = end - beg + 1
 	
-	B['z'] = L / B['w']
-	B['beg'] = int(beg)
-	B['end'] = int(end)
+	if B['z'] == 1:
+		B['beg'] = int(beg)
+		B['end'] = int(beg) + B['w'] -1
+		return
+	else:
+		L = end - beg + 1
+		B['z'] = L / B['w']
+		B['beg'] = int(beg)
+		B['end'] = int(end)
 
 def update_state(stdscr):
 	H, W = stdscr.getmaxyx()
