@@ -70,7 +70,7 @@ KANDI_HELP = """
  + When the cursor is on a feature, there will be descriptive text at the top
  + Use the +/- keys to zoom or use 'return' to zoom in on a feature
  + Add the shift key to make bigger steps (both left/right and zoom)
- + Switch from gene to mRNA to feature mode
+ + Switch from gene to transcript to feature mode
 """
 
 def terminal_changed(stdscr):
@@ -234,10 +234,7 @@ def plot_feature(stdscr, f, y):
 	if y == None: return
 	
 	text = ''
-	if f.type == 'intron':
-		for i in range(fx1, fx2+1):	text += '-'
-		stdscr.addstr(y+1, fx1, text, gcolor(f))
-	elif isinstance(f, mRNA):
+	if isinstance(f, mRNA):
 		for intron in f.introns:
 			plot_feature(stdscr, intron, y)
 		for u5 in f.utr5s:
@@ -249,18 +246,30 @@ def plot_feature(stdscr, f, y):
 		for cds in f.cdss:
 			plot_feature(stdscr, cds, y)
 	elif isinstance(f, Gene):
-		for i in range(fx1, fx2+1):	text += '='
+		for i in range(fx1, fx2+1):
+			if f.strand == '+':
+				text += '>'
+			elif f.strand == '-':
+				text += '<'
 		if compL: text = '[' + text[1:]
 		if compR: text = text[:-1] + ']'
 		if fx1 == fx2: text = '|'
+		stdscr.addstr(y+1, fx1, text, gcolor(f))
+	elif f.type == 'intron':
+		for i in range(fx1, fx2+1):	text += '-'
 		stdscr.addstr(y+1, fx1, text, gcolor(f))
 	else:
-		for i in range(fx1, fx2+1):	text += '#'
+		for i in range(fx1, fx2+1):
+			if f.strand == '+':
+				text += '>'
+			elif f.strand == '-':
+				text += '<'
+			else:
+				text += '='
 		if compL: text = '[' + text[1:]
 		if compR: text = text[:-1] + ']'
 		if fx1 == fx2: text = '|'
 		stdscr.addstr(y+1, fx1, text, gcolor(f))
-	
 	
 	for x in range(fx1, fx2+1): B['mat'][y][x] = f
 
@@ -311,6 +320,7 @@ def plot_glyphs(stdscr):
 					plot_feature(stdscr, gene, None)
 		elif B['mode'] == 'feature':
 			for f in B['dna'].ftable.features:
+				if f.type == 'mRNA' or f.type == 'gene': continue
 				plot_feature(stdscr, f, None)
 		elif B['mode'] == 'mRNA':
 			for genes in G[i][B['idx']]:
@@ -347,7 +357,7 @@ def zoom(scale):
 		else:
 			end = beg + B['w'] - 1
 	
-	if B['z'] == 1:
+	if B['z'] == 1 and scale == 1:
 		B['beg'] = int(beg)
 		B['end'] = int(beg) + B['w'] -1
 		return
@@ -377,8 +387,8 @@ def update_state(stdscr):
 	else:
 		x1 = int(B['beg'] + B['x'] * B['z'])
 		x2 = int(B['beg'] + (B['x']+1) * B['z'] -1)
-		foc = '{}-{} ({} bp) : {}'.format(
-			x1, x2, int(B['z']), text_at_cursor())	
+		foc = '{}-{} ({:.1f} bp) : {}'.format(
+			x1, x2, B['z'], text_at_cursor())	
 	stdscr.addstr(0, int(B['w']/2), foc, curses.color_pair(1))
 	
 def view_screen(stdscr):
@@ -416,7 +426,7 @@ def view_screen(stdscr):
 		elif k == ord('g'):
 			B['mode'] = 'gene'
 			B['update'] = True
-		elif k == ord('m'):
+		elif k == ord('t'):
 			B['mode'] = 'mRNA'
 			B['update'] = True
 		elif k == ord('f'):
@@ -442,7 +452,7 @@ def view_screen(stdscr):
 			plot_glyphs(stdscr)
 				
 		# menu
-		menu = '(s)elector (g)ene (m)RNA f(eature) (h)elp (q)uit'
+		menu = '(s)elector (g)ene (t)transcript f(eature) (h)elp (q)uit'
 		stdscr.addstr(B['h']-1, 0, menu, curses.color_pair(1))
 		update_state(stdscr)
 		stdscr.move(B['y'], B['x'])
