@@ -47,6 +47,7 @@ B = { # browser state
 	'mat':None,  # matrix of screen contents
 	'row':None,  # next plottable row
 	'update':False,  # update required
+	'debug':[],   # internal debugging stuff
 	'x':None,    # cursor x position
 	'y':None,    # cursor y position
 	'z':None,    # size of cursor (in letters)
@@ -67,17 +68,12 @@ KANDI_HELP = """
 
  Browser
  + Use the arrow keys to move the cusor around and space to re-center
+ + Alternatively, use vi movement keys (h, j, k, l, ^, $)
  + When the cursor is on a feature, there will be descriptive text at the top
- + Use the +/- keys to zoom or use 'return' to zoom in on a feature
- + Add the shift key to make bigger steps (both left/right and zoom)
- + Switch from gene to transcript to feature mode
+ + Use the +/- keys to zoom
+ + Add the shift key to make bigger steps (both movement and zoom)
+ + Use 'return' key to zoom in on feature or on cursor
 """
-
-def terminal_changed(stdscr):
-	h, w = stdscr.getmaxyx()
-	if w != B['w'] or h != B['h']: return True
-	elif B['update']: return True
-	else: return False
 
 def help_screen(stdscr):
 	curses.curs_set(0)
@@ -92,7 +88,7 @@ def help_screen(stdscr):
 		# location & menu
 		loc = '{}:{}-{}'.format(B['dna'].name, B['beg'], B['end'])
 		stdscr.addstr(0, 0, loc, curses.color_pair(1))
-		stdscr.addstr(H-1, 0, '(s)elector (v)iewer (q)uit',
+		stdscr.addstr(H-1, 0, '(s)elect DNA (v)iewer (q)uit',
 			curses.color_pair(1))
 
 		# action
@@ -123,10 +119,10 @@ def select_screen(stdscr):
 		# location & menu
 		loc = '{}:{}-{}'.format(B['dna'].name, B['beg'], B['end'])
 		stdscr.addstr(0, 0, loc, curses.color_pair(1))
-		stdscr.addstr(H-1, 0, '(b)rowser (h)elp (q)uit', curses.color_pair(1))
+		stdscr.addstr(H-1, 0, '(v)iewer (?)help (q)uit', curses.color_pair(1))
 
 		# action
-		if   k == ord('h'): help_screen(stdscr)
+		if   k == ord('?'): help_screen(stdscr)
 		elif k == ord('v'): view_screen(stdscr)
 		elif k == ord('q'): sys.exit(0)
 		elif k == 258: B['y'] = B['y'] + 1
@@ -139,6 +135,12 @@ def select_screen(stdscr):
 		if B['y'] > bot: B['y'] = bot
 		stdscr.move(B['y'], B['x'])
 		k = stdscr.getch()
+
+def terminal_changed(stdscr):
+	h, w = stdscr.getmaxyx()
+	if w != B['w'] or h != B['h']: return True
+	elif B['update']: return True
+	else: return False
 
 def find_clear_row():
 	for y in range(len(B['mat'])):
@@ -173,19 +175,6 @@ def text_at_cursor():
 		elif isinstance(thing, Feature):
 			return '{}:{}-{}'.format(thing.type, thing.beg, thing.end)
 	else: return None
-
-def zoom_at_cursor():
-	if B['mat']:
-		f = B['mat'][B['y']-1][B['x']]
-		if isinstance(f, Gene) or isinstance(f, mRNA) or isinstance(f, Feature):
-			length = f.end - f.beg + 1
-			padding = int(length / 10)
-			B['beg'] = f.beg - padding
-			B['end'] = f.end + padding
-			if B['beg'] < 1: B['beg'] = 0
-			if B['end'] > len(B['dna'].seq): B['end'] = len(B['dna'].seq)
-			B['z'] = B['end'] - B['beg'] + 1
-			B['update'] = True
 
 def plot_header(stdscr, text, color):
 	mat = B['mat']
@@ -330,42 +319,72 @@ def plot_glyphs(stdscr):
 
 	B['update'] = False
 
+def zoom_on_focus():
+	if B['mat']:
+		f = B['mat'][B['y']-1][B['x']]
+		beg, end = None, None
+		if isinstance(f, Gene) or isinstance(f, mRNA) or isinstance(f, Feature):
+			length = f.end - f.beg + 1
+			padding = int(length / 10)
+			beg = f.beg - padding
+			end = f.end + padding
+		else:
+			beg = B['beg'] + B['x'] * B['z']
+			end = beg + B['z'] -1
+	
+	B['beg'] = int(beg)
+	B['end'] = int(end)
+	B['z'] = B['end'] - B['beg'] +1
+	B['x'] = int(B['w'] / 2)
+	zoom(1)
+
 def zoom(scale):
 	B['update'] = True # will force replotting of genes
+		
+	min = 1
+	max = len(B['dna'].seq)
 	
-	# zoom in on cursor and reset its position
-	c = B['beg'] + B['x'] * B['z'] + B['z']/2
-	d = B['end'] - B['beg'] + 1
-	beg = c - d * scale / 2
-	end = c + d * scale / 2
+	# center on cursor
+	b1 = B['beg'] + (B['x'] - int(B['w']/2)) * B['z']
+	e1 = B['end'] + (B['x'] - int(B['w']/2)) * B['z']
+	
+	# change coordinates by scale
+	L = e1 - b1 + 1
+	M = L / 2
+	b2 = b1 + M - scale * M
+	e2 = e1 - M + scale * M
+	
+	# constrain by min/max
+	if b2 < 1:   b2 = 1
+	if e2 > max: e2 = max
+	L = e1 - b1 + 1
+	M = L / 2
+
+	B['beg'] = int(b2)
+	B['end'] = int(e2)
+	B['z'] = (B['end'] - B['beg'] + 1) / B['w']
 	B['x'] = int(B['w'] / 2)
 
-	# constrain
-	max = len(B['dna'].seq)
-	if beg < 1: beg = 1
-	if end > max: end = max
-	beg = int(beg)
-	end = int(end)
+	b3, e3 = None, None
+	if B['z'] <= 1: # too small, expand to fit window
 
-	# minimum zoom is 1 bp
-	L = end - beg + 1
-	if L < B['w']:
-		if beg == 1:
-			end = B['w']
-		elif end == max:
-			beg = max - B['w'] + 1
-		else:
-			end = beg + B['w'] - 1
+		mid = (b2 + e2) / 2
+		b3 = int(mid - B['w']/2)
+		e3 = int(mid + B['w']/2) -1
+		if b3 < min:
+			b3 = min
+			e3 = B['w']
+		elif e3 > max:
+			e3 = max
+			b3 = max - B['w'] + 1
+		B['beg'] = b3
+		B['end'] = e3
+		B['z'] = 1
+		B['x'] = int(B['w'] / 2)
 	
-	if B['z'] == 1 and scale == 1:
-		B['beg'] = int(beg)
-		B['end'] = int(beg) + B['w'] -1
-		return
-	else:
-		L = end - beg + 1
-		B['z'] = L / B['w']
-		B['beg'] = int(beg)
-		B['end'] = int(end)
+		if B['end'] - B['beg'] + 1 != B['w']:
+			B['debug'].append('grr {} {} {}'.format(b3, e3, e3 - b3 + 1))
+
 
 def update_state(stdscr):
 	H, W = stdscr.getmaxyx()
@@ -391,6 +410,12 @@ def update_state(stdscr):
 			x1, x2, B['z'], text_at_cursor())	
 	stdscr.addstr(0, int(B['w']/2), foc, curses.color_pair(1))
 	
+	# debug text
+	row = 1
+	for text in B['debug']:
+		stdscr.addstr(B['h'] - row -1, 0, text)
+		row += 1
+	
 def view_screen(stdscr):
 
 	# initial settings
@@ -408,19 +433,21 @@ def view_screen(stdscr):
 	
 	k = None	
 	while True:
-		if   k == 10:zoom_at_cursor() # return zooms on feature
-		elif k == 258: B['y'] += 1    # arrow down
-		elif k == 259: B['y'] -= 1    # arrow up
-		elif k == 261: B['x'] += 1    # arrow right
-		elif k == 402: B['x'] += 20   # shift-arrow right
-		elif k == 260: B['x'] -= 1    # arrow left
-		elif k == 393: B['x'] -= 20   # shift-arrow left
-		elif k == 32: zoom(1)         # space recenters display
-		elif k == ord('-'): zoom(2)   # zoom out
-		elif k == ord('_'): zoom(8)   # zoom out a lot
-		elif k == ord('='): zoom(1/2) # zoom in
-		elif k == ord('+'): zoom(1/8) # zoom in a lot
-		elif   k == ord('h'): help_screen(stdscr)
+		if   k == 10:zoom_on_focus()                 # zooms on focus
+		elif k == 258 or  k== ord('j'): B['y'] += 1  # arrow down
+		elif k == 259 or k == ord('k'): B['y'] -= 1  # arrow up
+		elif k == 261 or k == ord('l'): B['x'] += 1  # arrow right
+		elif k == 402 or k == ord('L'): B['x'] += 20 # shift-arrow right
+		elif k == 260 or k == ord('h'): B['x'] -= 1  # arrow left
+		elif k == 393 or k == ord('H'): B['x'] -= 20 # shift-arrow left
+		elif k == ord('^'): B['x'] = 0               # left end of display
+		elif k == ord('$'): B['x'] = B['w'] -1       # right end of display
+		elif k == 32: zoom(1)                        # recenter display
+		elif k == ord('-'): zoom(2)                  # zoom out
+		elif k == ord('_'): zoom(8)                  # zoom out a lot
+		elif k == ord('='): zoom(1/2)                # zoom in
+		elif k == ord('+'): zoom(1/8)                # zoom in a lot
+		elif k == ord('?'): help_screen(stdscr)
 		elif k == ord('s'): select_screen(stdscr)
 		elif k == ord('q'): sys.exit(0)
 		elif k == ord('g'):
@@ -452,7 +479,7 @@ def view_screen(stdscr):
 			plot_glyphs(stdscr)
 				
 		# menu
-		menu = '(s)elector (g)ene (t)transcript f(eature) (h)elp (q)uit'
+		menu = '(s)elect DNA (g)ene (t)transcript (f)eature (?)help (q)uit'
 		stdscr.addstr(B['h']-1, 0, menu, curses.color_pair(1))
 		update_state(stdscr)
 		stdscr.move(B['y'], B['x'])
