@@ -2,7 +2,7 @@
 Classes for represnting biological sequences.
 """
 import grimoire.toolbox as toolbox
-from grimoire.feature_table import FeatureTable
+from grimoire.feature import FeatureTable
 
 class SequenceError(Exception):
 	pass

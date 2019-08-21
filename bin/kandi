@@ -7,10 +7,9 @@ import curses
 import curses.textpad
 
 from grimoire.sequence import DNA
-from grimoire.feature_table import FeatureTable
 from grimoire.io import FASTA_stream, GFF_file
 from grimoire.genome import gff_to_feature
-from grimoire.feature import Gene, mRNA, Feature
+from grimoire.feature import Gene, mRNA, Feature, FeatureTable
 
 ## Command line stuff ##
 

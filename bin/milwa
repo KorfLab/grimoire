@@ -8,8 +8,7 @@ import copy
 import grimoire.toolbox as toolbox
 import grimoire.hmm as hmm
 from grimoire.sequence import DNA
-from grimoire.feature import Feature
-from grimoire.feature_table import FeatureTable
+from grimoire.feature import Feature, FeatureTable
 from grimoire.genome import Reader
 
 ## Command line stuff ##
@@ -67,8 +66,12 @@ parser.add_argument('--cds_ctx', required=False, type=int, default=0,
 	metavar='<int>', help='CDS context [%(default)d]')
 parser.add_argument('--stop_ctx', required=False, type=int, default=0,
 	metavar='<int>', help='CDS context [%(default)d]')
-parser.add_argument('--replicant', action='store_true',
-	help='perform replicant analysis (model vs source)')
+parser.add_argument('--canonical', action='store_true',
+	help='only use features with canonical sequences')
+parser.add_argument('--first', action='store_true',
+	help='use the first transcript when there are more than one')
+#parser.add_argument('--replicant', action='store_true',
+#	help='perform replicant analysis (model vs source)')
 arg = parser.parse_args()
 
 ###############
@@ -112,33 +115,31 @@ if arg.model == 'don':
 	for chr in genome:
 		genes = chr.ftable.build_genes()	
 		for gene in genes:
-			if gene.issues: continue
+			if gene.issues and arg.canonical: continue
 			if not gene.transcripts(): continue
-			if len(gene.transcripts()) > 1: continue
-			tx = gene.transcripts()[0]
-			if len(tx.exons) < 2: continue
-			
-			rcount = 0
-			for i in range(len(tx.exons) - 1):
-				exp_seq = tx.exons[i].seq_str()
-				iseq = tx.introns[i].seq_str()
-				don_seq = iseq[0:arg.don_len]
-				int_seq = iseq[arg.don_len:-arg.acc_len]
-				
-				exp_seqs.append(exp_seq)
-				don_seqs.append(don_seq)
-				int_seqs.append(int_seq)
-				
-				intron_len += len(int_seq)
-				exon_len += len(exp_seq)
-				splices += 1
-				
-				if arg.source or arg.replicant:
-					rcount += 1
-					sources.append(make_source(tx.id + '-region-' + str(rcount),
-						[{'label':'EXON', 'seq':exp_seq},
-						{'label':'DON', 'seq':don_seq},
-						{'label':'INT', 'seq':int_seq}]))
+			txs = []
+			if arg.first: txs.append(gene.transcripts()[0])
+			else: txs = gene.transcripts()
+			for tx in txs:
+				if len(tx.exons) < 2: continue
+				rcount = 0
+				for i in range(len(tx.exons) - 1):
+					exp_seq = tx.exons[i].seq_str()
+					iseq = tx.introns[i].seq_str()
+					don_seq = iseq[0:arg.don_len]
+					int_seq = iseq[arg.don_len:-arg.acc_len]
+					exp_seqs.append(exp_seq)
+					don_seqs.append(don_seq)
+					int_seqs.append(int_seq)
+					intron_len += len(int_seq)
+					exon_len += len(exp_seq)
+					splices += 1
+					if arg.source:
+						rcount += 1
+						sources.append(make_source(tx.id + '-region-' + str(rcount),
+							[{'label':'EXON', 'seq':exp_seq},
+							{'label':'DON', 'seq':don_seq},
+							{'label':'INT', 'seq':int_seq}]))
 			
 	exp_emits = hmm.train_emission(exp_seqs, context=arg.exon_ctx)
 	don_emits = hmm.train_emissions(don_seqs, context=arg.don_ctx)
@@ -160,45 +161,43 @@ if arg.model == 'don':
 	
 	model = hmm.HMM(name=arg.hmm, null=null_state,
 		states=[exp_state] + don_states + [int_state])
-	
 
 elif arg.model == 'acc':
-	gen = Genome(gff3=arg.gff3, fasta=arg.fasta)
+	genome = Reader(fasta=arg.fasta, gff=arg.gff)
 	exn_seqs = []
 	acc_seqs = []
 	int_seqs = []
 	exon_len = 0
 	splices = 0
 	intron_len = 0
-	for chr in gen.chromosomes:
-		for gene in chr.features:
-			if not gene.mRNAs(): continue # some tx are miRNA etc
-			tx = gene.mRNAs()[0]
-			if gene.issues: continue
-			if len(gene.mRNAs()) > 1: continue
-			if len(tx.exons) < 2: continue
-			
-			rcount = 0
-			for i in range(len(tx.exons) - 1):
-				exn_seq = tx.exons[i + 1].seq_str()
-				iseq = tx.introns[i].seq_str()
-				int_seq = iseq[arg.don_len:-arg.acc_len]
-				acc_seq = iseq[-arg.acc_len:len(iseq)]
-				
-				int_seqs.append(int_seq)
-				acc_seqs.append(acc_seq)
-				exn_seqs.append(exn_seq)
-				
-				intron_len += len(int_seq)
-				exon_len += len(exn_seq)
-				splices += 1
-				
-				if arg.source or arg.replicant:
-					rcount += 1
-					sources.append(make_source(tx.id + '-region-' + str(rcount),
-						[{'label':'INT', 'seq':int_seq},
-						{'label':'ACC', 'seq':acc_seq},
-						{'label':'EXON', 'seq':exn_seq}]))
+	for chr in genome:
+		genes = chr.ftable.build_genes()	
+		for gene in genes:
+			if gene.issues and arg.canonical: continue
+			if not gene.transcripts(): continue
+			txs = []
+			if arg.first: txs.append(gene.transcripts()[0])
+			else: txs = gene.transcripts()
+			for tx in txs:
+				if len(tx.exons) < 2: continue
+				rcount = 0
+				for i in range(len(tx.exons) - 1):
+					exn_seq = tx.exons[i + 1].seq_str()
+					iseq = tx.introns[i].seq_str()
+					int_seq = iseq[arg.don_len:-arg.acc_len]
+					acc_seq = iseq[-arg.acc_len:len(iseq)]
+					int_seqs.append(int_seq)
+					acc_seqs.append(acc_seq)
+					exn_seqs.append(exn_seq)
+					intron_len += len(int_seq)
+					exon_len += len(exn_seq)
+					splices += 1
+					if arg.source:
+						rcount += 1
+						sources.append(make_source(tx.id + '-region-' + str(rcount),
+							[{'label':'INT', 'seq':int_seq},
+							{'label':'ACC', 'seq':acc_seq},
+							{'label':'EXON', 'seq':exn_seq}]))
 	
 	int_emits = hmm.train_emission(int_seqs, context=arg.int_ctx)
 	acc_emits = hmm.train_emissions(acc_seqs, context=arg.acc_ctx)
@@ -222,7 +221,7 @@ elif arg.model == 'acc':
 		states=[int_state] + acc_states + [exn_state])
 
 elif arg.model == 'exon':
-	gen = Genome(gff3=arg.gff3, fasta=arg.fasta)
+	genome = Reader(fasta=arg.fasta, gff=arg.gff)
 	intron_seqs = []
 	acc_seqs = []
 	don_seqs = []
@@ -231,43 +230,41 @@ elif arg.model == 'exon':
 	splices = 0
 	inta_len = 0
 	
-	for chr in gen.chromosomes:
-		for gene in chr.features:
-			if not gene.mRNAs(): continue # some tx are miRNA etc
-			tx = gene.mRNAs()[0]
-			if gene.issues: continue
-			if len(gene.mRNAs()) > 1: continue
-			if len(tx.exons) < 3: continue
-			
-			rcount = 0
-			for i in range(1, len(tx.exons) -1):
-				iprev = tx.introns[i-1].seq_str()
-				inext = tx.introns[i].seq_str()
-				
-				acc_seq = iprev[-arg.acc_len:len(iprev)]
-				exon_seq = tx.exons[i].seq_str()
-				don_seq = inext[0:arg.don_len]
-				ip_seq = iprev[0:-len(acc_seq)]
-				in_seq = inext[len(don_seq):]
-				
-				acc_seqs.append(acc_seq)
-				exon_seqs.append(exon_seq)
-				don_seqs.append(don_seq)
-				intron_seqs.append(ip_seq)
-				intron_seqs.append(in_seq)
-				
-				splices += 1
-				exon_len += tx.exons[i].end - tx.exons[i].beg + 1
-				inta_len += len(in_seq)
-				
-				if arg.source or arg.replicant:
-					rcount += 1
-					sources.append(make_source(tx.id + '-region-' + str(rcount), [
-						{'label':'INTa', 'seq':ip_seq},
-						{'label':'ACC',  'seq':acc_seq},
-						{'label':'EXON', 'seq':exon_seq},
-						{'label':'DON',  'seq':don_seq},
-						{'label':'INTb', 'seq':in_seq}]))
+	for chr in genome:
+		genes = chr.ftable.build_genes()	
+		for gene in genes:
+			if gene.issues and arg.canonical: continue
+			if not gene.transcripts(): continue
+			txs = []
+			if arg.first: txs.append(gene.transcripts()[0])
+			else: txs = gene.transcripts()
+			for tx in txs:
+				if len(tx.exons) < 2: continue
+				rcount = 0
+				for i in range(1, len(tx.exons) -1):
+					iprev = tx.introns[i-1].seq_str()
+					inext = tx.introns[i].seq_str()
+					acc_seq = iprev[-arg.acc_len:len(iprev)]
+					exon_seq = tx.exons[i].seq_str()
+					don_seq = inext[0:arg.don_len]
+					ip_seq = iprev[0:-len(acc_seq)]
+					in_seq = inext[len(don_seq):]
+					acc_seqs.append(acc_seq)
+					exon_seqs.append(exon_seq)
+					don_seqs.append(don_seq)
+					intron_seqs.append(ip_seq)
+					intron_seqs.append(in_seq)
+					splices += 1
+					exon_len += tx.exons[i].end - tx.exons[i].beg + 1
+					inta_len += len(in_seq)
+					if arg.source:
+						rcount += 1
+						sources.append(make_source(tx.id + '-region-' + str(rcount), [
+							{'label':'INTa', 'seq':ip_seq},
+							{'label':'ACC',  'seq':acc_seq},
+							{'label':'EXON', 'seq':exon_seq},
+							{'label':'DON',  'seq':don_seq},
+							{'label':'INTb', 'seq':in_seq}]))
 
 	acc_emits = hmm.train_emissions(acc_seqs, context=arg.acc_ctx)
 	don_emits = hmm.train_emissions(don_seqs, context=arg.don_ctx)
@@ -300,7 +297,7 @@ elif arg.model == 'exon':
 		+ don_states + [intb_state], null = null_state)
 
 elif arg.model == 'intron':
-	gen = Genome(gff3=arg.gff3, fasta=arg.fasta)
+	genome = Reader(fasta=arg.fasta, gff=arg.gff)
 	exp_seqs = []
 	exn_seqs = []
 	don_seqs = []
@@ -309,41 +306,41 @@ elif arg.model == 'intron':
 	exon_len = 0
 	splices = 0
 	intron_len = 0
-	for chr in gen.chromosomes:
-		for gene in chr.features:
-			if not gene.mRNAs(): continue # some tx are miRNA etc
-			tx = gene.mRNAs()[0]
-			if gene.issues: continue
-			if len(gene.mRNAs()) > 1: continue
-			if len(tx.exons) < 2: continue
-			
-			rcount = 0
-			for i in range(len(tx.exons) - 1):
-				exp_seq = tx.exons[i].seq_str()
-				exn_seq = tx.exons[i + 1].seq_str()
-				iseq = tx.introns[i].seq_str()
-				don_seq = iseq[0:arg.don_len]
-				int_seq = iseq[arg.don_len:-arg.acc_len]
-				acc_seq = iseq[-arg.acc_len:len(iseq)]
-				
-				exp_seqs.append(exp_seq)
-				don_seqs.append(don_seq)
-				int_seqs.append(int_seq)
-				acc_seqs.append(acc_seq)
-				exn_seqs.append(exn_seq)
-				
-				intron_len += len(int_seq)
-				exon_len += len(exp_seq)
-				splices += 1
-				
-				if arg.source or arg.replicant:
-					rcount += 1
-					sources.append(make_source(tx.id + '-region-' + str(rcount),
-						[{'label':'EXP', 'seq':exp_seq},
-						{'label':'DON', 'seq':don_seq},
-						{'label':'INT', 'seq':int_seq},
-						{'label':'ACC', 'seq':acc_seq},
-						{'label':'EXN', 'seq':exn_seq}]))
+	
+	for chr in genome:
+		genes = chr.ftable.build_genes()	
+		for gene in genes:
+			if gene.issues and arg.canonical: continue
+			if not gene.transcripts(): continue
+			txs = []
+			if arg.first: txs.append(gene.transcripts()[0])
+			else: txs = gene.transcripts()
+			for tx in txs:
+				if len(tx.exons) < 2: continue
+				rcount = 0
+				for i in range(len(tx.exons) - 1):
+					exp_seq = tx.exons[i].seq_str()
+					exn_seq = tx.exons[i + 1].seq_str()
+					iseq = tx.introns[i].seq_str()
+					don_seq = iseq[0:arg.don_len]
+					int_seq = iseq[arg.don_len:-arg.acc_len]
+					acc_seq = iseq[-arg.acc_len:len(iseq)]
+					exp_seqs.append(exp_seq)
+					don_seqs.append(don_seq)
+					int_seqs.append(int_seq)
+					acc_seqs.append(acc_seq)
+					exn_seqs.append(exn_seq)
+					intron_len += len(int_seq)
+					exon_len += len(exp_seq)
+					splices += 1
+					if arg.source:
+						rcount += 1
+						sources.append(make_source(tx.id + '-region-' + str(rcount),
+							[{'label':'EXP', 'seq':exp_seq},
+							{'label':'DON', 'seq':don_seq},
+							{'label':'INT', 'seq':int_seq},
+							{'label':'ACC', 'seq':acc_seq},
+							{'label':'EXN', 'seq':exn_seq}]))
 	
 	exp_emits = hmm.train_emission(exp_seqs, context=arg.exon_ctx)
 	don_emits = hmm.train_emissions(don_seqs, context=arg.don_ctx)
@@ -375,10 +372,10 @@ elif arg.model == 'intron':
 		states=[exp_state] + don_states + [int_state] + acc_states + [exn_state])
 
 elif arg.model == 'gene':
-	if arg.source or arg.replicant:
-		raise MilwaError('source and replicant not available in gene')
+	if arg.source:
+		raise MilwaError('source not available in gene')
 		
-	gen = Genome(gff3=arg.gff3, fasta=arg.fasta)
+	genome = Reader(fasta=arg.fasta, gff=arg.gff)
 
 	gen_seqs = []
 	exon_seqs = []
@@ -392,36 +389,32 @@ elif arg.model == 'gene':
 	intron_len = 0
 	mRNAs = 0
 	
-	for chr in gen.chromosomes:
+	for chr in genome:
+		genes = chr.ftable.build_genes()	
 		gen_seqs.append(chr.seq)
-		gen_len += len(chr.seq)
-		
-		for gene in chr.features:
-			if not gene.mRNAs(): continue # some tx are miRNA etc
-			tx = gene.mRNAs()[0]
-			if gene.issues: continue
-			if len(gene.mRNAs()) > 1: continue
-			if len(tx.exons) < 2: continue
-			
-			mRNAs += 1
-			
-			for exon in tx.exons:
-				exon_seq = exon.seq_str()
-				exon_len += len(exon_seq)
-				exon_seqs.append(exon_seq)
-			
-			for intron in tx.introns:
-				iseq = intron.seq_str()
-				don_seq = iseq[0:arg.don_len]
-				int_seq = iseq[arg.don_len:-arg.acc_len]
-				acc_seq = iseq[-arg.acc_len:len(iseq)]
-				
-				don_seqs.append(don_seq)
-				int_seqs.append(int_seq)
-				acc_seqs.append(acc_seq)
-				
-				intron_len += len(int_seq)
-				splices += 1
+		for gene in genes:
+			if gene.issues and arg.canonical: continue
+			if not gene.transcripts(): continue
+			txs = []
+			if arg.first: txs.append(gene.transcripts()[0])
+			else: txs = gene.transcripts()
+			for tx in txs:
+				if len(tx.exons) < 2: continue
+				mRNAs += 1
+				for exon in tx.exons:
+					exon_seq = exon.seq_str()
+					exon_len += len(exon_seq)
+					exon_seqs.append(exon_seq)
+				for intron in tx.introns:
+					iseq = intron.seq_str()
+					don_seq = iseq[0:arg.don_len]
+					int_seq = iseq[arg.don_len:-arg.acc_len]
+					acc_seq = iseq[-arg.acc_len:len(iseq)]
+					don_seqs.append(don_seq)
+					int_seqs.append(int_seq)
+					acc_seqs.append(acc_seq)
+					intron_len += len(int_seq)
+					splices += 1
 			
 	gen_emits  = hmm.train_emission(gen_seqs,   context=arg.gen_ctx)
 	exon_emits = hmm.train_emission(exon_seqs,  context=arg.exon_ctx)
@@ -437,7 +430,6 @@ elif arg.model == 'gene':
 	
 	gen_state.init = 1
 	gen_state.term = 1
-	
 	
 	hmm.connect2(gen_state, gen_state, 0.999)
 	hmm.connect2(gen_state, exon_state, 0.001)
@@ -455,9 +447,9 @@ elif arg.model == 'gene':
 	
 	model = hmm.HMM(name=arg.hmm, null=null_state,
 		states=[gen_state] + [exon_state] + don_states + [int_state] + acc_states)
-	
-elif arg.model == 'mRNA1':
-	gen = Genome(gff3=arg.gff3, fasta=arg.fasta)
+
+elif arg.model == 'mRNA':
+	genome = Reader(fasta=arg.fasta, gff=arg.gff)
 	gen_seqs = []
 	ut5_seqs = []
 	koz_seqs = []
@@ -470,135 +462,47 @@ elif arg.model == 'mRNA1':
 	mRNAs = 0
 	cds_len = 0
 	ut3_len = []
-	for chr in gen.chromosomes:
-		for gene in chr.features:
-			if not gene.mRNAs(): continue # some tx are miRNA etc
-			tx = gene.mRNAs()[0]
-			if gene.issues: continue
-			if len(gene.mRNAs()) > 1: continue
-			
-			cds = tx.cds_str()
-			ptx = tx.tx_str()
-			beg = ptx.find(cds)
-			end = beg + len(cds)
-			if beg < arg.u5_ctx + arg.koz_len + 1: continue
-			if end >= len(ptx): continue
-			
-			ut5_seq = ptx[0 : beg - arg.koz_len]
-			koz_seq = ptx[beg-arg.koz_len:beg]
-			atg_seq = cds[0:3]
-			cds_seq = cds[3:-3]
-			stp_seq = cds[-3:]
-			ut3_seq = ptx[end:len(ptx)]
-			
-			ut5_seqs.append(ut5_seq)
-			koz_seqs.append(koz_seq)
-			atg_seqs.append(atg_seq)
-			cds_seqs.append(cds_seq)
-			stp_seqs.append(stp_seq)
-			ut3_seqs.append(ut3_seq)
-			
-			ut5_len += len(ut5_seq)
-			cds_len += len(cds_seq)
-			ut3_len == len(ut3_seq)
-			mRNAs += 1
-			
-			if arg.source or arg.replicant:
-				sources.append(make_source(tx.id + '-gene',
-					[{'label':'UTR5', 'seq':ut5_seq},
-					{'label':'KOZ', 'seq':koz_seq},
-					{'label':'ATG', 'seq':atg_seq},
-					{'label':'CDS', 'seq':cds_seq},
-					{'label':'STOP', 'seq':stp_seq},
-					{'label':'UTR3', 'seq':ut3_seq}]))
-		
-	ut5_emits = hmm.train_emission(ut5_seqs, context=arg.u5_ctx)
-	koz_emits = hmm.train_emissions(koz_seqs, context=arg.koz_ctx)
-	atg_emits = hmm.train_emissions(atg_seqs, context=arg.atg_ctx)
-	cds_emits = hmm.train_cds(cds_seqs, context=arg.cds_ctx)
-	ut3_emits = hmm.train_emission(ut3_seqs, context=arg.u3_ctx)
-	stp_emits = hmm.train_emissions(stp_seqs, context=arg.stop_ctx)
 	
-	u5_state = hmm.State(name='UTR5', context=arg.u5_ctx, emits=ut5_emits)
-	koz_states = hmm.state_factory('KOZ', koz_emits)
-	atg_states = hmm.state_factory('ATG', atg_emits)
-	cds_states = hmm.state_factory('CDS', cds_emits)
-	u3_state = hmm.State(name='UTR3', context=arg.u3_ctx, emits=ut3_emits)
-	stp_states = hmm.state_factory('STOP', stp_emits)
-	u5_state.init = 1
-	u3_state.term = 1
-
-	hmm.connect2(u5_state, u5_state, 1 - mRNAs/ut5_len)
-	hmm.connect2(u5_state, atg_states[0], mRNAs/ut5_len)
-	hmm.connect_all(atg_states)
-	hmm.connect2(atg_states[-1], cds_states[0], 1)
-	hmm.connect_all(cds_states)
-	hmm.connect2(cds_states[2], cds_states[0], 1 - mRNAs / (cds_len/3))
-	hmm.connect2(cds_states[2], stp_states[0], mRNAs / (cds_len/3))
-	hmm.connect_all(stp_states)
-	hmm.connect2(stp_states[-1], u3_state, 1)
-	hmm.connect2(u3_state, u3_state, 1)
-	
-	null_state = hmm.null_state_factory(file=arg.fasta, context=arg.null_ctx)
-	
-	model = hmm.HMM(name=arg.hmm, states=[u5_state] + atg_states
-		+ cds_states + [u3_state] + stp_states, null=null_state)
-
-elif arg.model == 'mRNA2':
-	gen = Genome(gff3=arg.gff3, fasta=arg.fasta)
-	gen_seqs = []
-	ut5_seqs = []
-	koz_seqs = []
-	atg_seqs = []
-	cds_seqs = []
-	stp_seqs = []
-	ut3_seqs = []
-	
-	ut5_len = 0
-	mRNAs = 0
-	cds_len = 0
-	ut3_len = []
-	for chr in gen.chromosomes:
-		for gene in chr.features:
-			if not gene.mRNAs(): continue # some tx are miRNA etc
-			tx = gene.mRNAs()[0]
-			if gene.issues: continue
-			if len(gene.mRNAs()) > 1: continue
-			
-			cds = tx.cds_str()
-			ptx = tx.tx_str()
-			beg = ptx.find(cds)
-			end = beg + len(cds)
-			if beg < arg.u5_ctx + arg.koz_len + 1: continue
-			if end >= len(ptx): continue
-			
-			ut5_seq = ptx[0 : beg - arg.koz_len]
-			koz_seq = ptx[beg-arg.koz_len:beg]
-			atg_seq = cds[0:3]
-			cds_seq = cds[3:-3]
-			stp_seq = cds[-3:]
-			ut3_seq = ptx[end:len(ptx)]
-			
-			ut5_seqs.append(ut5_seq)
-			koz_seqs.append(koz_seq)
-			atg_seqs.append(atg_seq)
-			cds_seqs.append(cds_seq)
-			stp_seqs.append(stp_seq)
-			ut3_seqs.append(ut3_seq)
-			
-			ut5_len += len(ut5_seq)
-			cds_len += len(cds_seq)
-			ut3_len == len(ut3_seq)
-			mRNAs += 1
-			
-			if arg.source or arg.replicant:
-				sources.append(make_source(tx.id + '-gene',
-					[{'label':'UTR5', 'seq':ut5_seq},
-					{'label':'KOZ', 'seq':koz_seq},
-					{'label':'ATG', 'seq':atg_seq},
-					{'label':'CDS', 'seq':cds_seq},
-					{'label':'STOP', 'seq':stp_seq},
-					{'label':'UTR3', 'seq':ut3_seq}]))
+	for chr in genome:
+		genes = chr.ftable.build_genes()	
+		gen_seqs.append(chr.seq)
+		for gene in genes:
+			if gene.issues and arg.canonical: continue
+			if not gene.transcripts(): continue
+			txs = []
+			if arg.first: txs.append(gene.transcripts()[0])
+			else: txs = gene.transcripts()
+			for tx in txs:
+				cds = tx.cds_str()
+				ptx = tx.tx_str()
+				beg = ptx.find(cds)
+				end = beg + len(cds)
+				if beg < arg.u5_ctx + arg.koz_len + 1: continue
+				if end >= len(ptx): continue
+				ut5_seq = ptx[0 : beg - arg.koz_len]
+				koz_seq = ptx[beg-arg.koz_len:beg]
+				atg_seq = cds[0:3]
+				cds_seq = cds[3:-3]
+				stp_seq = cds[-3:]
+				ut3_seq = ptx[end:len(ptx)]
+				ut5_seqs.append(ut5_seq)
+				koz_seqs.append(koz_seq)
+				atg_seqs.append(atg_seq)
+				cds_seqs.append(cds_seq)
+				stp_seqs.append(stp_seq)
+				ut3_seqs.append(ut3_seq)
+				ut5_len += len(ut5_seq)
+				cds_len += len(cds_seq)
+				ut3_len == len(ut3_seq)
+				mRNAs += 1
+				if arg.source:
+					sources.append(make_source(tx.id + '-cDNA',
+						[{'label':'UTR5', 'seq':ut5_seq},
+						{'label':'KOZ', 'seq':koz_seq},
+						{'label':'ATG', 'seq':atg_seq},
+						{'label':'CDS', 'seq':cds_seq},
+						{'label':'STOP', 'seq':stp_seq},
+						{'label':'UTR3', 'seq':ut3_seq}]))
 		
 	ut5_emits = hmm.train_emission(ut5_seqs, context=arg.u5_ctx)
 	koz_emits = hmm.train_emissions(koz_seqs, context=arg.koz_ctx)
@@ -645,7 +549,7 @@ if arg.hmm:
 	model.write(arg.hmm)
 
 if arg.source:
-	with open(arg.source + '.fasta', 'w+') as file:
+	with open(arg.source + '.fa', 'w+') as file:
 		for source in sources:
 			file.write(source['dna'].fasta())
 	with open(arg.source + '.gff', 'w+') as file:
@@ -653,12 +557,14 @@ if arg.source:
 			for f in source['features']:
 				file.write(f.gff() + '\n')
 
+"""
 if arg.replicant:
-	model.convert2log() # note from here down, the model is log-space
+	model.convert2log()
 	for source in sources:
 		v = hmm.Viterbi(model=model, dna=source['dna'])
 		p = v.generate_path()
 		truth = FeatureTable(dna=source['dna'], features=source['features'])
 		preds = FeatureTable(dna=source['dna'], features=p.features())
-		t = truth.compare(preds)
-		print(t)
+		-- some kind of standard comparision needed --
+"""
+

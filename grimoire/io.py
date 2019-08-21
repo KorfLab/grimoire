@@ -356,6 +356,7 @@ class GFF_file:
 		fp = None
 		if   re.search(r'\.gff3\.gz$', file): fp = gzip.open(file)
 		elif re.search(r'\.gff3$',     file): fp = open(file, 'r')
+		elif re.search(r'\.gff$',      file): fp = open(file, 'r')
 		elif re.search(r'\.gtf\.gz$',  file): fp = _from_GTF(file)
 		elif re.search(r'\.gtf$',      file): fp = _from_GTF(file)
 		elif re.search(r'\.bed\.gz$',  file): fp = _from_BED12(file)

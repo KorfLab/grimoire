@@ -6,59 +6,49 @@ import time
 import random
 import sys
 
-import grimoire.toolbox as toolbox
-import grimoire.sequence as sequence
+from grimoire.io import FASTA_stream
+from grimoire.sequence import DNA
 import grimoire.hmm as hmm
-import grimoire.decode as decode
 
-## Command line w/ Argparse ##
-parser = argparse.ArgumentParser(description='Gene prediction program')
+## Command line stuff ##
+
+extended_help = """
+%(prog)s is used to decode sequences given an HMM using the standard Viterbi
+algorithm. Input is FASTA, output is GFF. %(prog)s can parallelize jobs.
+"""
+
+parser = argparse.ArgumentParser(
+	description='Sequence decoder.',
+	formatter_class=argparse.RawDescriptionHelpFormatter,
+	epilog=extended_help)
 parser.add_argument('--hmm', required=True, type=str,
 	metavar='<path>', help='path to input HMM file')
 parser.add_argument('--fasta', required=True, type=str,
 	metavar='<path>', help='path to input fasta file')
-parser.add_argument('--samples', required=False, default=1000, type=int,
-	metavar='<int>', help='number of samples [%(default)d]')
-parser.add_argument('--seed', required=False, type=int,
-	metavar='<int>', help='random seed')
 parser.add_argument('--jobs', required=False, type=int, default=1,
 	metavar='<int>', help='processor pool size [%(default)d]')
-parser.add_argument('--both', action='store_true',
-	help='decode both strands of DNA')
-parser.add_argument('--stochastic', action='store_true',
-	help='use stochastic Viterbi algorithm')
 arg = parser.parse_args()
 
 Model = None
 
 def work(entry):
-	dna = sequence.DNA(seq=entry.seq, name=entry.id)
-	if arg.stochastic:
-		sv = decode.StochasticViterbi(model=Model, dna=dna, seed=arg.seed)
-		ps = sv.generate_paths(arg.samples)
-		return ps
-	else:
-		v = decode.Viterbi(model=Model, dna=dna)
-		p = v.generate_path()
-		return p
+	dna = DNA(seq=entry.seq, name=entry.id)
+	v = hmm.Viterbi(model=Model, dna=dna)
+	return v.generate_path()
 
 if __name__ == '__main__':
 	Model = hmm.HMM.read(arg.hmm)
 	Model.convert2log()
-	fasta = toolbox.FASTA_stream(arg.fasta)
-	with Pool(arg.jobs) as proc:
-		jobs = proc.map(work, fasta)
-		if (arg.stochastic):
-			for j in jobs:
-				pid = 0
-				for parse in j:
-					pid += 1
-					for f in parse.features():
-						f.score = parse.freq
-						f.parent_id = str(pid)
-						print(f)
-		else:
+	fasta = FASTA_stream(arg.fasta)
+	if arg.jobs == 1:
+		for entry in fasta:
+			parse = work(entry)
+			for f in parse.features():
+				print(f)
+	else:
+		with Pool(arg.jobs) as proc:
+			jobs = proc.map(work, fasta)
 			for parse in jobs:
 				for f in parse.features():
 					print(f)
-
+	

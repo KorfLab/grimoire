@@ -4,7 +4,6 @@ import argparse
 import sys
 
 import grimoire.genome as genome
-import grimoire.feature_table as ft
 
 ## Command line stuff ##
 
@@ -43,11 +42,15 @@ if __name__ == '__main__':
 	g1 = genome.Reader(fasta=arg.fasta, gff=arg.file1)
 	g2 = genome.Reader(fasta=arg.fasta, gff=arg.file2)
 	
-	if arg.feature:
-		same, diff = 0, 0
-		for c1, c2 in zip(g1, g2):
-			same, diff = c1.ftable.compare(c2.ftable, arg.feature)
-		print(same, diff, same + diff)
+	same, diff = 0, 0
+	for c1, c2 in zip(g1, g2):
+		s, d = None, None
+		if arg.feature:
+			s, d = c1.ftable.nt_compare(c2.ftable, feature=arg.feature)
+		else:
+			s, d = c1.ftable.nt_compare(c2.ftable)
+		same += s
+		diff += d
 
-
+	print(same, diff, same + diff)
 
