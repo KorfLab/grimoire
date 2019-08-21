@@ -494,6 +494,7 @@ class FeatureTable:
 		+ features= `list` of `Feature` objects (optional)
 		"""
 		self.dna = dna
+		self._sorted = False
 		if features:
 			self.features = features
 		else:
@@ -507,11 +508,18 @@ class FeatureTable:
 		"""
 		
 		self.features.append(feature)
+		self._sorted = False
+
+	def _sort(self):
+		if not self._sorted:
+			self.features.sort(key=operator.attrgetter('beg', 'end'))
+		self._sorted = True
 
 	def _revcomp(self):
 		"""Reverse complements features in table."""
 		for f in self.features:
 			f._revcomp()
+		self._sorted = False
 
 	def gff(self):
 		"""Returns the feature table formatted as GFF."""
@@ -594,4 +602,47 @@ class FeatureTable:
 
 		return same, diff
 
+	def fetch(self, beg, end):
+		"""Returns a list of features between beg and end."""
+		self._sort()
+		
+		# binary search the non-unique beg feature
+		lo, hi = 0, len(self.features) -1
+		l2, h2 = None, None
+		while True:
+			m = int((hi + lo) / 2)
+			if self.features[m].beg < beg:
+				lo = m
+				l2 = m
+				if lo == l2 and hi == h2: break
+			elif self.features[m].beg > beg:
+				hi = m
+				h2 = m
+				if lo == l2 and hi == h2: break
+			else:
+				break
+
+		# check in reverse that it's the true start of the list
+		n = lo
+		while self.features[n].beg < beg:
+			if n == 0: break
+			n -= 1
+		
+		# get all features in bounds
+		found = []
+#		print('found here',n, self._sorted, self.features[n])
+		while n < len(self.features):
+			fb, fe = self.features[n].beg, self.features[n].end
+			if fe < beg:
+				n += 1
+				continue
+			elif fb > end:
+				break
+			else:
+	#			print('adding', self.features[n])
+				found.append(self.features[n])
+				n += 1
+		
+		return found
+		
 
