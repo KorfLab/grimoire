@@ -110,8 +110,8 @@ annotation in some standard-ish format. WormBase is the primary source
 for C. elegans files. But you can also pick them up from Ensemble, for
 example. Even at WormBase you can find more than one format for the
 annotation. The GFF3 file contains _everything_, which may be more than
-you want. The GTF file contains just the protein-coding genes. You might
-wonder how different they are. For such a task, we can use `latumapic`.
+you want while the GTF file contains just the genes. You might wonder
+how different they are. For such a task, we can use `latumapic`.
 
 	latumapic --fasta ce270.fa.gz --file1 ce270.gff3.gz --file2 ce270.gtf.gz --feature gene
 
@@ -122,20 +122,25 @@ The output of this command is the following:
 This indicates that among the 177189 nucleotides in the genome, 112942
 are labeled the same, while 64247 are labeled differently. Why would
 there be differences in the genes when both versions of the genome are
-270? Let's take a closer look at the components of genes.
+WS270? Let's take a closer look at the components of genes.
 
 	latumapic --fasta ce270.fa.gz --file1 ce270.gff3.gz --file2 ce270.gtf.gz --feature exon
+
+There output now shows the differences in the exons.
+
 	156527 20662 177189
 
-There aren't as many differences in the exons. If we look at the coding
-sequences, we will find that they are actually identical.
+Let's check the coding sequences (CDS)
 
 	latumapic --fasta ce270.fa.gz --file1 ce270.gff3.gz --file2 ce270.gtf.gz --feature CDS
+
+They are identical. Phew.
+
 	177189 0 177189
 
-The GFF3 file contains annotations of RNA genes while the GTF does not.
-For the purposes of this tutorial, which focuses on protein-coding
-genes, both files are equivalent.
+As it turns out, I removed a bunch of stuff from the GFF3 file because
+it was so huge, and in doing so, I removed some of the non-coding
+transcripts present in the GTF. How can you see that? Read on.
 
 ## 3. Examining genome annotation with `calfo` ##
 
@@ -147,44 +152,84 @@ with `calfo`. we'll create reports for both gff3 and gtf.
 
 Open the html pages in your favorite browser. You'll notice that the
 GFF3 and GTF files have different feature types. For example, GTF
-includes start and stop codons. Also, the GFF3 'mRNA' is equivalent to
-the GTF 'transcript'. When non-GFF3 files are read into `grimoire`, the
-features are converted to GFF3 as much as possible.
+includes start and stop codons. Also, the GFF3 has 'mRNA' features while
+the GTF has 'transcript' features. When annotation files are read into
+`grimoire`, the features are converted to GFF3 as much as possible, so
+both 'mRNA' and 'transcript' become 'mRNA' internally.
 
 ## 4. Visualizing annotation files with `kandi` ##
 
 One of the bioinformatician's most useful debugging tools is their
 powers of observation. However, it is often difficult to observe genome
 annotations when they are represented as thousands of lines of text.
-That's why there are genome browsers. You can load up these gff3/gtf
-files into a number of different browsers, such as Jbrowse, Gbrowse,
-IGV, Apollo, etc. Genome browsers offer the best way to examine
-annotation at arbitrary resolution, but they may require some extra
-formatting or external websites. For this tutorial, we're going to use
-the grimoire genome browser `kandi`. This is a terminal-based genome
-viewer that is useful in a debugging or tutorial setting but is not
-intended for use on whole genomes.
+That's why there are genome browsers like Jbrowse, Gbrowse, IGV, IGB,
+Apollo, etc. Genome browsers are usually the best way to examine
+annotation at arbitrary resolution. But setting them up can be a bit of
+a pain because the files have to be indexed properly or uploaded to a
+website. So we're going to use the really simple genome browser `kandi`,
+which you can find in `grimoire/bin`. This `vi`-like browser is
+terminal-based and driven with the keyboard, not mouse. `kandi` can be
+useful in a debugging or tutorial setting but is not intended for use on
+whole genomes. Let's open up the annotation files and compare them in
+`kandi`.
 
 	kandi ce270.fa.gz ce270.gff3.gz ce270.gtf.gz
 
+The program starts out in 'gene' view. On the left-hand quarter of the
+display, you should see a purple glyph that is present in the GTF file
+that isn't in the GFF file. If you hit 't' to go to 'transcript' view,
+you can see that the feature is glpyh is colored yellow. Coding segments
+are green and this isn't coding. If you move the cursor over that yellow
+glyph and hit 'return', you can zoom in on it. If you zoom in more, you
+will eventually see its DNA.
+
 ## 5. Creating training and testing sets with `haman` ##
+
+When building a gene-finder or other sequence decoder, we need some kind
+of training set. One convenient source is a closely related genome that
+has already been annotated, In our case, we're going to use the previous
+WS270 annotations. If we want to know how well our decoder performs,
+we also need a test set. We're going to do the very simple thing of
+splitting our data into halves: one half for the training, one set for
+the testing.
+
+	haman --fasta ce270.fa.gz --gff ce270.gff3.gz --segment gene --split 2 --out set
+
+The previous command splits our data set into 4 files. Those marked
+set-0 will be used for training while set-1 is for testing. To make this
+abundantly clear, let's alias them.
+
+	ln -s set-0.fa train.fa
+	ln -s set-0.gff3 train.gff3
+	ln -s set-1.fa test.fa
+	ln -s set-1.gff3 test.gff3
+
+Take a quick look at the training set with `kandi`. You'll find that
+each gene now has its own piece of DNA with no other genes on it. But
+there may be more than one transcript per gene. The third one down has
+two transcripts, for example. Also, by default, there are 100 bp
+flanking each gene. You may want more or less than that, which you can
+do with the `--padding` parameter in `haman`.
 
 ## 6. Building an HMM with `milwa` ##
 
-For debugging purposes, you should run `dumapic`.
+For debugging purposes, you should run `dumapic` to see your HMM.
+
 For fun, you can generate sequences with `morlis`.
 
 ## 7. Decoding sequences with `halito` ##
 
 ## 8. Comparing predictions with `latumapic` ##
 
+Use `kandi` too if you want to look at some differences.
 
 ## 9. Tuning models to improve accuracy ##
 
 + Lexicalized emissions
 + Optimal lengths of features
++ Cross validation
 
-## 9. Other genomes ##
+## 10. Other genomes ##
 
 + `at10.fa.gz` from TAIR10
 + `at10.gff.gz` from TAIR10

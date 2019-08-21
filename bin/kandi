@@ -100,8 +100,8 @@ def help_screen(stdscr):
 		
 def select_screen(stdscr):
 	curses.curs_set(2)
-	top = 4
-	bot = top + len(D) -1
+	top = 2
+	bot = top + B['h'] -5
 	B['x'] = 3
 	B['y'] = top
 	stdscr.move(B['y'], B['x'])
@@ -112,14 +112,13 @@ def select_screen(stdscr):
 		H, W = stdscr.getmaxyx()
 		
 		# content
-		stdscr.addstr(2, 1, 'KANDI chromosome selector.')	
-		for i in range(len(D)):
-			stdscr.addstr(4 + i, 4, D[i].name)
+		for i in range(bot - top + 1):
+			stdscr.addstr(2 + i, 4, D[i].name)
 	
 		# location & menu
 		loc = '{}:{}-{}'.format(B['dna'].name, B['beg'], B['end'])
 		stdscr.addstr(0, 0, loc, curses.color_pair(1))
-		stdscr.addstr(H-1, 0, '(v)iewer (?)help (q)uit', curses.color_pair(1))
+		stdscr.addstr(H-1, 0, '(v)iewer (return) to choose (?)help (q)uit', curses.color_pair(1))
 
 		# action
 		if   k == ord('?'): help_screen(stdscr)

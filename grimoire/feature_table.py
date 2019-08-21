@@ -17,7 +17,7 @@ class FeatureTable:
 		"""
 		Parameters
 		----------
-		+ dna=      `list` of `DNA` objects
+		+ dna=      `DNA` object
 		+ features= `list` of `Feature` objects (optional)
 		"""
 		self.dna = dna

@@ -7,17 +7,26 @@ import copy
 
 import grimoire.toolbox as toolbox
 import grimoire.hmm as hmm
-import grimoire.decode as decode
 from grimoire.sequence import DNA
-from grimoire.genome import Genome, Feature
+from grimoire.feature import Feature
+from grimoire.feature_table import FeatureTable
+from grimoire.genome import Reader
 
 ## Command line stuff ##
 
-parser = argparse.ArgumentParser(description='HMM trainer for genes and parts')
+extended_help = """
+%(prog)s is used for training HMMs that model genes and their components
+such as exons or introns. The HMMs are structured as JSON files.
+"""
+
+parser = argparse.ArgumentParser(
+	description='HMM trainer for genes and their components.',
+	formatter_class=argparse.RawDescriptionHelpFormatter,
+	epilog=extended_help)
 parser.add_argument('--fasta', required=True, type=str,
 	metavar='<path>', help='path to fasta file')
-parser.add_argument('--gff3', required=True, type=str,
-	metavar='<path>', help='path to GFF3 file')
+parser.add_argument('--gff', required=True, type=str,
+	metavar='<path>', help='path to GFF (or related) file')
 parser.add_argument('--model', required=True, type=str,
 	metavar='<model>', help='acc|don|exon|intron|mRNA1|mRNA2|gene')
 parser.add_argument('--hmm', required=False, type=str,
@@ -66,7 +75,7 @@ arg = parser.parse_args()
 ## Functions ##
 ###############
 
-class ForgeError(Exception):
+class MilwaError(Exception):
 	pass
 
 def make_source(name, comps):
@@ -93,19 +102,20 @@ model = None # used for outputting HMM and perforing replicant analysis
 ############################
 
 if arg.model == 'don':
-	gen = Genome(gff3=arg.gff3, fasta=arg.fasta)
+	genome = Reader(fasta=arg.fasta, gff=arg.gff)
 	exp_seqs = []
 	don_seqs = []
 	int_seqs = []
 	exon_len = 0
 	splices = 0
 	intron_len = 0
-	for chr in gen.chromosomes:
-		for gene in chr.features:
-			if not gene.mRNAs(): continue # some tx are miRNA etc
-			tx = gene.mRNAs()[0]
+	for chr in genome:
+		genes = chr.ftable.build_genes()	
+		for gene in genes:
 			if gene.issues: continue
-			if len(gene.mRNAs()) > 1: continue
+			if not gene.transcripts(): continue
+			if len(gene.transcripts()) > 1: continue
+			tx = gene.transcripts()[0]
 			if len(tx.exons) < 2: continue
 			
 			rcount = 0
@@ -129,7 +139,7 @@ if arg.model == 'don':
 						[{'label':'EXON', 'seq':exp_seq},
 						{'label':'DON', 'seq':don_seq},
 						{'label':'INT', 'seq':int_seq}]))
-	
+			
 	exp_emits = hmm.train_emission(exp_seqs, context=arg.exon_ctx)
 	don_emits = hmm.train_emissions(don_seqs, context=arg.don_ctx)
 	int_emits = hmm.train_emission(int_seqs, context=arg.int_ctx)
@@ -150,6 +160,7 @@ if arg.model == 'don':
 	
 	model = hmm.HMM(name=arg.hmm, null=null_state,
 		states=[exp_state] + don_states + [int_state])
+	
 
 elif arg.model == 'acc':
 	gen = Genome(gff3=arg.gff3, fasta=arg.fasta)
@@ -365,7 +376,7 @@ elif arg.model == 'intron':
 
 elif arg.model == 'gene':
 	if arg.source or arg.replicant:
-		raise ForgeError('source and replicant not available in gene')
+		raise MilwaError('source and replicant not available in gene')
 		
 	gen = Genome(gff3=arg.gff3, fasta=arg.fasta)
 
@@ -624,7 +635,7 @@ elif arg.model == 'mRNA2':
 		+ cds_states + [u3_state] + stp_states, null=null_state)
 
 else:
-	raise ForgeError('unknown model type: ' + arg.model)
+	raise MilwaError('unknown model type: ' + arg.model)
 
 ########################
 ## Post-build Actions ##
@@ -644,10 +655,10 @@ if arg.source:
 
 if arg.replicant:
 	model.convert2log() # note from here down, the model is log-space
-	perf = decode.Performance(model)
 	for source in sources:
-		v = decode.Viterbi(model=model, dna=source['dna'])
+		v = hmm.Viterbi(model=model, dna=source['dna'])
 		p = v.generate_path()
-		features = p.features()
-		perf.compare(source=source['features'], prediction=features)
-	perf.report()
+		truth = FeatureTable(dna=source['dna'], features=source['features'])
+		preds = FeatureTable(dna=source['dna'], features=p.features())
+		t = truth.compare(preds)
+		print(t)

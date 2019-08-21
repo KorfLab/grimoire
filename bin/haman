@@ -11,8 +11,8 @@ from grimoire.genome import Reader
 
 extended_help = """
 %(prog)s is used for converting chromosome-based genomic data into
-%smaller pieces. This is useful in a training environment when you want
-%to create cross-validation training and testing sets.
+smaller pieces. This is useful in a training environment when you want
+to create cross-validation training and testing sets.
 """
 
 parser = argparse.ArgumentParser(
@@ -21,10 +21,10 @@ parser = argparse.ArgumentParser(
 	epilog=extended_help)
 parser.add_argument('--fasta', required=True, type=str,
 	metavar='<path>', help='path to input fasta file')
-parser.add_argument('--gff3', required=True, type=str,
-	metavar='<path>', help='path to input GFF3 file')
+parser.add_argument('--gff', required=True, type=str,
+	metavar='<path>', help='path to input GFF3 (or similar) file')
 parser.add_argument('--out', required=True, type=str,
-	metavar='<str>', help='output name for fasta and gff')
+	metavar='<str>', help='output name for fasta and gff3')
 parser.add_argument('--segment', required=True, type=str,
 	metavar='<str>', help='feature type (e.g. gene)')
 parser.add_argument('--split', required=False, type=int, default=1,
@@ -57,11 +57,11 @@ def segment_by_genes():
 		for i in range(arg.split):
 			fp.append({
 				'gf':open(arg.out + '-' + str(i) + '.gff3', 'w+'),
-				'ff':open(arg.out + '-' + str(i) + '.fasta', 'w+'),
+				'ff':open(arg.out + '-' + str(i) + '.fa', 'w+'),
 			})
 
 	count = 0
-	genome = Reader(gff=arg.gff3, fasta=arg.fasta)
+	genome = Reader(gff=arg.gff, fasta=arg.fasta)
 	for chrom in genome:
 		for gene in chrom.ftable.build_genes():
 			if gene.issues: continue
