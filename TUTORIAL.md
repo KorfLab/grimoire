@@ -55,9 +55,6 @@ OK, if you're still around, let's start the tutorial.
 
 ## 1. Setup ##
 
-pip3 install matplotlib, graphviz
-Mac: brew install graphviz
-
 It is assumed that you either `pip3` installed the grimoire package
 (probably in a virtual environment) or you are working with a cloned git
 repo and have set your `PYTHONPATH` to include `grimoire` and your
@@ -76,12 +73,12 @@ available in your `PATH`.
 	brew install graphviz     # Mac via homebrew
 
 To make sure the `grimoire` pacakage and its dependencies are installed
-correctly, run the unit tests.
+correctly, run the unit tests in the grimoire root directory.
 
 	python3 setup.py test
 
-If any of the tests fail, it may be because one of the python library is
-missing or the graphviz executables are not in your `PATH`. Fix those
+If any of the tests fail, it may be because one of the python libraries
+is missing or the graphviz executables are not in your `PATH`. Fix those
 before proceeding. Don't continue the tutorial unless all the unit tests
 pass cleanly.
 
@@ -100,7 +97,7 @@ symlinks from the files above to your working directory (you don't need
 to have set `GRIMOIRE` as shown below, so if you didn't, use the path to
 wherever the `grimoire` root directory is).
 
-	ln -s $GRIMOIRE/ce*.gz .
+	ln -s $GRIMOIRE/data/ce*.gz .
 
 ## 2. Comparing genome annotations with `latumapic` ##
 
@@ -113,14 +110,28 @@ annotation. The GFF3 file contains _everything_, which may be more than
 you want while the GTF file contains just the genes. You might wonder
 how different they are. For such a task, we can use `latumapic`.
 
-	latumapic --fasta ce270.fa.gz --file1 ce270.gff3.gz --file2 ce270.gtf.gz --feature gene
+	latumapic --fasta ce270.fa.gz --file1 ce270.gff3.gz --file2 ce270.gtf.gz
+
+
+
+
+
+
+# The feature table comparisons are currently a disaster #
+
+
+
+
+
+
+
 
 The output of this command is the following:
 
-	112942 64247 177189
+	755197 247527 1002724
 
-This indicates that among the 177189 nucleotides in the genome, 112942
-are labeled the same, while 64247 are labeled differently. Why would
+This indicates that among the 1002724 nucleotides in the genome, 755197
+are labeled the same, while 247527 are labeled differently. Why would
 there be differences in the genes when both versions of the genome are
 WS270? Let's take a closer look at the components of genes.
 
@@ -128,7 +139,7 @@ WS270? Let's take a closer look at the components of genes.
 
 There output now shows the differences in the exons.
 
-	156527 20662 177189
+	47138 198229 245367
 
 Let's check the coding sequences (CDS)
 
@@ -136,7 +147,7 @@ Let's check the coding sequences (CDS)
 
 They are identical. Phew.
 
-	177189 0 177189
+	20256 162725 182981
 
 As it turns out, I removed a bunch of stuff from the GFF3 file because
 it was so huge, and in doing so, I removed some of the non-coding
@@ -205,19 +216,63 @@ abundantly clear, let's alias them.
 	ln -s set-1.gff3 test.gff3
 
 Take a quick look at the training set with `kandi`. You'll find that
-each gene now has its own piece of DNA with no other genes on it. But
-there may be more than one transcript per gene. The third one down has
-two transcripts, for example. Also, by default, there are 100 bp
-flanking each gene. You may want more or less than that, which you can
-do with the `--padding` parameter in `haman`.
+each gene now has its own piece of DNA with 100 bp upstream and
+downstream. You may want more or less than that, which you can do with
+the `--padding` parameter in `haman`. If you look at a few genes, you'll
+not that there may be more than one transcript per gene. The third gene
+in the list has two transcripts, for example. In the real, messy
+biological world, a gene may produce several transcripts, some of which
+may be quite rare. However, in the computer world, this complexity is
+usually distilled down to the simple rule that a gene creates exactly
+one transcript. This makes training, testing, and evaluation much
+simpler. In this tutorial, we will continue on with that tradition.
+However, this is an oversimplification of the underlying biology and
+while grimoire is capable of doing more complex things, those are
+outside the scope of this tutorial. 
 
 ## 6. Building an HMM with `milwa` ##
 
-For debugging purposes, you should run `dumapic` to see your HMM.
+There are several simple models that can be built with `milwa`. We're
+going to build a model of the splice donor site and some flanking
+sequence. In the following statement, '--model don' indicates we want to
+build the donor model, `--canonical` means we only want canonical
+sequences (e.g. donor sites starting with 'GT', `--first` means we only
+want the first transcript if there are more than one, and `--hmm
+donor.hmm` specifies the name of the output file.
 
-For fun, you can generate sequences with `morlis`.
+	milwa --fasta train.fa --gff train.gff3 --model don --canonical --first --hmm donor.hmm
+
+Examine the `donor.hmm` file with `less` or whatever and you'll see that
+it is formatted as a JSON document (if you opened it with Word, you
+might want to rethink your career). If you want to see what the state
+diagram looks like, use `dumapic`.
+
+	dumapic --hmm donor.hmm --svg donor.svg
+
+You can view the `donor.svg` file with a variety of web browsers and
+graphics programs. ImageMagick works well for converting to png or pdf.
+
+HMMs are generative models, so grimoire does include a program,
+`morlis`, to generate random sequences consistent with a model. Feel
+free to skip this next step as it's just included 'for fun'.
+
+	morlis --hmm donor.hmm --fasta fake.fa --gff fake.gff --count 10 --length 200
 
 ## 7. Decoding sequences with `halito` ##
+
+The HMM we built with `milwa` modeled splice donor sites, but we don't
+have a collection of splice donor sites to decode. We'll create one now
+with `milwa` but this time we will save the sequences and not the HMM.
+
+	milwa --fasta test.fa --gff test.gff3 --model don --canonical --first --source donors
+
+You will now have two new files: `donors.fa` and `donors.gff`. Inspect
+these with `less` to make sure they look as expected.
+
+Now it's finally to decode some sequences with the HMM we built. To do
+that, we use `halito`.
+
+	halito --fasta donors.fa --hmm donor.hmm > out.gff
 
 ## 8. Comparing predictions with `latumapic` ##
 
