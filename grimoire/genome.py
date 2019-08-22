@@ -104,7 +104,5 @@ class Reader:
 		for g in self._gff.get(chrom=dna.name):
 			dna.ftable.add_feature(gff_to_feature(dna, g))
 		
-
-
 		return dna
 

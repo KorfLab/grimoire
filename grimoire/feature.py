@@ -581,9 +581,7 @@ class FeatureTable:
 
 	def nt_compare(self, other):
 		"""Compares two feature tables at the nucleotide level."""
-		
-		raise FeatureError('this function is a mess becasue of alt. splicing')
-		
+				
 		mat = {}
 		length = len(self.dna.seq)
 		same, diff = 0, 0

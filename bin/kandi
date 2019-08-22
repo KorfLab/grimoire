@@ -383,7 +383,6 @@ def zoom(scale):
 		if B['end'] - B['beg'] + 1 != B['w']:
 			B['debug'].append('grr {} {} {}'.format(b3, e3, e3 - b3 + 1))
 
-
 def update_state(stdscr):
 	H, W = stdscr.getmaxyx()
 	B['w'] = W
@@ -400,7 +399,7 @@ def update_state(stdscr):
 	# focus text
 	foc = None
 	if B['z'] == 1:
-		foc = '{} : {}'.format(B['beg'] + B['x'] +1, text_at_cursor())
+		foc = '{} : {}'.format(B['beg'] + B['x'], text_at_cursor())
 	else:
 		x1 = int(B['beg'] + B['x'] * B['z'])
 		x2 = int(B['beg'] + (B['x']+1) * B['z'] -1)
