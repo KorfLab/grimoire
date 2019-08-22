@@ -17,12 +17,6 @@ The code is designed with the folllowing analyses in mind:
 + Genome annotation quality control
 + Structure-function relationships in sequences (e.g. IME)
 
-Style
------
-
-+ Generally, follow the python style guide
-+ Initial indents are with tabs not hard spaces
-+ Docstrings are designed to look nice with pdoc3
 
 Programs
 --------
