@@ -7,13 +7,13 @@ and compare annotations. All the programs you will need are in
 road map for this tutorial.
 
 1. Setting up
-2. Comparing genome annotations with `latumapic`
-3. Examining genome annotation with `calfo`
-4. Visualizing annotation files with `kandi`
-5. Creating training and testing sets with `haman`
-6. Building an HMM with `milwa`
-7. Decoding sequences with `halito`
-8. Comparing predictions with `latumapic`
+2. Summarizing genome annotation with `calfo`
+3. Visualizing annotation files with `kandi`
+4. Creating training and testing sets with `haman`
+5. Building an HMM with `milwa`
+6. Visualizing an HMM with `dumapic`
+6. Decoding sequences with `halito`
+7. Comparing predictions with `latumapic`
 9. Tuning models to improve accuracy
 
 ## Disclaimers ##
@@ -99,7 +99,7 @@ wherever the `grimoire` root directory is).
 
 	ln -s $GRIMOIRE/data/ce*.gz .
 
-## 2. Comparing genome annotations with `latumapic` ##
+## 2. Summarizing genome annotation with `calfo` ##
 
 One of the first problems any bioinformatician faces is how to deal with
 "other peoples' data". In this case, we're talking about genome
@@ -107,68 +107,28 @@ annotation in some standard-ish format. WormBase is the primary source
 for C. elegans files. But you can also pick them up from Ensemble, for
 example. Even at WormBase you can find more than one format for the
 annotation. The GFF3 file contains _everything_, which may be more than
-you want while the GTF file contains just the genes. You might wonder
-how different they are. For such a task, we can use `latumapic`.
+you want while the GTF file contains just the genes.
 
-	latumapic --fasta ce270.fa.gz --file1 ce270.gff3.gz --file2 ce270.gtf.gz
-
-
-
-
-
-
-# The feature table comparisons are currently a disaster #
-
-
-
-
-
-
-
-
-The output of this command is the following:
-
-	755197 247527 1002724
-
-This indicates that among the 1002724 nucleotides in the genome, 755197
-are labeled the same, while 247527 are labeled differently. Why would
-there be differences in the genes when both versions of the genome are
-WS270? Let's take a closer look at the components of genes.
-
-	latumapic --fasta ce270.fa.gz --file1 ce270.gff3.gz --file2 ce270.gtf.gz --feature exon
-
-There output now shows the differences in the exons.
-
-	47138 198229 245367
-
-Let's check the coding sequences (CDS)
-
-	latumapic --fasta ce270.fa.gz --file1 ce270.gff3.gz --file2 ce270.gtf.gz --feature CDS
-
-They are identical. Phew.
-
-	20256 162725 182981
-
-As it turns out, I removed a bunch of stuff from the GFF3 file because
-it was so huge, and in doing so, I removed some of the non-coding
-transcripts present in the GTF. How can you see that? Read on.
-
-## 3. Examining genome annotation with `calfo` ##
+Examine the annotation files with `zless` or whatever (but if that
+'whatever' is you uncompressing the file and then opening it with Word,
+you should consider a change in career). You'll notice that the GFF3 and
+GTF files have different names for the same feature (e.g. mRNA is the
+same as transcript) and also different ways of describing the same
+feature (e.g. CDS features contain stop codons in GFF3 but not GTF).
 
 Let's get an overview of the C. elegans genome annotation at release 270
-with `calfo`. we'll create reports for both gff3 and gtf.
+with `calfo`. We'll create reports for both gff3 and gtf.
 
-	calfo --fasta ce270.fa.gz --gff ce270.gff3.gz --title ce270 --html ce270gff3.html
-	calfo --fasta ce270.fa.gz --gff ce270.gff3.gz --title ce270 --html ce270gtf.html
+	calfo --fasta ce270.fa.gz --gff ce270.gff3.gz --title ce270gff --html ce270gff3.html
+	calfo --fasta ce270.fa.gz --gff ce270.gtf.gz --title ce270gtf --html ce270gtf.html
 
-Open the html pages in your favorite browser. You'll notice that the
-GFF3 and GTF files have different feature types. For example, GTF
-includes start and stop codons. Also, the GFF3 has 'mRNA' features while
-the GTF has 'transcript' features. When annotation files are read into
-`grimoire`, the features are converted to GFF3 as much as possible, so
-both 'mRNA' and 'transcript' become 'mRNA' internally.
+Open the html pages in your favorite browser. In Figure 2, you can see
+that the files specify different feature types. But the figures
+afterward all use the same terminology (i.e. mRNA instead of
+transcript). That's because grimoire considers GFF3 to be its native
+format and automatically converts GTF (and some other formats) to GFF3.
 
-## 4. Visualizing annotation files with `kandi` ##
+## 3. Visualizing annotation files with `kandi` ##
 
 One of the bioinformatician's most useful debugging tools is their
 powers of observation. However, it is often difficult to observe genome
@@ -187,21 +147,24 @@ whole genomes. Let's open up the annotation files and compare them in
 	kandi ce270.fa.gz ce270.gff3.gz ce270.gtf.gz
 
 The program starts out in 'gene' view. On the left-hand quarter of the
-display, you should see a purple glyph that is present in the GTF file
-that isn't in the GFF file. If you hit 't' to go to 'transcript' view,
-you can see that the feature is glpyh is colored yellow. Coding segments
-are green and this isn't coding. If you move the cursor over that yellow
-glyph and hit 'return', you can zoom in on it. If you zoom in more, you
-will eventually see its DNA.
+display at about 23000, you should see a purple glyph that is present in
+the GTF file that isn't in the GFF file. If you hit 't' to go to
+'transcript' view, you can see that the is glpyh is colored yellow.
+Coding segments are green and this isn't coding. If you move the cursor
+over that yellow glyph and hit 'return', you can zoom in on it. If you
+zoom in more (with the '+' key) you will eventually see the DNA.
 
-## 5. Creating training and testing sets with `haman` ##
+So the GFF3 and GTF files are pretty similar but not identical. For our
+purposes, it doesn't matter, so we'll use the GFF3 file from now on.
+
+## 4. Creating training and testing sets with `haman` ##
 
 When building a gene-finder or other sequence decoder, we need some kind
 of training set. One convenient source is a closely related genome that
 has already been annotated, In our case, we're going to use the previous
-WS270 annotations. If we want to know how well our decoder performs,
-we also need a test set. We're going to do the very simple thing of
-splitting our data into halves: one half for the training, one set for
+WS270 annotations. If we want to know how well our decoder performs, we
+also need a test set. We're going to do the very simple thing of
+splitting our data into halves: one half for the training, one half for
 the testing.
 
 	haman --fasta ce270.fa.gz --gff ce270.gff3.gz --segment gene --split 2 --out set
@@ -215,48 +178,62 @@ abundantly clear, let's alias them.
 	ln -s set-1.fa test.fa
 	ln -s set-1.gff3 test.gff3
 
-Take a quick look at the training set with `kandi`. You'll find that
-each gene now has its own piece of DNA with 100 bp upstream and
-downstream. You may want more or less than that, which you can do with
-the `--padding` parameter in `haman`. If you look at a few genes, you'll
-not that there may be more than one transcript per gene. The third gene
-in the list has two transcripts, for example. In the real, messy
-biological world, a gene may produce several transcripts, some of which
-may be quite rare. However, in the computer world, this complexity is
-usually distilled down to the simple rule that a gene creates exactly
-one transcript. This makes training, testing, and evaluation much
-simpler. In this tutorial, we will continue on with that tradition.
-However, this is an oversimplification of the underlying biology and
-while grimoire is capable of doing more complex things, those are
-outside the scope of this tutorial. 
+Take a quick look at the training set with `kandi`.
 
-## 6. Building an HMM with `milwa` ##
+	kandi set-0*
+
+You'll find that each gene now has its own piece of DNA with about 100
+bp upstream and downstream (negative strand genes have been flipped and
+have 101 bp rather than 100 - for internal debugging reasons). You may
+want more or less than that, which you can do with the `--padding`
+parameter in `haman`. If you look at a few genes, you'll not that there
+may be more than one transcript per gene. The third gene in the list has
+two transcripts, for example. In the real, messy biological world, a
+gene may produce several transcripts, some of which may be quite rare.
+However, in the computer world, this complexity is usually distilled
+down to the simple rule that a gene creates exactly one transcript. This
+makes training, testing, and evaluation much simpler. In this tutorial,
+we will continue on with that tradition. However, this is an
+oversimplification of the underlying biology and while grimoire is
+capable of doing more complex things, those are outside the scope of
+this tutorial. 
+
+## 5. Building an HMM with `milwa` ##
 
 There are several simple models that can be built with `milwa`. We're
 going to build a model of the splice donor site and some flanking
-sequence. In the following statement, '--model don' indicates we want to
-build the donor model, `--canonical` means we only want canonical
-sequences (e.g. donor sites starting with 'GT', `--first` means we only
-want the first transcript if there are more than one, and `--hmm
-donor.hmm` specifies the name of the output file.
+sequence.
 
 	milwa --fasta train.fa --gff train.gff3 --model don --canonical --first --hmm donor.hmm
 
+In the command line above, `--model don` indicates we want to build the
+donor model, `--canonical` means we only want canonical sequences (e.g.
+donor sites starting with 'GT', `--first` means we only want the first
+transcript if there are more than one, and `--hmm donor.hmm` specifies
+the name of the output file.
+
 Examine the `donor.hmm` file with `less` or whatever and you'll see that
-it is formatted as a JSON document (if you opened it with Word, you
-might want to rethink your career). If you want to see what the state
-diagram looks like, use `dumapic`.
+it is formatted as a JSON document.
+
+## 6. Visualizing an HMM with `dumapic` ##
+
+When you create your own HMMs, it's easy to mess up the state
+connections. So it's a good idea to visualize the state connection
+diagram with `dumapic`.
 
 	dumapic --hmm donor.hmm --svg donor.svg
 
 You can view the `donor.svg` file with a variety of web browsers and
 graphics programs. ImageMagick works well for converting to png or pdf.
 
-HMMs are generative models, so grimoire does include a program,
-`morlis`, to generate random sequences consistent with a model. Feel
-free to skip this next step as it's just included 'for fun'.
+HMMs are generative models, so in that spirit, grimoire includes a
+program, `morlis`, to generate random sequences consistent with a model.
+Feel free to skip this next step as it's just included 'for fun'.
 
 	morlis --hmm donor.hmm --fasta fake.fa --gff fake.gff --count 10 --length 200
+
+Note that the names of the features in the GFF file are not actually
+following the GFF3 specification.
 
 ## 7. Decoding sequences with `halito` ##
 
@@ -266,28 +243,44 @@ with `milwa` but this time we will save the sequences and not the HMM.
 
 	milwa --fasta test.fa --gff test.gff3 --model don --canonical --first --source donors
 
-You will now have two new files: `donors.fa` and `donors.gff`. Inspect
-these with `less` to make sure they look as expected.
+You will now have two new files in your working directory: `donors.fa`
+and `donors.gff`. Inspect these with `less` to make sure they look as
+expected.
 
 Now it's finally to decode some sequences with the HMM we built. To do
-that, we use `halito`.
+that, we use `halito`. You can run this multi-threaded, but the HMM is
+so simple and the sequences are so short that it isn't worth the
+overhead.
 
 	halito --fasta donors.fa --hmm donor.hmm > out.gff
 
 ## 8. Comparing predictions with `latumapic` ##
 
-Use `kandi` too if you want to look at some differences.
+To compare the predictions `out.gff` with the test set `donors.gff` we
+use `latumapic`.
+
+	latumapic --fasta donors.fa --file1 donors.gff --file2 out.gff
+
+This shows you how different the decoding is from the 'truth' or at
+least what we take to be the truth. This program is pretty volatile, so
+I'm not discussing the specifics of the output at this time.
 
 ## 9. Tuning models to improve accuracy ##
 
-+ Lexicalized emissions
-+ Optimal lengths of features
-+ Cross validation
+The HMM we built in this tutorial was somewhat terrible. The reason for
+that is that each state was specified with a naive emission model. HMMs
+become much more accurate when state emissions have context. A clear
+example of this is that CDS states need a context of at least 2 in order
+to prevent in-frame stop codons (i.e. the probability of emitting an 'A'
+from the 3rd state of a codon should be zero if the previous emissions
+were 'TA').
 
-## 10. Other genomes ##
+To improve the model, we might also want to make the donor site longer
+to capture more of the surrounding sequence context. How long the donor
+site should be depends on the specific genome.
 
-+ `at10.fa.gz` from TAIR10
-+ `at10.gff.gz` from TAIR10
-+ `at11.bed.gz` from Araport11
+The data set here was very small. There were only ~65 sequences in each
+of the training and testing sets. When using such small data sets,
+splitting them 50/50 isn't a great idea. It's better to use
+cross-validation or jack-knifing.
 
-+ `ce271.gtf.gz` from WS271 via Ensembl
