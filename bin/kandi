@@ -6,6 +6,7 @@ import os
 import curses
 import curses.textpad
 
+from grimoire.toolbox import translate_str
 from grimoire.sequence import DNA
 from grimoire.io import FASTA_stream, GFF_file
 from grimoire.genome import gff_to_feature
@@ -46,7 +47,8 @@ B = { # browser state
 	'mat':None,  # matrix of screen contents
 	'row':None,  # next plottable row
 	'update':False,  # update required
-	'debug':[],   # internal debugging stuff
+#	'debug':[],   # internal debugging stuff
+#	'bugio': open('_kandi_debug.txt', 'w+'),
 	'x':None,    # cursor x position
 	'y':None,    # cursor y position
 	'z':None,    # size of cursor (in letters)
@@ -143,13 +145,13 @@ def terminal_changed(stdscr):
 def find_clear_row():
 	for y in range(len(B['mat'])):
 		all_clear = True
-		for x in range(0, B['w']):
+		for x in range(B['w']):
 			if B['mat'][y][x]:
 				all_clear = False
 				break
 		if all_clear:
-			B['row'] = y
-			break
+			return y
+	return None
 
 def find_clear_slot(fx1, fx2):
 	mat = B['mat']
@@ -174,8 +176,13 @@ def text_at_cursor():
 			return '{}:{}-{}'.format(thing.type, thing.beg, thing.end)
 	else: return None
 
-def plot_header(stdscr, text, color):
+def plot_filename(stdscr, text, color):
 	mat = B['mat']
+	B['row'] = find_clear_row()
+	stdscr.addstr(B['row'] +1, 0, text, curses.color_pair(color))
+	B['mat'][B['row']][0] = True
+	B['row'] += 1
+	"""
 	for y in range(B['row'], len(mat)):
 		clear = True
 		for x in range(B['w']):
@@ -186,6 +193,7 @@ def plot_header(stdscr, text, color):
 			stdscr.addstr(y+1, 0, text, curses.color_pair(color))
 			for x in range(B['w']): mat[y][x] = text
 			return
+	"""
 
 def gcolor(f):
 	if f.type == 'gene' or f.type == 'mRNA' or f.type == 'intron':
@@ -261,6 +269,7 @@ def plot_feature(stdscr, f, y):
 	for x in range(fx1, fx2+1): B['mat'][y][x] = f
 
 def plot_ticks(stdscr):
+	B['row'] = find_clear_row()
 	ticks = 10
 	for i in range(ticks):
 		x = int(i * B['w'] / ticks)
@@ -268,11 +277,22 @@ def plot_ticks(stdscr):
 		s = '{} {}'.format('|', p)
 		stdscr.addstr(1 + B['row'], x, s, curses.color_pair(0))
 	B['mat'][B['row']][0] = True
+	B['row'] += 1
 
-def plot_sequence(stdscr):
+def plot_sequence1(stdscr):
+	B['row'] = find_clear_row()
 	seq = B['dna'].seq[B['beg'] -1:B['end']]
 	stdscr.addstr(1 + B['row'], 0, seq, curses.color_pair(0))
 	B['mat'][B['row']][0] = True
+	for i in range(3):
+		aa = translate_str(seq[i:])
+		trans = ' ' * i 
+		for j in range(len(aa)):
+			trans += ' ' + aa[j:j+1] + ' '
+		trans = trans[0:B['w']]
+		stdscr.addstr(2 + i + B['row'], 0, trans, curses.color_pair(0))
+		B['mat'][B['row'] +i + 1][0] = True
+	B['row'] += 4
 
 def plot_glyphs(stdscr):
 	H, W = stdscr.getmaxyx()
@@ -282,25 +302,20 @@ def plot_glyphs(stdscr):
 	
 	# reset the plotting matrix
 	B['mat'] = []
-	B['row'] = 0
-	max_rows = H -2 # 2 rows reserved for header and footer 
-	for y in range(max_rows):
+	for y in range(B['h'] - B['row'] -1):
 		B['mat'].append([])
 		for x in range(W):
 			B['mat'][y].append([])
 			B['mat'][y][x] = None
 
-	find_clear_row()
+	# plot coordinates and high-res text if necessary
 	plot_ticks(stdscr)
 	if B['z'] == 1:
-		find_clear_row()
-		plot_sequence(stdscr)
+		plot_sequence1(stdscr)
 
 	# main plotting loop
 	for i in range(len(F)):
-		find_clear_row()
-		plot_header(stdscr, F[i], 4)
-		B['row'] += 1
+		plot_filename(stdscr, F[i], 4)
 		if B['mode'] == 'gene':
 			for genes in G[i][B['idx']]:
 				for gene in genes:
@@ -379,24 +394,20 @@ def zoom(scale):
 		B['end'] = e3
 		B['z'] = 1
 		B['x'] = int(B['w'] / 2)
-	
-		if B['end'] - B['beg'] + 1 != B['w']:
-			B['debug'].append('grr {} {} {}'.format(b3, e3, e3 - b3 + 1))
 
-def update_state(stdscr):
+def plot_header(stdscr):
 	H, W = stdscr.getmaxyx()
 	B['w'] = W
 	B['h'] = H
 	L = B['end'] - B['beg'] + 1
 	B['z'] = L / W
 	
-	# location text
-	stdscr.addstr(0, 0, ' ' * int(B['w']), curses.color_pair(0))
+	# location and focus
+	B['row'] = 0 # by definition
+	stdscr.addstr(B['row'], 0, ' ' * int(B['w']), curses.color_pair(0))
 	loc = '{}:{}-{} ({} bp)'.format(B['dna'].name, B['beg'], B['end'],
 		B['end'] - B['beg'] + 1)
 	stdscr.addstr(0, 0, loc, curses.color_pair(1))
-	
-	# focus text
 	foc = None
 	if B['z'] == 1:
 		foc = '{} : {}'.format(B['beg'] + B['x'], text_at_cursor())
@@ -406,12 +417,13 @@ def update_state(stdscr):
 		foc = '{}-{} ({:.1f} bp) : {}'.format(
 			x1, x2, B['z'], text_at_cursor())	
 	stdscr.addstr(0, int(B['w']/2), foc, curses.color_pair(1))
+	B['row'] += 1
 	
 	# debug text
-	row = 1
-	for text in B['debug']:
-		stdscr.addstr(B['h'] - row -1, 0, text)
-		row += 1
+	#row = 1
+	#for text in B['debug']:
+	#	stdscr.addstr(B['h'] - row -1, 0, text)
+	#	row += 1
 	
 def view_screen(stdscr):
 
@@ -425,7 +437,7 @@ def view_screen(stdscr):
 	B['h'] = H
 	stdscr.clear()
 	curses.curs_set(2)
-	update_state(stdscr)
+	plot_header(stdscr)
 	plot_glyphs(stdscr)
 	
 	k = None	
@@ -472,13 +484,13 @@ def view_screen(stdscr):
 		# determine if we need to reconfigure viewing pane
 		if terminal_changed(stdscr):
 			stdscr.clear()
-			update_state(stdscr)
+			plot_header(stdscr)
 			plot_glyphs(stdscr)
 				
 		# menu
 		menu = '(s)elect DNA (g)ene (t)transcript (f)eature (?)help (q)uit'
 		stdscr.addstr(B['h']-1, 0, menu, curses.color_pair(1))
-		update_state(stdscr)
+		plot_header(stdscr)
 		stdscr.move(B['y'], B['x'])
 		k = stdscr.getch()
 
