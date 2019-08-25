@@ -46,14 +46,18 @@ B = { # browser state
 	'mode':None, # gene|mRNA|feature
 	'mat':None,  # matrix of screen contents
 	'row':None,  # next plottable row
-	'update':False,  # update required
-#	'debug':[],   # internal debugging stuff
-	'bugio': open('_kandi_debug.txt', 'w+'),
+	'update':False,  # update view required
 	'x':None,    # cursor x position
 	'y':None,    # cursor y position
 	'z':None,    # size of cursor (in letters)
 	'h':None,    # last height of terminal
 	'w':None,    # last width of terminal
+	'pb':None, # previous begin
+	'pe':None, # previous end
+	'px':None,
+	'py':None,
+	#'debug':[],   # internal debugging stuff
+	#'bug': open('_kandi_debug.txt', 'w+'),
 }
 
 KANDI_HELP = """
@@ -68,12 +72,9 @@ KANDI_HELP = """
  + Use the return key to select a sequence for browsing
 
  Browser
- + Use the arrow keys to move the cusor around and space to re-center
- + Alternatively, use vi movement keys (h, j, k, l, ^, $)
- + When the cursor is on a feature, there will be descriptive text at the top
- + Use the +/- keys to zoom
- + Add the shift key to make bigger steps (both movement and zoom)
- + Use 'return' key to zoom in on feature or on cursor
+ + Use the arrow keys to move the cusor around (vi movement keys also supported)
+ + Hit 'return' to zoom in on a feature or 'space' to center on the cursor
+ + Use the +/- keys to zoom, (add shift to make bigger steps, with movement too)
 """
 
 def help_screen(stdscr):
@@ -165,6 +166,7 @@ def find_clear_row():
 
 def find_clear_slot(fx1, fx2):
 	mat = B['mat']
+	if B['row'] == None: return
 	for y in range(B['row'], len(mat)):
 		clear = True
 		for x in range(fx1, fx2+1):
@@ -189,21 +191,10 @@ def text_at_cursor():
 def plot_filename(stdscr, text, color):
 	mat = B['mat']
 	B['row'] = find_clear_row()
+	if B['row'] == None: return
 	stdscr.addstr(B['row'] +1, 0, text, curses.color_pair(color))
 	B['mat'][B['row']][0] = True
 	B['row'] += 1
-	"""
-	for y in range(B['row'], len(mat)):
-		clear = True
-		for x in range(B['w']):
-			if mat[y][x]:
-				clear = False
-				break
-		if clear:
-			stdscr.addstr(y+1, 0, text, curses.color_pair(color))
-			for x in range(B['w']): mat[y][x] = text
-			return
-	"""
 
 def gcolor(f):
 	if f.type == 'gene' or f.type == 'mRNA' or f.type == 'intron':
@@ -306,7 +297,6 @@ def plot_sequence1(stdscr):
 
 def plot_glyphs(stdscr):
 	H, W = stdscr.getmaxyx()
-	curses.flash()
 	stdscr.clear()
 	region = Feature(B['dna'], B['beg'], B['end'], '.', 'region')
 	
@@ -342,6 +332,31 @@ def plot_glyphs(stdscr):
 
 	B['update'] = False
 
+def atcursor():
+	x1 = int(B['beg'] + B['x'] * B['z'])
+	x2 = int(B['beg'] + (B['x']+1) * B['z'] -1)
+	m = int((x1 + x2)/2)
+	return x1, x2, m
+
+def toggle_hires():
+	if B['pb'] == None:
+		B['pb'] = B['beg']
+		B['pe'] = B['end']
+		B['px'] = B['x']
+		B['py'] = B['y']
+		b, e, m = atcursor()
+		B['beg'] = int(m - B['w']/2)
+		B['end'] = B['beg'] + B['w'] -1
+		B['x'] = int(B['w']/2)
+		B['update'] = True
+	else:
+		B['beg'] = B['pb']
+		B['end'] = B['pe']
+		B['x'] = B['px']
+		B['y'] = B['py']
+		B['pb'] = None
+		B['update'] = True
+
 def zoom_on_focus():
 	if B['mat']:
 		f = B['mat'][B['y']-1][B['x']]
@@ -360,6 +375,19 @@ def zoom_on_focus():
 	B['z'] = B['end'] - B['beg'] +1
 	B['x'] = int(B['w'] / 2)
 	zoom(1)
+
+def zoomN(n):
+	n -= 48
+	b, e, m = atcursor()
+	B['z'] = 10 ** n
+	b = int(m - B['z'] * B['w'] / 2)
+	e = int(m + B['z'] * B['w'] / 2) -1
+	if b < 1:
+		b = 1
+	if e > len(B['dna'].seq):
+		e = len(B['dna'].seq)	
+	B['beg'], B['end'] = b, e
+	B['update'] = True
 
 def zoom(scale):
 	B['update'] = True # will force replotting of genes
@@ -422,18 +450,11 @@ def plot_header(stdscr):
 	if B['z'] == 1:
 		foc = '{} : {}'.format(B['beg'] + B['x'], text_at_cursor())
 	else:
-		x1 = int(B['beg'] + B['x'] * B['z'])
-		x2 = int(B['beg'] + (B['x']+1) * B['z'] -1)
+		b, e, m = atcursor()
 		foc = '{}-{} ({:.1f} bp) : {}'.format(
-			x1, x2, B['z'], text_at_cursor())	
+			b, e, B['z'], text_at_cursor())	
 	stdscr.addstr(0, int(B['w']/2), foc, curses.color_pair(1))
 	B['row'] += 1
-	
-	# debug text
-	#row = 1
-	#for text in B['debug']:
-	#	stdscr.addstr(B['h'] - row -1, 0, text)
-	#	row += 1
 	
 def view_screen(stdscr):
 
@@ -450,22 +471,27 @@ def view_screen(stdscr):
 	plot_header(stdscr)
 	plot_glyphs(stdscr)
 	
-	k = None	
+	k = 0	
 	while True:
-		if   k == 10:zoom_on_focus()                 # zooms on focus
-		elif k == 258 or  k== ord('j'): B['y'] += 1  # arrow down
-		elif k == 259 or k == ord('k'): B['y'] -= 1  # arrow up
-		elif k == 261 or k == ord('l'): B['x'] += 1  # arrow right
-		elif k == 402 or k == ord('L'): B['x'] += 20 # shift-arrow right
-		elif k == 260 or k == ord('h'): B['x'] -= 1  # arrow left
-		elif k == 393 or k == ord('H'): B['x'] -= 20 # shift-arrow left
-		elif k == ord('^'): B['x'] = 0               # left end of display
-		elif k == ord('$'): B['x'] = B['w'] -1       # right end of display
-		elif k == 32: zoom(1)                        # recenter display
-		elif k == ord('-'): zoom(2)                  # zoom out
-		elif k == ord('_'): zoom(8)                  # zoom out a lot
-		elif k == ord('='): zoom(1/2)                # zoom in
-		elif k == ord('+'): zoom(1/8)                # zoom in a lot
+		# zooms
+		if   k == 10: zoom_on_focus()      # zooms on feature
+		elif k >= 48 and k <= 57: zoomN(k) # zoom to magnitude
+		elif k == ord('-'): zoom(2)        # zoom out
+		elif k == ord('_'): zoom(8)        # zoom out a lot
+		elif k == ord('='): zoom(1/2)      # zoom in
+		elif k == ord('+'): zoom(1/8)      # zoom in a lot
+		elif k == ord('d'): toggle_hires() # zoom to dna view and back
+		# cursor
+		elif k == 258 or k == ord('j'): B['y'] += 1             # down
+		elif k == 259 or k == ord('k'): B['y'] -= 1             # up
+		elif k == 261 or k == ord('l'): B['x'] += 1             # right
+		elif k == 402 or k == ord('L'): B['x'] += int(B['w']/5) # big right
+		elif k == 260 or k == ord('h'): B['x'] -= 1             # left
+		elif k == 393 or k == ord('H'): B['x'] -= int(B['w']/5) # big left
+		elif k == ord('^'): B['x'] = 0                          # start
+		elif k == ord('$'): B['x'] = B['w'] -1                  # end
+		elif k == 32: zoom(1)                                   # center
+		# menu
 		elif k == ord('?'): help_screen(stdscr)
 		elif k == ord('s'): select_screen(stdscr)
 		elif k == ord('q'): sys.exit(0)
@@ -498,7 +524,7 @@ def view_screen(stdscr):
 			plot_glyphs(stdscr)
 				
 		# menu
-		menu = '(s)elect DNA (g)ene (t)transcript (f)eature (?)help (q)uit'
+		menu = '(s)elect DNA (?)help (q)uit'
 		stdscr.addstr(B['h']-1, 0, menu, curses.color_pair(1))
 		plot_header(stdscr)
 		stdscr.move(B['y'], B['x'])
