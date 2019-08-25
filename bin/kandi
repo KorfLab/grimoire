@@ -61,21 +61,21 @@ B = { # browser state
 }
 
 KANDI_HELP = """
- KANDI help screen
-
- General
- + The top line always displays current location and informative text
- + The bottom line always displays menu choices
-
- Selector
- + Use the up/down arrow keys to choose a sequence
- + Use the return key to select a sequence for browsing
-
- Browser
- + Use the arrow keys to move the cusor around (vi movement keys also supported)
- + Hit 'return' to zoom in on a feature or 'space' to center on the cursor
- + Use the +/- keys to zoom, (add shift to make bigger steps, with movement too)
-"""
+ Top line shows location and information. Bottom line shows menu options.
+ 
+ Cursor Movement
+ * arrow keys or vi keys (h, j, k, l, ^, $)
+ * using the 'shift' key makes larger movements
+ 
+ Display
+ * 'space' centers the display on the cursor
+ * '+' and '-' keys zoom in and out (shift for larger zooms)
+ * 'return' zooms in on a feature
+ * '0-9' set the cursor size to 10**n bp
+ * 'd' key toggles zoom to DNA level and back
+ * 'g', 't', 'f' switch between gene, transcript, and feature views
+ * 'r' reverse-complements the sequence
+ """
 
 def help_screen(stdscr):
 	curses.curs_set(0)
@@ -85,7 +85,7 @@ def help_screen(stdscr):
 		H, W = stdscr.getmaxyx()
 		
 		# content
-		stdscr.addstr(2, 1, KANDI_HELP)
+		stdscr.addstr(1, 1, KANDI_HELP)
 	
 		# location & menu
 		loc = '{}:{}-{}'.format(B['dna'].name, B['beg'], B['end'])
@@ -122,22 +122,23 @@ def select_screen(stdscr):
 	stdscr.addstr(0, 0, loc, curses.color_pair(1))
 	stdscr.addstr(H-1, 0, '(v)iewer (return) to choose (?)help (q)uit',
 		curses.color_pair(1))
-		
+	
 	while True:
 		# action
 		if   k == ord('?'): help_screen(stdscr)
 		elif k == ord('v'): view_screen(stdscr)
 		elif k == ord('q'): sys.exit(0)
-		elif k == 258: B['y'] += 1 # down
-		elif k == 259: B['y'] -= 1 # up
-		elif k == 261: B['x'] += 20 # right
-		elif k == 260: B['x'] -= 20 # left
+		elif k == 258 or k == ord('j'): B['y'] += 1  # down
+		elif k == 259 or k == ord('k'): B['y'] -= 1  # up
+		elif k == 261 or k == ord('l'): B['x'] += 20 # right
+		elif k == 260 or k == ord('h'): B['x'] -= 20 # left
 		elif k == 10:
 			row = B['y'] -3
 			col = B['x'] -3
 			idx = int(col/20) * split + row
-			init_chrom(idx)
-			view_screen(stdscr)
+			if idx < len(D):
+				init_chrom(idx)
+				view_screen(stdscr)
 		
 		# limits
 		if B['y'] < 3: B['y'] = 3
@@ -491,10 +492,7 @@ def view_screen(stdscr):
 		elif k == ord('^'): B['x'] = 0                          # start
 		elif k == ord('$'): B['x'] = B['w'] -1                  # end
 		elif k == 32: zoom(1)                                   # center
-		# menu
-		elif k == ord('?'): help_screen(stdscr)
-		elif k == ord('s'): select_screen(stdscr)
-		elif k == ord('q'): sys.exit(0)
+		# transforms
 		elif k == ord('g'):
 			B['mode'] = 'gene'
 			B['update'] = True
@@ -504,7 +502,14 @@ def view_screen(stdscr):
 		elif k == ord('f'):
 			B['mode'] = 'feature'
 			B['update'] = True
-		
+		elif k == ord('r'):
+			raise KandiError('reverse-complement not implemented yet')
+			B['update'] = True
+		# menu
+		elif k == ord('?'): help_screen(stdscr)
+		elif k == ord('s'): select_screen(stdscr)
+		elif k == ord('q'): sys.exit(0)
+
 		# re-center when cursor exceeds window
 		if B['x'] < 0:
 			B['x'] = 0
