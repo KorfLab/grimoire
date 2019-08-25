@@ -48,7 +48,7 @@ B = { # browser state
 	'row':None,  # next plottable row
 	'update':False,  # update required
 #	'debug':[],   # internal debugging stuff
-#	'bugio': open('_kandi_debug.txt', 'w+'),
+	'bugio': open('_kandi_debug.txt', 'w+'),
 	'x':None,    # cursor x position
 	'y':None,    # cursor y position
 	'z':None,    # size of cursor (in letters)
@@ -98,41 +98,51 @@ def help_screen(stdscr):
 		elif k == ord('v'): view_screen(stdscr)
 		elif k == ord('q'): sys.exit(0)
 		else: curses.flash()
-		
+
 def select_screen(stdscr):
+	H, W = stdscr.getmaxyx()
 	curses.curs_set(2)
-	top = 2
-	bot = top + B['h'] -5
-	B['x'] = 3
-	B['y'] = top
+	stdscr.clear()
+	B['y'], B['x'] = 3, 3
 	stdscr.move(B['y'], B['x'])
 	k = None
 
-	while True:
-		stdscr.clear()
-		H, W = stdscr.getmaxyx()
-		
-		# content
-		for i in range(bot - top + 1):
-			stdscr.addstr(2 + i, 4, D[i].name)
+	# content
+	split = B['h'] - 6
+	for i in range (len(D)):
+		col = int(i / split)
+		row = i - (col * split)
+		tab = 4 + col * 20
+		if tab > W: break
+		stdscr.addstr(3 + row, tab, D[i].name[0:15])
 	
-		# location & menu
-		loc = '{}:{}-{}'.format(B['dna'].name, B['beg'], B['end'])
-		stdscr.addstr(0, 0, loc, curses.color_pair(1))
-		stdscr.addstr(H-1, 0, '(v)iewer (return) to choose (?)help (q)uit', curses.color_pair(1))
-
+	# location & menu
+	loc = '{}:{}-{}'.format(B['dna'].name, B['beg'], B['end'])
+	stdscr.addstr(0, 0, loc, curses.color_pair(1))
+	stdscr.addstr(H-1, 0, '(v)iewer (return) to choose (?)help (q)uit',
+		curses.color_pair(1))
+		
+	while True:
 		# action
 		if   k == ord('?'): help_screen(stdscr)
 		elif k == ord('v'): view_screen(stdscr)
 		elif k == ord('q'): sys.exit(0)
-		elif k == 258: B['y'] = B['y'] + 1
-		elif k == 259: B['y'] = B['y'] - 1
+		elif k == 258: B['y'] += 1 # down
+		elif k == 259: B['y'] -= 1 # up
+		elif k == 261: B['x'] += 20 # right
+		elif k == 260: B['x'] -= 20 # left
 		elif k == 10:
-			init_chrom(B['y'] - top)
+			row = B['y'] -3
+			col = B['x'] -3
+			idx = int(col/20) * split + row
+			init_chrom(idx)
 			view_screen(stdscr)
 		
-		if B['y'] < top: B['y'] = top
-		if B['y'] > bot: B['y'] = bot
+		# limits
+		if B['y'] < 3: B['y'] = 3
+		if B['y'] > H -4: B['y'] = H -4
+		if B['x'] < 3: B['x'] = 3
+		if B['x'] >= W: B['x'] = 3
 		stdscr.move(B['y'], B['x'])
 		k = stdscr.getch()
 
