@@ -35,7 +35,7 @@ arg = parser.parse_args()
 
 class KandiError(Exception): pass
 
-D = []  # dnas: indexed in order of FASTA file
+D = []  # dnas: indexed in order of FASTA file, GFFs attached as ftable
 G = []  # genes: indexed by fasta# then gene#
 F = []  # files: annotation file name
 B = { # browser state
@@ -64,15 +64,15 @@ KANDI_HELP = """
  Top line shows location and information. Bottom line shows menu options.
  
  Cursor Movement
- * arrow keys or vi keys (h, j, k, l, ^, $)
+ * arrow keys or vi keys (h, j, k, l, ^, $, m)
  * using the 'shift' key makes larger movements
  
  Display
- * 'space' centers the display on the cursor
+ * 'space' centers the view on the cursor without zooming
  * '+' and '-' keys zoom in and out (shift for larger zooms)
  * 'return' zooms in on a feature
- * '0-9' set the cursor size to 10**n bp
  * 'd' key toggles zoom to DNA level and back
+ * '0-9' set the cursor size to 10**n bp
  * 'g', 't', 'f' switch between gene, transcript, and feature views
  * 'r' reverse-complements the sequence
  """
@@ -341,6 +341,7 @@ def atcursor():
 
 def toggle_hires():
 	if B['pb'] == None:
+		if B['z'] == 1: return
 		B['pb'] = B['beg']
 		B['pe'] = B['end']
 		B['px'] = B['x']
@@ -486,11 +487,14 @@ def view_screen(stdscr):
 		elif k == 258 or k == ord('j'): B['y'] += 1             # down
 		elif k == 259 or k == ord('k'): B['y'] -= 1             # up
 		elif k == 261 or k == ord('l'): B['x'] += 1             # right
-		elif k == 402 or k == ord('L'): B['x'] += int(B['w']/5) # big right
 		elif k == 260 or k == ord('h'): B['x'] -= 1             # left
-		elif k == 393 or k == ord('H'): B['x'] -= int(B['w']/5) # big left
+		elif k == ord('J'): B['y'] += int(B['h']/4)             # big down
+		elif k == ord('K'): B['y'] -= int(B['h']/4)             # big up
+		elif k == 402 or k == ord('L'): B['x'] += int(B['w']/4) # big right
+		elif k == 393 or k == ord('H'): B['x'] -= int(B['w']/4) # big left
 		elif k == ord('^'): B['x'] = 0                          # start
 		elif k == ord('$'): B['x'] = B['w'] -1                  # end
+		elif k == ord('m'): B['x'] = int(B['w'] / 2)            # middle
 		elif k == 32: zoom(1)                                   # center
 		# transforms
 		elif k == ord('g'):
@@ -503,6 +507,7 @@ def view_screen(stdscr):
 			B['mode'] = 'feature'
 			B['update'] = True
 		elif k == ord('r'):
+			# B['dna'].revcomp()
 			raise KandiError('reverse-complement not implemented yet')
 			B['update'] = True
 		# menu
