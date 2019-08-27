@@ -49,18 +49,16 @@ class TestHMM(unittest.TestCase):
 	def test_HMM_emit(self):
 		self.assertEqual(self.hmm.null.emit['A'], 0.3197)
 	
-	def test_HMM_write(self):
-		self.hmm.write('data/donor.hmm')
-		self.assertEqual(os.path.getsize('data/donor.hmm'), 2646)
-		self.hmm.write('data/donor.hmm')
-		self.assertEqual(os.path.getsize('data/donor.hmm.gz'), 489)
-
-	def test_HMM_read(self):
-		model = hmm.HMM.read('data/donor.hmm')
+	def test_HMM_io(self):
+		self.hmm.write('/tmp/donor.hmm')
+		self.assertEqual(os.path.getsize('/tmp/donor.hmm'), 2646)
+		self.hmm.write('/tmp/donor.hmm.gz')
+		self.assertEqual(os.path.getsize('/tmp/donor.hmm.gz'), 367)
+		model = hmm.HMM.read('/tmp/donor.hmm')
 		self.assertEqual(len(model.states), 7)
 		self.assertEqual(model.name, 'test')
 		self.assertEqual(model.log, False)
-		model = hmm.HMM.read('data/donor.hmm.gz')
+		model = hmm.HMM.read('/tmp/donor.hmm.gz')
 		self.assertEqual(len(model.states), 7)
 		self.assertEqual(model.name, 'test')
 		self.assertEqual(model.log, False)

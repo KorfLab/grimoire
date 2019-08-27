@@ -383,7 +383,7 @@ class HMM:
 
 		if re.search(r'\.gz$', filename):
 			with gzip.open(filename, mode='w') as fp:
-				fp.write(json.dumps(self.__dict__, indent=4, cls=HMMdecoder))
+				fp.write(json.dumps(self.__dict__, indent=4, cls=HMMdecoder).encode())
 		else:
 			with open(filename, 'w+') as fp:
 				fp.write(json.dumps(self.__dict__, indent=4, cls=HMMdecoder))
