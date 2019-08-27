@@ -1,169 +1,72 @@
 #!/usr/bin/env python3
 
 import argparse
-import random
+import sys
+import json
 
-from grimoire.hmm import HMM, Parse, HMM_NT_decoder
-from grimoire.sequence import DNA
-from grimoire.feature import Feature
+import grimoire.genome as genome
+from grimoire.feature import FeatureTable
 
-## Command line ##
+## Command line stuff ##
 
 extended_help = """
-%(prog)s generates random sequences consistent with an HMM. While the
-HMM may specify terminal state probabilities, %(prog)s creates sequences
-of defined length, and therefore ignores implicit length distributions.
+%(prog)s is used for comparing sequence features between two sources. In
+a gene prediction setting this would be predictions vs. reference, but
+it could also be two genome annotation pipelines or two versions
+produced at different times. All of the features must reference the same
+exact chromosomes.
+
+The --format option allows you to choose how you want the report
+displayed. At level 0, this is simply a trio of numbers counting the
+diff, same, or total. At level 1, there will be feature-level comparisons
+when implemented.
 """
 
 parser = argparse.ArgumentParser(
-	description='Random sequence generator.',
+	description='Compares two sets of genome annotations.',
 	formatter_class=argparse.RawDescriptionHelpFormatter,
 	epilog=extended_help)
-parser.add_argument('--hmm', required=True, type=str,
-	metavar='<path>', help='path to HMM file')
 parser.add_argument('--fasta', required=True, type=str,
-	metavar='<path>', help='path to output FASTA file')
-parser.add_argument('--gff', required=True, type=str,
-	metavar='<path>', help='path to output GFF file')
-parser.add_argument('--count', required=True, type=int,
-	metavar='<int>', help='number of sequences to generate')
-parser.add_argument('--length', required=True, type=int,
-	metavar='<int>', help='length of sequences to generate')
-parser.add_argument('--seed', required=False, type=int,
-	metavar='<int>', help='random seed')
-parser.add_argument('--null_model', action='store_true',
-	help='emit sequence from the null model')
+	metavar='<path>', help='path to fasta file')
+parser.add_argument('--file1', required=True, type=str,
+	metavar='<path>', help='path to file1 in gff')
+parser.add_argument('--file2', required=True, type=str,
+	metavar='<path>', help='path to file2 in gff')
+parser.add_argument('--cds', required=False, type=str,
+	metavar='<path>', help='type of feature to compare')
 arg = parser.parse_args()
 
-class MorlisError(Exception):
+class LatumapicError(Exception):
 	pass
-	
-def convert_to_cdf(state):
-	if state.ctxt == 0:
-		sum = 0
-		for nt in ['A', 'C', 'G', 'T']:
-			sum += state.emit[nt]
-			state.emit[nt] = sum
-	else:
-		for ctx in state.emit:
-			sum = 0
-			for nt in ['A', 'C', 'G', 'T']:
-				sum += state.emit[ctx][nt]
-				state.emit[ctx][nt] = sum
 
-def null_generator(model, length):
-	if (model.null.ctxt > 0):
-		raise MorlisError('null model context > 0')
-	seq = ''
-	while (len(seq) < length):
-		r = random.random()
-		for nt in ['A', 'C', 'G', 'T']:
-			if r < model.null.emit[nt]:
-				seq += nt
-				break
-	return seq
-
-def state_generator(model, init, map, length):
-	padding = 10 # in case there is context
-	seq = null_generator(model, padding)
-	path = []
-		
-	while len(seq) < length + padding:
-		r = random.random()
-		state = map[init]
-		found = None
-		
-		if state.ctxt == 0:
-			r = random.random()
-			for nt in ['A', 'C', 'G', 'T']:
-				if r < state.emit[nt]:
-					found = nt
-					break
-		else:
-			ctx = seq[len(seq) - state.ctxt : len(seq)]
-			r = random.random()
-			for nt in ['A', 'C', 'G', 'T']:
-				if r < state.emit[ctx][nt]:
-					found = nt
-					break
-		
-		if found:
-			seq += found
-			path.append(state.name)
-			next = None
-			
-			# choose next state (inefficient)
-			r = random.random()
-			sum = 0
-			for name in state.next:
-				sum += state.next[name]
-				if r < sum:
-					next = name
-					break
-		else:
-			raise MorlisError('unforeseen')
-		
-		init = name
-	
-	return seq[padding:], path
+def gene_stuff(chrom):
+	genes = chrom.ftable.build_genes()
+	stuff = []
+	for gene in genes:
+		for tx in gene.transcripts():
+			for exon in tx.exons: stuff.append(exon)
+			for cds in tx.cdss: stuff.append(cds)
+			for intron in tx.introns: stuff.append(intron)
+			for u5 in tx.utr5s: stuff.append(u5)
+			for u3 in tx.utr3s: stuff.append(u3)
+	return FeatureTable(dna=chrom, features=stuff)
 
 if __name__ == '__main__':
 
-	if arg.seed:
-		random.seed(arg.seed)
-
-	model = HMM.read(filename=arg.hmm)
-	if model.log:
-		raise MorlisError('log-space models not supported')
-
-	# convert all state emissions to cumulative distributions
-	for s in model.states:
-		convert_to_cdf(s)
-	convert_to_cdf(model.null)
-
-	# initial state cdf
-	init_cdf = []
-	sum = 0
-	for s in model.states:
-		sum += s.init
-		init_cdf.append({'name':s.name, 'prob':sum})
-	if sum < 0: raise MorlisError('sum needs to be at least 1.0')
-
-	# mapping of state array to state dictionary needed later
-	map = {}
-	for s in model.states:
-		map[s.name] = s
-
-	# output files
-	fasta = open(arg.fasta, 'w+')
-	gff = open(arg.gff, 'w+')
-
-	for i in range(arg.count):
-		dna = None
-		features = []
-		name = 'emitted-' + str(i)
+	g1 = genome.Reader(fasta=arg.fasta, gff=arg.file1)
+	g2 = genome.Reader(fasta=arg.fasta, gff=arg.file2)
 	
-		if arg.null_model:
-			seq = null_generator(model, arg.length)
-			dna = DNA(seq=seq, name=name)
-			features.append(Feature(dna, 1, arg.length, '.', 'chromosome'))
-		else:	
-			init = None
-			r = random.random()
-			for v in init_cdf:
-				if r < v['prob']:
-					init = v['name']
-					break
-			seq, path = state_generator(model, init, map, arg.length)
-			dna = DNA(seq=seq, name=name)
-			dec = HMM_NT_decoder(dna=dna, model=model)
-			p = Parse(path=path, decoder=dec)
-			features = p.features()
+	for c1, c2 in zip(g1, g2):
+		# feature-level comparisions
+		d = c1.ftable.nt_compare(c2.ftable)
+		print(d)
+		
+		# gene-level comparisons
+		gt1 = gene_stuff(c1)		
+		gt2 = gene_stuff(c2)
+		d = gt1.nt_compare(gt2)
+		print(d)
+			
 	
-		# write files
-		fasta.write(dna.fasta())
-		for f in features:
-			gff.write(f.gff() + '\n')
 	
-	fasta.close()
-	gff.close()
+

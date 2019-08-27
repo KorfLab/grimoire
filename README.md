@@ -33,13 +33,15 @@ Program names are themed after spell names from the classic RPG
 | dumapic   | clarity    | hmm grapher 
 | halito    | fire       | basic hmm decoder
 | mahalito  | big fire   | 2-pass gene decoder
-| latumapic | identify   | annotation comparer
-| morlis    | fear       | sequence generator
+| morlis    | fear       | annotation comparer (simple)
+| mogref    | iron       | sequence generator
+| mamorlis  | great fear | (planned complex annotation comparer)
 | mahaman   | change     | (planned multi-genome slicer)
 | malor     | apport     | (planned genome lifter)
 | lahalito  | torch      | (planned full genome decoder)
 | tiltowait | explosion  | (planned multi-genome decoder)
 | zilwan    | dispel     | (planned profile/alignment decoder)
+| latumapic | identify   | (planned region-ifier)
 
 
 Contributors

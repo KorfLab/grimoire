@@ -13,7 +13,7 @@ road map for this tutorial.
 5. Building an HMM with `milwa`
 6. Visualizing an HMM with `dumapic`
 6. Decoding sequences with `halito`
-7. Comparing predictions with `latumapic`
+7. Comparing predictions with `morlis`
 9. Tuning models to improve accuracy
 
 ## Disclaimers ##
@@ -227,10 +227,10 @@ You can view the `donor.svg` file with a variety of web browsers and
 graphics programs. ImageMagick works well for converting to png or pdf.
 
 HMMs are generative models, so in that spirit, grimoire includes a
-program, `morlis`, to generate random sequences consistent with a model.
+program, `mogref`, to generate random sequences consistent with a model.
 Feel free to skip this next step as it's just included 'for fun'.
 
-	morlis --hmm donor.hmm --fasta fake.fa --gff fake.gff --count 10 --length 200
+	mogref --hmm donor.hmm --fasta fake.fa --gff fake.gff --count 10 --length 200
 
 Note that the names of the features in the GFF file are not actually
 following the GFF3 specification.
@@ -254,12 +254,12 @@ overhead.
 
 	halito --fasta donors.fa --hmm donor.hmm > out.gff
 
-## 8. Comparing predictions with `latumapic` ##
+## 8. Comparing predictions with `morlis` ##
 
 To compare the predictions `out.gff` with the test set `donors.gff` we
-use `latumapic`.
+use `morlis`.
 
-	latumapic --fasta donors.fa --file1 donors.gff --file2 out.gff
+	morlis --fasta donors.fa --file1 donors.gff --file2 out.gff
 
 This shows you how different the decoding is from the 'truth' or at
 least what we take to be the truth. This program is pretty volatile, so
