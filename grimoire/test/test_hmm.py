@@ -67,7 +67,7 @@ class TestHMM(unittest.TestCase):
 		dna = sequence.DNA(name='test', seq='AAAAGTAAGTTTTT')
 		v = hmm.Viterbi(model=self.hmm, dna=dna)
 		p = v.generate_path()
-		self.assertEqual(p.score, 4.837415437963225)
+		self.assertAlmostEqual(p.score, 4.837415437963225)
 		ft = p.features()
 		self.assertEqual(ft[1].type, 'DON')
 		self.assertEqual(ft[1].beg, 5)
@@ -78,14 +78,14 @@ class TestHMM(unittest.TestCase):
 		m.convert2log()
 		v = hmm.Viterbi(model=m, dna=dna)
 		p = v.generate_path()
-		self.assertEqual(p.score, 1.5763805776787159)
+		self.assertAlmostEqual(p.score, 1.5763805776787159)
 
 	def test_StochasticViterbi(self):
 		dna = sequence.DNA(name='test', seq='TTTTTGTAAGTAAGTTTTT')
 		v = hmm.StochasticViterbi(model=self.hmm, dna=dna, seed=1)
 		ps = v.generate_paths(1000)
-		self.assertEqual(ps[0].score, 4.600333948735676)
-		self.assertEqual(ps[0].freq, 0.459)
+		self.assertAlmostEqual(ps[0].score, 4.600333948735676)
+		self.assertAlmostEqual(ps[0].freq, 0.459)
 
 	def test_StochasticViterbi_logspace(self):
 		dna = sequence.DNA(name='test', seq='TTTTTGTAAGTAAGTTTTT')
@@ -93,8 +93,8 @@ class TestHMM(unittest.TestCase):
 		m.convert2log()
 		v = hmm.StochasticViterbi(model=m, dna=dna, seed=1)
 		ps = v.generate_paths(1000)
-		self.assertEqual(ps[0].score, 1.5261288984112191)
-		self.assertEqual(ps[0].freq, 0.459)
+		self.assertAlmostEqual(ps[0].score, 1.5261288984112191)
+		self.assertAlmostEqual(ps[0].freq, 0.459)
 
 	def test_ForwardBackward(self):
 		dna = sequence.DNA(name='test', seq='AGT')
