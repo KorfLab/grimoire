@@ -230,7 +230,7 @@ HMMs are generative models, so in that spirit, grimoire includes a
 program, `mogref`, to generate random sequences consistent with a model.
 Feel free to skip this next step as it's just included 'for fun'.
 
-	mogref --hmm donor.hmm --fasta fake.fa --gff fake.gff --count 10 --length 200
+	mogref --hmm donor.hmm --fasta fake.fa --gff fake.gff --count 10 --length 200 --seed 1
 
 Note that the names of the features in the GFF file are not actually
 following the GFF3 specification.
