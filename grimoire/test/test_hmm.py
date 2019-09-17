@@ -50,18 +50,23 @@ class TestHMM(unittest.TestCase):
 		self.assertEqual(self.hmm.null.emit['A'], 0.3197)
 	
 	def test_HMM_io(self):
-		self.hmm.write('/tmp/donor.hmm')
-		self.assertEqual(os.path.getsize('/tmp/donor.hmm'), 2646)
-		self.hmm.write('/tmp/donor.hmm.gz')
-		self.assertEqual(os.path.getsize('/tmp/donor.hmm.gz'), 367)
-		model = hmm.HMM.read('/tmp/donor.hmm')
-		self.assertEqual(len(model.states), 7)
-		self.assertEqual(model.name, 'test')
-		self.assertEqual(model.log, False)
-		model = hmm.HMM.read('/tmp/donor.hmm.gz')
-		self.assertEqual(len(model.states), 7)
-		self.assertEqual(model.name, 'test')
-		self.assertEqual(model.log, False)
+		p1 = '/tmp/donor.hmm'
+		p2 = '/tmp/donor.hmm.gz'
+		self.hmm.write(p1)
+		self.hmm.write(p2)
+		self.assertLess(os.path.getsize(p2), os.path.getsize(p1))
+		m1 = hmm.HMM.read(p1)
+		self.assertIsInstance(m1, hmm.HMM)
+		m2 = hmm.HMM.read(p2)
+		self.assertIsInstance(m2, hmm.HMM)
+		self.assertEqual(len(m1.states), len(m2.states), 7)
+		self.assertFalse(m1.log)
+		self.assertEqual(m1.log, m2.log)
+		m1.convert2log()
+		self.assertTrue(m1.log)
+		with self.assertRaises(hmm.HMMError):
+			m1.convert2log()
+
 
 	def test_Viterbi(self):
 		dna = sequence.DNA(name='test', seq='AAAAGTAAGTTTTT')
