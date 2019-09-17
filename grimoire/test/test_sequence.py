@@ -19,7 +19,7 @@ class TestSequence(unittest.TestCase):
 		self.assertIsInstance(s, sequence.DNA)
 		self.assertEqual(s.seq, 'RTGNGCATTGTTGGCATG')
 		
-		s2 = sequence.DNA(seq='CATGCCAACAATGCNCAX')
+		s2 = sequence.DNA(seq='CATGCCAACAATGCNCAQ')
 		with self.assertRaises(sequence.SequenceError):
 			s2.check_alphabet()
 		with self.assertRaises(sequence.SequenceError):
