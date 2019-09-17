@@ -3,7 +3,7 @@ import json
 
 import grimoire.io as io
 from grimoire.sequence import DNA
-from grimoire.feature import Feature, mRNA, ncRNA, Gene
+from grimoire.feature import Feature, mRNA, ncRNA, Gene, FeatureTable, FeatureError
 
 class TestFeature(unittest.TestCase):
 
@@ -56,6 +56,22 @@ class TestFeature(unittest.TestCase):
 		g.validate()
 		self.assertTrue(g.issues['mixed_strands'])
 		self.assertTrue(g.issues['child.beg<parent.beg'])
+		
+	def test_FeatureTable(self):
+		ft = FeatureTable(dna=self.dna)
+		f1 = Feature(self.dna, 50, 500, '+', 'exon', id='first', pid='construct')
+		f2 = Feature(self.dna, 550, 600, '+', 'exon', id='second', pid='construct')
+		f3 = Feature(self.dna, 650, 850, '+', 'exon', id='third', pid='construct')
+		ft.add_feature(f1)
+		ft.add_feature(f2)
+		ft.add_feature(f3)
+		ff = io.FASTA_stream('data/ce270.fa.gz')
+		dna = None
+		for e in ff:
+			dna = DNA(seq=e.seq, name=e.id)
+			break
+		with self.assertRaises(FeatureError):
+			ft.add_feature(Feature(dna, 900, 1200, '+', 'exon', id='fourth', pid='construct'))
 
 if __name__ == '__main__':
 	unittest.main(verbosity=2)

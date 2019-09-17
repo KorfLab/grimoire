@@ -499,6 +499,15 @@ class FeatureTable:
 			self.features = features
 		else:
 			self.features = []
+		if self.dna and self.features:
+			for f in self.features:
+				if f.dna is not self.dna:
+					raise FeatureError('reference mismatch within FeatureTable')
+		elif self.features:
+			for f in self.features:
+				if f.dna is not self.features[0].dna:
+					raise FeatureError('reference mismatch within FeatureTable')
+			
 
 	def add_feature(self, feature):
 		"""
@@ -507,7 +516,13 @@ class FeatureTable:
 		+ feature `Feature` object
 		"""
 		
-		self.features.append(feature)
+		if self.features:
+			if self.features[0].dna is feature.dna:
+				self.features.append(feature)
+			else:
+				raise FeatureError('reference mismatch within FeatureTable')
+		else:
+			self.features.append(feature)
 		self._sorted = False
 
 	def _sort(self):
