@@ -18,6 +18,14 @@ class TestSequence(unittest.TestCase):
 		s.revcomp()
 		self.assertIsInstance(s, sequence.DNA)
 		self.assertEqual(s.seq, 'RTGNGCATTGTTGGCATG')
+		
+		s2 = sequence.DNA(seq='CATGCCAACAATGCNCAX')
+		with self.assertRaises(sequence.SequenceError):
+			s2.check_alphabet()
+		with self.assertRaises(sequence.SequenceError):
+			p2 = s2.translate()
+		with self.assertRaises(sequence.SequenceError):
+			s2.revcomp()
 
 		
 	def test_Protein(self):
