@@ -447,11 +447,22 @@ class GFF_stream:
 		self._fp = None
 
 		if filename != None:
-			if re.search(r'\.gz$', filename):
-				self._fp = gzip.open(filename)
+			if   re.search(r'\.gff3\.gz$', filename): filepointer = gzip.open(filename)
+			elif re.search(r'\.gff3$',     filename): filepointer = open(filename, 'r')
+			elif re.search(r'\.gff\.gz$',  filename):
+				raise NotImplementedError('GFF_file accepts GFF3 formatted files only')
+			elif re.search(r'\.gff$',      filename):
+				raise NotImplementedError('GFF_file accepts GFF3 formatted files only')
+			elif re.search(r'\.gtf\.gz$',  filename):
+				raise NotImplementedError('GFF_file does not accept GTF files')
+			elif re.search(r'\.gtf$',      filename):
+				raise NotImplementedError('GFF_file does not accept GTF files')
+			elif re.search(r'\.bed\.gz$',  filename):
+				raise NotImplementedError('GFF_file does not accept BED files')
+			elif re.search(r'\.bed$',      filename):
+				raise NotImplementedError('GFF_file does not accept BED files')
 			else:
-				self._fp = open(filename, 'r')
-		elif filepointer != None:
+				raise NotImplementedError('Unrecognized file type. Please use GFF3.')
 			self._fp = filepointer
 		else:
 			raise IOError('no file or filepointer given')
