@@ -59,20 +59,38 @@ class TestFeature(unittest.TestCase):
 		
 	def test_FeatureTable(self):
 		ft = FeatureTable(dna=self.dna)
-		f1 = Feature(self.dna, 50, 500, '+', 'exon', id='first', pid='construct')
-		f2 = Feature(self.dna, 550, 600, '+', 'exon', id='second', pid='construct')
-		f3 = Feature(self.dna, 650, 850, '+', 'exon', id='third', pid='construct')
-		ft.add_feature(f1)
-		ft.add_feature(f2)
-		ft.add_feature(f3)
+		ft.add_feature(Feature(self.dna, 3631, 5899, '+', 'gene', id='AT1G01010'))
+		ft.add_feature(Feature(self.dna, 3631, 5899, '+', 'mRNA', id='AT1G01010.1', pid='AT1G01010'))
+		ft.add_feature(Feature(self.dna, 3631, 3913, '+', 'exon', pid='AT1G01010.1'))
+		ft.add_feature(Feature(self.dna, 3996, 4276, '+', 'exon', pid='AT1G01010.1'))
+		ft.add_feature(Feature(self.dna, 4486, 4605, '+', 'exon', pid='AT1G01010.1'))
+		ft.add_feature(Feature(self.dna, 4706, 5095, '+', 'exon', pid='AT1G01010.1'))
+		ft.add_feature(Feature(self.dna, 5174, 5326, '+', 'exon', pid='AT1G01010.1'))
+		ft.add_feature(Feature(self.dna, 5439, 5899, '+', 'exon', pid='AT1G01010.1'))
+		g = ft.build_genes()
+		self.assertEqual(len(g), 1)
+		self.assertIsInstance(g[0], Gene)
+		ft2 = FeatureTable(dna=self.dna)
+		ft2.add_feature(Feature(self.dna, 3631, 4276, '+', 'gene', id='AT1G01010'))
+		ft2.add_feature(Feature(self.dna, 3631, 4276, '+', 'mRNA', id='AT1G01010.1', pid='AT1G01010'))
+		ft2.add_feature(Feature(self.dna, 3631, 3913, '+', 'exon', pid='AT1G01010.1'))
+		ft2.add_feature(Feature(self.dna, 3996, 4276, '+', 'exon', pid='AT1G01010.1'))
+		(same, diff, mat) = ft.nt_compare(ft2)
+		self.assertEqual(same, 302653)
 		ff = io.FASTA_stream('data/ce270.fa.gz')
 		dna = None
 		for e in ff:
 			dna = DNA(seq=e.seq, name=e.id)
 			break
 		with self.assertRaises(FeatureError):
-			ft.add_feature(Feature(dna, 900, 1200, '+', 'exon', id='fourth', pid='construct'))
+			ft.add_feature(Feature(dna, 900, 1200, '+', 'exon'))
+		ft3 = FeatureTable(dna=self.dna)
+		ft3.add_feature(Feature(self.dna, 50, 500, '+', 'exon'))
+		ft3.add_feature(Feature(self.dna, 350, 520, '+', 'exon'))
+		ft3.add_feature(Feature(self.dna, 1000, 2000, '+', 'exon'))
+		f3 = ft3.fetch(900, 3000)
+		self.assertEqual(len(f3), 1)
+		
 
 if __name__ == '__main__':
-	unittest.main(verbosity=2)
-	
+	unittest.main(verbosity=2)	
