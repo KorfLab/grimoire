@@ -59,9 +59,9 @@ class Feature:
 		self._validate()
 
 	def _validate(self):
-		if self.beg < 0: self.issues['beg<0'] = True
-		if self.beg > self.end: self.issues['beg>end'] = True
-		if self.end > len(self.dna.seq): self.issues['end>seq'] = True
+		if self.beg < 1:                 raise FeatureError('beg<1')
+		if self.beg > self.end:          raise FeatureError('beg>end')
+		if self.end > len(self.dna.seq): raise FeatureError('end>len')
 		if self.children:
 			for child in self.children:
 				child.validate()
@@ -621,23 +621,31 @@ class FeatureTable:
 
 	def fetch(self, beg, end):
 		"""Returns a list of features between beg and end."""
+		
+		if beg < 1: raise FeatureError('beg out of range')
+		if end > len(self.dna.seq): raise FeatureError('end out of range')
+		if len(self.features) == 0: return []
+		
 		self._sort()
+		
+		# do linear search for short lists
+		if len(self.features) < 4:
+			found = []
+			for f in self.features:
+				if   f.beg >= beg and f.beg <= end: found.append(f)
+				elif f.end >= beg and f.end <= end: found.append(f)
+				elif f.beg <  beg and f.end >  end: found.append(f)
+			return found
 		
 		# binary search the non-unique beg feature
 		lo, hi = 0, len(self.features) -1
-		l2, h2 = None, None
+		prev = None
 		while True:
 			m = int((hi + lo) / 2)
-			if self.features[m].beg < beg:
-				lo = m
-				l2 = m
-				if lo == l2 and hi == h2: break
-			elif self.features[m].beg > beg:
-				hi = m
-				h2 = m
-				if lo == l2 and hi == h2: break
-			else:
-				break
+			if m == prev: break
+			prev = m
+			if   self.features[m].beg < beg: lo = m
+			elif self.features[m].beg > beg: hi = m
 
 		# check in reverse that it's the true start of the list
 		n = lo
