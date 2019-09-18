@@ -46,18 +46,9 @@ class Reader:
 		+ check= `bool` check that the alphabet conforms to IUPAC DNA
 		"""
 
-		self._fp = None
-		self._gz = False
 		self._gff = io.GFF_file(gff)
+		self._fasta = io.FASTA_stream(fasta)
 		self._check = check
-
-		if re.search(r'\.gz$', fasta):
-			self._fp = gzip.open(fasta)
-			self._gz = True
-		else:
-			self._fp = open(fasta, 'r')
-		self._lastline = ''
-		self._done = False
 
 	def __iter__(self):
 		return self
@@ -69,40 +60,17 @@ class Reader:
 		"""
 		Retrieves the next entry of the FASTA file as DNA with features bound.
 		"""
-
-		if self._done: raise StopIteration()
-		header = None
-		if self._lastline[0:1] == '>':
-			header = self._lastline
-		else:
-			header = self._fp.readline()
-			if self._gz: header = str(header, 'utf-8')
-
-		m = re.search(r'>\s*(\S+)\s*(.*)', header)
-		id = m[1]
-		desc = m[2]
-		seq = []
-
-		while (True):
-			line = self._fp.readline()
-			if self._gz: line = str(line, 'utf-8')
-			if line[0:1] == '>':
-				self._lastline = line
-				break
-			if line == '':
-				self._done = True
-				self._fp.close()
-				break
-
-			line = line.replace(' ', '')
-			seq.append(line.strip())
-		
-		dna = DNA(name=id, seq=''.join(seq))
-		if self._check: dna.check_alphabet()
-
-		# add features
-		for g in self._gff.get(chrom=dna.name):
-			dna.ftable.add_feature(gff_to_feature(dna, g))
-		
-		return dna
+		try:
+			entry = next(self._fasta)
+			dna = DNA(name=entry.id, seq=entry.seq)
+			if self._check: dna.check_alphabet()
+			
+			# add features
+			for g in self._gff.get(chrom=dna.name):
+				dna.ftable.add_feature(gff_to_feature(dna, g))
+			
+			return dna
+			
+		except StopIteration:
+			raise StopIteration()
 
