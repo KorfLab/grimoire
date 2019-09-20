@@ -36,7 +36,7 @@ parser.add_argument('--cds', required=False, type=str,
 	metavar='<path>', help='type of feature to compare')
 arg = parser.parse_args()
 
-class LatumapicError(Exception):
+class MorlisError(Exception):
 	pass
 
 def gene_stuff(chrom):
