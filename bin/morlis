@@ -10,16 +10,22 @@ from grimoire.feature import FeatureTable
 ## Command line stuff ##
 
 extended_help = """
-%(prog)s is used for comparing sequence features between two sources. In
-a gene prediction setting this would be predictions vs. reference, but
-it could also be two genome annotation pipelines or two versions
-produced at different times. All of the features must reference the same
-exact chromosomes.
 
-The --format option allows you to choose how you want the report
-displayed. At level 0, this is simply a trio of numbers counting the
-diff, same, or total. At level 1, there will be feature-level comparisons
-when implemented.
+%(prog)s is used for comparing gene sequence features between two
+annotation sources. In a gene prediction setting this would be
+predictions vs. reference, but it could also be two genome annotation
+pipelines or two versions produced at different times. All of the
+features must reference the same exact same chromosome sequences.
+
+%(prog)s operates under some very simplistic assumptions:
+
+	1. Each nt of the sequence can be uniquely labeled
+	2. Strand doesn't matter
+
+In cases where a nt has more than one labeling due to multiple isoforms,
+priority is given in the order of CDS > exon > intron > intergenic.
+
+In 'cds' mode, only CDS features are considered.
 """
 
 parser = argparse.ArgumentParser(
@@ -32,41 +38,53 @@ parser.add_argument('--file1', required=True, type=str,
 	metavar='<path>', help='path to file1 in gff')
 parser.add_argument('--file2', required=True, type=str,
 	metavar='<path>', help='path to file2 in gff')
-parser.add_argument('--cds', required=False, type=str,
-	metavar='<path>', help='type of feature to compare')
+parser.add_argument('--cds', action='store_true',
+	help='sets the comparision to CDS only')
 arg = parser.parse_args()
 
 class MorlisError(Exception):
 	pass
 
-def gene_stuff(chrom):
+def label_sequence(chrom):
 	genes = chrom.ftable.build_genes()
-	stuff = []
+	aseq = []
+	for i in range(len(chrom.seq)):
+		aseq.append('n')
+		
 	for gene in genes:
 		for tx in gene.transcripts():
-			for exon in tx.exons: stuff.append(exon)
-			for cds in tx.cdss: stuff.append(cds)
-			for intron in tx.introns: stuff.append(intron)
-			for u5 in tx.utr5s: stuff.append(u5)
-			for u3 in tx.utr3s: stuff.append(u3)
-	return FeatureTable(dna=chrom, features=stuff)
+			for cds in tx.cdss:
+				for i in range(cds.beg, cds.end +1):
+					aseq[i-1] = 'c'
+			if arg.cds: continue
+			for intron in tx.introns:
+				for i in range(intron.beg, intron.end +1):
+					if aseq[i-1] == 'n':
+						aseq[i-1] = 'i'
+			for exon in tx.exons:
+				for i in range(exon.beg, exon.end +1):
+					if aseq[i-1] == 'n' or aseq[i-1] == 'i':
+						aseq[i-1] = 'e'
+	return aseq
 
 if __name__ == '__main__':
 
 	g1 = genome.Reader(fasta=arg.fasta, gff=arg.file1)
 	g2 = genome.Reader(fasta=arg.fasta, gff=arg.file2)
 	
+	same, diff = 0, 0
 	for c1, c2 in zip(g1, g2):
-		# feature-level comparisions
-		d = c1.ftable.nt_compare(c2.ftable)
-		print(d)
-		
-		# gene-level comparisons
-		gt1 = gene_stuff(c1)		
-		gt2 = gene_stuff(c2)
-		d = gt1.nt_compare(gt2)
-		print(d)
-			
+		s1 = label_sequence(c1)
+		s2 = label_sequence(c2)
+		s, d = 0, 0
+		for i in range(len(s1)):
+			if s1[i] == s2[i]: s += 1
+			else:              d += 1
+	#	sys.stderr.write('{} {}\n'.format(s, d))
+		same += s
+		diff += d
+	
+	print('{}\t{}\t{:.3f}'.format(same, diff, same / (same + diff)))
 	
 	
 

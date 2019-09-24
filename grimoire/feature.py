@@ -594,31 +594,6 @@ class FeatureTable:
 	
 		return list(genes.values())
 
-	def nt_compare(self, other):
-		"""Compares two feature tables at the nucleotide level."""
-				
-		mat = {}
-		length = len(self.dna.seq)
-		same, diff = 0, 0
-		s1, s2 = [''] * length, [''] * length
-		for f in self.features:
-			for i in range(f.beg, f.end + 1):
-				s1[i-1] = f.type
-		for f in other.features:
-			for i in range(f.beg, f.end + 1):
-				s2[i-1] = f.type
-
-		for i in range(len(s1)):
-			if s1[i] == s2[i]: same += 1
-			else:              diff += 1
-			if s1[i] not in mat: mat[s1[i]] = {}
-			if s2[i] not in mat: mat[s2[i]] = {}
-			if s2[i] not in mat[s1[i]]: mat[s1[i]][s2[i]] = 0
-			if s1[i] not in mat[s2[i]]: mat[s2[i]][s1[i]] = 0
-			mat[s1[i]][s2[i]] += 1
-
-		return same, diff, mat
-
 	def fetch(self, beg, end):
 		"""Returns a list of features between beg and end."""
 		

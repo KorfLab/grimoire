@@ -257,13 +257,11 @@ overhead.
 ## 8. Comparing predictions with `morlis` ##
 
 To compare the predictions `out.gff` with the test set `donors.gff` we
-use `morlis`.
+use `morlis`. Right now, development of `morlis` is highly volatile as
+there are many ways one can interpret correctness. For this reason, the
+following code may or may not do anything useful.
 
 	morlis --fasta donors.fa --file1 donors.gff --file2 out.gff
-
-This shows you how different the decoding is from the 'truth' or at
-least what we take to be the truth. This program is pretty volatile, so
-I'm not discussing the specifics of the output at this time.
 
 ## 9. Tuning models to improve accuracy ##
 
