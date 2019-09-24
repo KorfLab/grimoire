@@ -197,15 +197,11 @@ class mRNA(Transcript):
 	Extends the base `Feature` class. mRNAs are created by first instantiating
 	a parent `mRNA`. Then `add_child()` of type 'exon' _and_ 'CDS'.
 	Introns and untranslated regions are inferred from the coordinates
-	of the exon and CDS features. The mRNA must have an 'id' so that its
-	children can reference it. You don't need to spcifiy 'pid' in the
+	of the exon and CDS features. **The mRNA must have an 'id' so that its
+	children can reference it.** You don't need to spcifiy 'pid' in the
 	children, as this will be assigned automatically.
 	
-	Parameters
-	----------
-	See the `Feature` base class. Make sure you set id.
-	
-	Attributes (extended from the base class)
+	Extended attributes (`mRNA`-specific)
 	----------
 	+ exons		`list`	exons
 	+ inrons	`list`	introns
@@ -368,14 +364,10 @@ class ncRNA(Transcript):
 	
 	`ncRNAs`s are created by first instantiating this class and then using
 	the `add_child()` method (from the parent `Feature` class) to add features
-	of type 'exon'. All 'ncRNA`s must have an 'id'. Children will automatically
+	of type 'exon'. **All 'ncRNA`s must have an 'id'.** Children will automatically
 	reference this in their 'pid'.
 	
-	Parameters
-	----------
-	See the `Feature` base class, but make sure you set id.
-	
-	Attributes (extended from the base class)
+	Extended attributes (`ncRNA`-specific)
 	----------
 	+ exons - list of exons
 	+ inrons - list of introns
@@ -457,12 +449,8 @@ class Gene(Feature):
 	
 	Extends the base `Feature` class. Genes are created by first instantiating
 	a parent `Gene`. Then `add_child()` of some `Transcript` class such as
-	`mRNA` or `ncRNA`. The gene must have an 'id' so that its children can
-	reference it.
-	
-	Parameters
-	----------
-	See the `Feature` base class. Make sure to set id.
+	`mRNA` or `ncRNA`. **The gene must have an 'id' so that its children can
+	reference it.**
 	"""
 
 	def transcripts(self):

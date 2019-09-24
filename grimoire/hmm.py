@@ -20,7 +20,7 @@ class HMMError(Exception):
 
 def emission_model(context=0, alphabet='nt'):
 	"""
-	Returns an empty emission table/dict with specified context and alphabet.
+	Returns an empty emission table `dict` with specified context and alphabet.
 	
 	Parameters
 	----------
@@ -193,7 +193,7 @@ def state_factory(prefix, emissions):
 	Parameters
 	----------
 	+ prefix    `str`  name of the state (e.g. ACC, DON)
-	+ emissions `dict` table from `train_emissions()`
+	+ emissions `list` of emission tables produced by `train_emissions()`
 	"""
 
 	state_list = []
@@ -219,8 +219,8 @@ def null_state_factory(file=None, context=0):
 
 	Parameters
 	----------
-	+ file    `str` path to fasta file, which may be gzipped
-	+ context `int` order of the Markov model (0 or greater)
+	+ file=    `str` path to fasta file, which may be gzipped
+	+ context= `int` order of the Markov model (0 or greater)
 	"""
 
 	fasta = io.FASTA_stream(filename=file)
@@ -256,7 +256,7 @@ def null_state_factory(file=None, context=0):
 
 def connect_all (states) :
 	"""
-	Connects all of the state objects with probability 1. The first and
+	Connects a list of state objects sequentially with probability 1. The first and
 	last states are unconnected.
 
 	Parameters
@@ -287,12 +287,12 @@ class State:
 		"""
 		Parameters
 		----------
-		+ name    `str`   name of the state, must be unique in the model
-		+ context `int`   order of the Markov emission model (0 or greater)
-		+ emits   `obj`   emission table/dict
-		+ init    `float` probability to start in this state
-		+ term    `float` probability to end in this state
-		+ next    `dict`  dictionary of connected states and probabilities
+		+ name=    `str`   name of the state, must be unique in the model
+		+ context= `int`   order of the Markov emission model (0 or greater)
+		+ emits=   `obj`   emission table/dict
+		+ init=    `float` probability to start in this state
+		+ term=    `float` probability to end in this state
+		+ next=    `dict`  dictionary of connected states and probabilities
 		"""
 
 		self.name = name
@@ -304,10 +304,12 @@ class State:
 
 	@classmethod
 	def from_json(cls, json_string):
+		"""Generates `State` object from JSON-formatted string."""
 		state = cls()
 		state.__dict__ = json.loads(json_string)
 
 	def to_json(self):
+		"""Returns JSON-formatted `str` representing `State` object."""
 		return(json.dumps(self.__dict__, indent = 4))
 
 class HMMdecoder(json.JSONEncoder):
@@ -322,10 +324,10 @@ class HMM:
 		"""
 		Parameters
 		----------
-		+ name   `str`   name of the HMM (arbitrary)
-		+ log    `bool`  flag to indicate if the model is in logspace
-		+ states `list`  list of `State` objects
-		+ null   `State` the null state used for calculated scores
+		+ name=   `str`   name of the HMM (arbitrary)
+		+ log=    `bool`  flag to indicate if the model is in logspace
+		+ states= `list`  list of `State` objects
+		+ null=   `State` the null state used for calculated scores
 		"""
 
 		self.name = name
@@ -702,7 +704,8 @@ class Viterbi(HMM_NT_decoder):
 		self.matrix = v
 
 	def generate_path(self):
-		"""Generates a path using the Viterbi algorithm"""
+		"""Generates a path using the Viterbi algorithm. Returns a `Parse` object
+		representing the optimal trace-back as calculated by the Viterbi algorithm."""
 
 		return(Parse(path=self.path, score=self.score, decoder=self))
 
@@ -794,7 +797,8 @@ class StochasticViterbi(HMM_NT_decoder):
 		self.matrix = v
 
 	def generate_paths(self, n):
-		"""Generates a list of paths using the Stochastic Viterbi algorithm"""
+		"""Generates a list of paths using the Stochastic Viterbi algorithm. Returns
+		a `list` of `Parse` objects."""
 
 		term_cdf = []
 		if self.model.log:
@@ -936,7 +940,7 @@ class Transcoder(HMM_NT_decoder):
 			self.score = self.max_score / self.null_score
 
 class ForwardBackward(HMM_NT_decoder):
-	"""Compute posterior probabilities using Forward-Backward algorithm"""
+	"""Computes posterior probabilities using Forward-Backward algorithm."""
 
 	def __init__(self, model=None, dna=None):
 		"""
@@ -1009,7 +1013,8 @@ class ForwardBackward(HMM_NT_decoder):
 
 	def posterior(self, state_name, i):
 		"""
-		Get the probability of being in @state at @time
+		Returns the posterior probability of the given state at the specified position
+		within a sequence.
 
 		Parameters
 		----------
