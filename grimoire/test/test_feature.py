@@ -75,8 +75,7 @@ class TestFeature(unittest.TestCase):
 		ft2.add_feature(Feature(self.dna, 3631, 4276, '+', 'mRNA', id='AT1G01010.1', pid='AT1G01010'))
 		ft2.add_feature(Feature(self.dna, 3631, 3913, '+', 'exon', pid='AT1G01010.1'))
 		ft2.add_feature(Feature(self.dna, 3996, 4276, '+', 'exon', pid='AT1G01010.1'))
-		(same, diff, mat) = ft.nt_compare(ft2)
-		self.assertEqual(same, 302653)
+		
 		ff = io.FASTA_stream('data/ce270.fa.gz')
 		dna = None
 		for e in ff:
