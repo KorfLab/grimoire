@@ -58,7 +58,7 @@ class DNA(BioSequence):
 		self.ftable = FeatureTable(dna=self)
 
 	def check_alphabet(self):
-		"""Checks if sequence is in given alphabet. Throws `SequenceError`."""
+		"""Checks if sequence is in nucleotide alphabet. Throws `SequenceError`."""
 
 		for i in range(len(self.seq)):
 			nt = self.seq[i:i+1]
@@ -99,7 +99,7 @@ class Protein(BioSequence):
 		self.desc = desc
 
 	def check_alphabet(self):
-		"""Check if sequence is in given alphabet. Throws `SequenceError`."""
+		"""Check if sequence is in amino acid alphabet. Throws `SequenceError`."""
 		for i in range(len(self.seq)):
 			aa = self.seq[i:i+1]
 			if aa not in self.extended:
