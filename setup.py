@@ -5,7 +5,7 @@ with open('README.md', 'r') as fh:
 
 setuptools.setup(
 	name='grimoire',
-	version='0.0.1',
+	version='0.0.3',
 	author='Ian Korf',
 	author_email='ifkorf@gmail.com',
 	description='Biological sequence analysis tools',
@@ -18,5 +18,6 @@ setuptools.setup(
 		'License :: OSI Approved :: MIT License',
 		'Operating System :: OS Independent',
 	],
+	python_requires='>=3.6',
 )
 

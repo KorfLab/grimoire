@@ -1,7 +1,10 @@
+include CHANGES.txt
+include CODE_OF_CONDUCT.md
+include CONTRIBUTING.md
 include LICENSE
 include README.md
 include TUTORIAL.md
-include CHANGES.txt
+
 recursive-include data *
 recursive-include bin *
 
