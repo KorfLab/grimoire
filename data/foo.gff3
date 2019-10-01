@@ -1,4 +1,4 @@
-foo	ian	gene	61	120	.	+	.	ID=g1
+foo	ian	gene	61	480	.	+	.	ID=g1
 foo	ian	mRNA	61	480	0.900	+	.	ID=t1;Parent=g1
 foo	ian	CDS	61	120	.	+	.	Parent=t1
 foo	ian	CDS	181	240	.	+	.	Parent=t1
@@ -13,3 +13,9 @@ foo	ian	CDS	61	120	.	+	.	Parent=t3
 foo	ian	CDS	421	480	.	+	.	Parent=t3
 foo	ian	mRNA	61	180	0.001	+	.	ID=t4;Parent=g1
 foo	ian	CDS	61	138	.	+	.	Parent=t4
+foo	ian	gene	541	600	.	-	.	ID=g2
+foo	ian	mRNA	541	600	1.0	-	.	ID=t5;Parent=g2
+foo	ian	CDS	541	600	.	-	.	Parent=t5
+foo	ian	gene	661	720	.	+	.	ID=g3
+foo	ian	mRNA	661	720	1.00	+	.	ID=t6;Parent=g3
+foo	ian	CDS	661	720	.	+	.	Parent=t6
