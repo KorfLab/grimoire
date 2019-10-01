@@ -3,6 +3,7 @@
 import argparse
 import sys
 import json
+import math
 
 import grimoire.genome as genome
 from grimoire.feature import FeatureTable
@@ -11,21 +12,40 @@ from grimoire.feature import FeatureTable
 
 extended_help = """
 
-%(prog)s is used for comparing gene sequence features between two
-annotation sources. In a gene prediction setting this would be
-predictions vs. reference, but it could also be two genome annotation
-pipelines or two versions produced at different times. All of the
-features must reference the same exact same chromosome sequences.
+%(prog)s is designed to compare two sets of protein-coding gene
+annotations. Traditionally, this would be reference vs. prediciton, but
+it could also be two separate pipelines or the same pipeline at
+different times. Note that all of the features must reference the same
+exact same chromosome sequences.
 
-%(prog)s operates under some very simplistic assumptions:
+There are several modes the program can operate in:
 
-	1. Each nt of the sequence can be uniquely labeled
-	2. Strand doesn't matter
+	+ nt - nucleotide
+	+ gbm - greedy best match
+	+ rbm - reciprocal best match
+	+ lkd - Lyman-Korf distance
 
-In cases where a nt has more than one labeling due to multiple isoforms,
-priority is given in the order of CDS > exon > intron > intergenic.
 
-In 'cds' mode, only CDS features are considered.
+In 'nt' mode, there is an assumption that every letter can be uniquely
+labeled as CDS or intergenic. In cases of multiple isoforms, CDS has
+priority over intergenic. Strand is ignored.
+
+In 'gbm' mode (greedy best matches)
+
+In 'rbm' (reciprocal best matches)
+
+In 'lkd' (Lyman-Korf distance) matching transcripts are treated as
+messages from an information source and compared using Kullback-Leibler
+distance.
+
+
++ All transcripts are put into the same bag
++ tx compared to each other and score using
+	- points for each coding nt in common
+	- points for each fence post in common
+
+
+
 """
 
 parser = argparse.ArgumentParser(
@@ -38,8 +58,15 @@ parser.add_argument('--file1', required=True, type=str,
 	metavar='<path>', help='path to file1 in gff')
 parser.add_argument('--file2', required=True, type=str,
 	metavar='<path>', help='path to file2 in gff')
-parser.add_argument('--cds', action='store_true',
-	help='sets the comparision to CDS only')
+parser.add_argument('--mode', required=True, type=str,
+	metavar='<mode>', help='nt|gbm|rbm|lkd')
+parser.add_argument('--s1', required=False, type=float, default=0.1,
+	metavar='<score>', help='score for each coding nt [%(default)f]')
+parser.add_argument('--s2', required=False, type=float, default=50,
+	metavar='<score>', help='score for matching fence post [%(default)f]')
+parser.add_argument('--s3', required=False, type=float, default=-10,
+	metavar='<score>', help='score for missing fence post [%(default)f]')
+
 arg = parser.parse_args()
 
 class MorlisError(Exception):
@@ -56,35 +83,155 @@ def label_sequence(chrom):
 			for cds in tx.cdss:
 				for i in range(cds.beg, cds.end +1):
 					aseq[i-1] = 'c'
-			if arg.cds: continue
-			for intron in tx.introns:
-				for i in range(intron.beg, intron.end +1):
-					if aseq[i-1] == 'n':
-						aseq[i-1] = 'i'
-			for exon in tx.exons:
-				for i in range(exon.beg, exon.end +1):
-					if aseq[i-1] == 'n' or aseq[i-1] == 'i':
-						aseq[i-1] = 'e'
+	
 	return aseq
+
+def nt(g1, g2):
+	same, diff = 0, 0
+	tp, tn, fp, fn = 0, 0, 0, 0
+	for c1, c2 in zip(g1, g2):
+		s1 = label_sequence(c1)
+		s2 = label_sequence(c2)
+		for i in range(len(s1)):
+			if   s1[i] == 'c' and s2[i] == 'c': tp += 1
+			elif s1[i] == 'n' and s2[i] == 'n': tn += 1
+			elif s1[i] == 'c' and s2[i] == 'n': fn += 1
+			elif s1[i] == 'n' and s2[i] == 'c': fp += 1
+		
+			if s1[i] == s2[i]: same += 1
+			else:              diff += 1
+	
+	print('NT_accuracy:\t{:.3f}'.format(same / (same + diff)))
+	print('NT_sensitivity:\t{:.3f}'.format(tp / (tp + fn)))
+	print('NT_specificity:\t{:.3f}'.format(tn / (fp + tn)))
+
+def build_transcripts(chr):
+	genes = chr.ftable.build_genes()
+	
+	txs = FeatureTable(dna=chr)
+	for gene in genes:
+		sum = 0
+		dots = False
+		nums = False
+		for tx in gene.transcripts():
+			if tx.score.isnumeric():
+				if tx.score >= 0 and tx.score <= 1:
+					sum += tx.score
+					nums = True
+				else:
+					raise MorlisError('tx scores must be probabilities or .')
+			elif tx.score != '.':
+				raise MorlisError('tx scores must be numeric or .')
+			elif tx.score == '.':
+				dots = True
+		
+		if nums and dots:
+			raise MorlisError('all tx scores must be numbers or unspecified')
+		if sum == 0:
+			for tx in gene.transcripts():
+				tx.score = 1 / len(gene.transcripts())
+			sum = 1	
+		if not math.isclose(1, sum, abs_tol=1e-6):
+			raise MorlisError('tx sum is not close to 1.0')
+		
+		for tx in gene.transcripts():
+			txs.add_feature(tx)
+	
+	return txs
+
+def similarity_score(tx1, tx2):
+
+	shared_cds = 0
+	fence_same = 0
+	fence_diff = 0
+	for cds1 in tx1.cdss:
+		for cds2 in tx2.cdss:
+			if cds1.beg == cds2.beg: fence_same += 1
+			else:                    fence_diff += 1
+			if cds1.end == cds2.end: fence_same += 1
+			else:                    fence_diff += 1
+			
+			if cds1.overlap(cds2):
+				beg, end = 0, 0
+				if cds1.beg > cds2.beg: beg = cds1.beg
+				else:                   beg = cds2.beg
+				if cds1.end < cds2.end: end = cds1.end
+				else:                   end = cds2.end
+				shared_cds += end - beg + 1
+	
+	score = shared_cds * arg.s1 + fence_same * arg.s2 - fence_diff * arg.s3
+	return score
+
+def similarity_matrix(txs1, txs2):
+	smat = {}
+	for tx1 in txs1.features:
+		smat[tx1] = {}
+		for tx2 in txs2.fetch(tx1.beg, tx1.end):
+			smat[tx1][tx2] = similarity_score(tx1, tx2)
+	
+	for tx1 in smat:
+		for tx2 in smat[tx1]:
+			print(tx1.id, tx2.id, smat[tx1][tx2])
+
+def gbm(g1, g2):
+	for c1, c2 in zip(g1, g2):
+		txs1 = build_transcripts(c1)
+		txs2 = build_transcripts(c2)
+		smx = similarity_matrix(txs1, txs2)
+		# all vs. all comparison
+			# sparse matrix - use dicts
+			# keep track of what got used
+		# remove best pair
+		# repeat until done
+
+def rbm(g1, g2):
+	# gbm(g1, g2)
+	# gbm(g2, g1)
+	# merge scores
+	pass
+
+def lkd(g1, g2):
+	pass
+
 
 if __name__ == '__main__':
 
 	g1 = genome.Reader(fasta=arg.fasta, gff=arg.file1)
 	g2 = genome.Reader(fasta=arg.fasta, gff=arg.file2)
 	
-	same, diff = 0, 0
-	for c1, c2 in zip(g1, g2):
-		s1 = label_sequence(c1)
-		s2 = label_sequence(c2)
-		s, d = 0, 0
-		for i in range(len(s1)):
-			if s1[i] == s2[i]: s += 1
-			else:              d += 1
-	#	sys.stderr.write('{} {}\n'.format(s, d))
-		same += s
-		diff += d
-	
-	print('{}\t{}\t{:.3f}'.format(same, diff, same / (same + diff)))
+	if   arg.mode == 'nt': nt(g1, g2)
+	elif arg.mode == 'nts': nts(g1, g2)
+	elif arg.mode == 'fs': fs(g1, g2)
+	elif arg.mode == 'gbm': gbm(g1, g2)
+	elif arg.mode == 'rbm': rbm(g1, g2)
+	elif arg.mode == 'lkd': lkd(g1, g2)
 	
 	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
