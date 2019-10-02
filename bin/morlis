@@ -21,30 +21,14 @@ exact same chromosome sequences.
 There are several modes the program can operate in:
 
 	+ nt - nucleotide
-	+ gbm - greedy best match
-	+ rbm - reciprocal best match
-	+ lkd - Lyman-Korf distance
+	+ tx - transcript
 
 
 In 'nt' mode, there is an assumption that every letter can be uniquely
 labeled as CDS or intergenic. In cases of multiple isoforms, CDS has
 priority over intergenic. Strand is ignored.
 
-In 'gbm' mode (greedy best matches)
-
-In 'rbm' (reciprocal best matches)
-
-In 'lkd' (Lyman-Korf distance) matching transcripts are treated as
-messages from an information source and compared using Kullback-Leibler
-distance.
-
-
-+ All transcripts are put into the same bag
-+ tx compared to each other and score using
-	- points for each coding nt in common
-	- points for each fence post in common
-
-
+In 'tx' mode...
 
 """
 
@@ -86,7 +70,7 @@ def label_sequence(chrom):
 	
 	return aseq
 
-def nt(g1, g2):
+def nt_compare(g1, g2):
 	same, diff = 0, 0
 	tp, tn, fp, fn = 0, 0, 0, 0
 	for c1, c2 in zip(g1, g2):
@@ -103,34 +87,38 @@ def nt(g1, g2):
 	
 	print('NT_accuracy:\t{:.3f}'.format(same / (same + diff)))
 	print('NT_sensitivity:\t{:.3f}'.format(tp / (tp + fn)))
-	print('NT_specificity:\t{:.3f}'.format(tn / (fp + tn)))
+	print('NT_specificity:\t{:.3f}'.format(tp / (tp + fp)))
 
 def build_transcripts(chr):
 	genes = chr.ftable.build_genes()
-	
 	txs = FeatureTable(dna=chr)
 	for gene in genes:
 		sum = 0
 		dots = False
 		nums = False
 		for tx in gene.transcripts():
-			if tx.score.isnumeric():
+			if type(tx.score) is float:
 				if tx.score >= 0 and tx.score <= 1:
 					sum += tx.score
 					nums = True
 				else:
 					raise MorlisError('tx scores must be probabilities or .')
-			elif tx.score != '.':
-				raise MorlisError('tx scores must be numeric or .')
-			elif tx.score == '.':
-				dots = True
+			elif type(tx.score) is str:
+				if tx.score == '.':
+					dots = True
+				else:
+					raise MorlisError('tx scores must be numeric or .')
+			else:
+				raise MorlisError('wtfdyd')
 		
 		if nums and dots:
 			raise MorlisError('all tx scores must be numbers or unspecified')
+
 		if sum == 0:
 			for tx in gene.transcripts():
 				tx.score = 1 / len(gene.transcripts())
-			sum = 1	
+			sum = 1
+
 		if not math.isclose(1, sum, abs_tol=1e-6):
 			raise MorlisError('tx sum is not close to 1.0')
 		
@@ -140,10 +128,7 @@ def build_transcripts(chr):
 	return txs
 
 def similarity_score(tx1, tx2):
-
-	shared_cds = 0
-	fence_same = 0
-	fence_diff = 0
+	shared_cds, fence_same, fence_diff = 0, 0, 0
 	for cds1 in tx1.cdss:
 		for cds2 in tx2.cdss:
 			if cds1.beg == cds2.beg: fence_same += 1
@@ -167,45 +152,95 @@ def similarity_matrix(txs1, txs2):
 	for tx1 in txs1.features:
 		smat[tx1] = {}
 		for tx2 in txs2.fetch(tx1.beg, tx1.end):
-			smat[tx1][tx2] = similarity_score(tx1, tx2)
-	
-	for tx1 in smat:
-		for tx2 in smat[tx1]:
-			print(tx1.id, tx2.id, smat[tx1][tx2])
+			smat[tx1][tx2] = {
+				'score' : similarity_score(tx1, tx2),
+				'used' : False
+			}
+	return smat
 
-def gbm(g1, g2):
+def label_tx(beg, end, tx):
+	aseq = []
+	for i in range(end - beg + 1): aseq.append('n')
+	for cds in tx.cdss:
+		for i in range(cds.beg, cds.end +1):
+			aseq[i - beg] = 'c'
+	return aseq
+
+def tx_compare(g1, g2):
+	TP, TN, FP, FN, TOT = 0, 0, 0, 0, 0
 	for c1, c2 in zip(g1, g2):
 		txs1 = build_transcripts(c1)
 		txs2 = build_transcripts(c2)
 		smx = similarity_matrix(txs1, txs2)
-		# all vs. all comparison
-			# sparse matrix - use dicts
-			# keep track of what got used
-		# remove best pair
-		# repeat until done
 
-def rbm(g1, g2):
-	# gbm(g1, g2)
-	# gbm(g2, g1)
-	# merge scores
-	pass
+		# score all the transcripts that match
+		while True:
+			max_score = 0
+			max_t1 = None
+			max_t2 = None
+			for t1 in smx:
+				for t2 in smx[t1]:
+					if smx[t1][t2]['used']: continue
+					if smx[t1][t2]['score'] > max_score:
+						max_score = smx[t1][t2]['score']
+						max_t1 = t1
+						max_t2 = t2
+			if max_t1 == None: break
+			
+			for t1 in smx:
+				for t2 in smx[t1]:
+					if t1 == max_t1 or t2 == max_t2:
+						smx[t1][t2]['used'] = True
+			
+			# calculate similarity of these best matching transcripts
+			tp, fp, tn, fn = 0, 0, 0, 0
+			beg, end = 0, 0
+			if max_t1.beg < max_t2.beg: beg = max_t1.beg
+			else:                       beg = max_t2.beg
+			if max_t1.end > max_t2.end: end = max_t1.end
+			else:                       end = max_t2.end
+			
+			a1 = label_tx(beg, end, max_t1)
+			a2 = label_tx(beg, end, max_t2)
+			for i in range(len(a1)):
+				if a1[i] == 'c':
+					if a2[i] == 'c': tp += 1
+					else:            fn += 1
+				elif a1[i] == 'n':
+					if a2[i] == 'n': tn += 1 # not actually using
+					else:            fp += 1
+			
+			# normalize values by expression level
+			tp = tp * max_t1.score
+			fp = fp * max_t1.score
+			tn = tn * max_t1.score
+			fn = fn * max_t1.score
+			TP += tp
+			TN += tn
+			FP += fp
+			FN += fn
+			TOT += max_t1.score # or is this + 1?
 
-def lkd(g1, g2):
-	pass
-
+		# what about stuff that didn't get paired?
+		for tx1 in smx:
+			for tx2 in smx[tx1]:
+				if smx[tx1][tx2]['used'] == False:
+					print('see...')
+		
+		
+	print(TP, TN, FP, FN, TOT)
+	print('TX_sensitivity:\t{:.3f}'.format(TP / (TP + FN)))
+	print('TX_specificity:\t{:.3f}'.format(TP / (TP + FP)))
 
 if __name__ == '__main__':
 
 	g1 = genome.Reader(fasta=arg.fasta, gff=arg.file1)
 	g2 = genome.Reader(fasta=arg.fasta, gff=arg.file2)
 	
-	if   arg.mode == 'nt': nt(g1, g2)
-	elif arg.mode == 'nts': nts(g1, g2)
-	elif arg.mode == 'fs': fs(g1, g2)
-	elif arg.mode == 'gbm': gbm(g1, g2)
-	elif arg.mode == 'rbm': rbm(g1, g2)
-	elif arg.mode == 'lkd': lkd(g1, g2)
-	
+	if   arg.mode == 'nt': nt_compare(g1, g2)
+	elif arg.mode == 'tx': tx_compare(g1, g2)
+	else: raise MorlisError('no such program mode')
+
 	
 
 
