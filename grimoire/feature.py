@@ -53,6 +53,11 @@ class Feature:
 		self.issues = {}
 		self.children = []
 		self.validated = False
+		
+		if self.score != '.':
+			self.score = float(self.score)
+		if self.phase != '.':
+			self.phase = int(self.phase)
 
 		if self.dna == None:
 			raise GenomeError('attempt to create feature unbound to DNA')
@@ -496,7 +501,6 @@ class FeatureTable:
 				if f.dna is not self.features[0].dna:
 					raise FeatureError('reference mismatch within FeatureTable')
 			
-
 	def add_feature(self, feature):
 		"""
 		Parameters
@@ -557,7 +561,7 @@ class FeatureTable:
 				if f.id == None: raise FeatureError('mRNAs need ids')
 				if f.pid == None: raise FeatureError('mRNAs need pids')
 				mRNAs[f.id] = mRNA(f.dna, f.beg, f.end, f.strand, f.type,
-					id=f.id, pid=f.pid)
+					id=f.id, pid=f.pid, score=f.score)
 			elif f.type == 'exon' or f.type == 'CDS':
 				if f.pid == None: raise FeatureError('need parent')
 				parts.append(f)
