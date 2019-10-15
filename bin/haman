@@ -118,7 +118,7 @@ def segment_by_regions():
 						region.end = genes[j].end
 				else:
 					skip = j
-					break			
+					break
 			regions.append(region)
 		
 		# remap sequence and features smaller and export
@@ -142,12 +142,13 @@ def segment_by_regions():
 			for f in stuff:
 				if f.beg < region.beg or f.end > region.end: continue
 				keep.append(f)
+			remap = []
 			for f in keep:
-				f = Feature(dna, f.beg - region.beg + 1,
+				remap.append(Feature(dna, f.beg - region.beg + 1,
 					f.end - region.beg + 1, f.strand, f.type, phase=f.phase,
-					score=f.score, source=f.source, id=f.id, pid=f.pid)
+					score=f.score, source=f.source, id=f.id, pid=f.pid))
 			gfp = open(dir + '/' + str(idx) + '.gff', 'w+')
-			for f in keep:
+			for f in remap:
 				gfp.write(f.gff())
 				gfp.write('\n')
 
