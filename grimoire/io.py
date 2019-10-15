@@ -202,7 +202,7 @@ class GFF_entry:
 		column = line.split('\t')
 		if len(column) < 8:
 			raise GFF_error('badly formatted gff')
-			
+		
 		self.chrom = column[0]
 		self.source = column[1]
 		self.type = column[2]
@@ -331,7 +331,7 @@ def _from_BED12(file):
 class GFF_file:
 	"""Class for reading and searching a GFF (and other) annotation files."""
 	
-	def __init__(self, file=None):
+	def __init__(self, file=None, source=None):
 		"""
 		Parameters
 		----------
@@ -366,6 +366,9 @@ class GFF_file:
 				
 		self._chroms = {}
 		self._types = {}
+		self._source = None
+		self._version = None
+		if source: (self._source, self._version) = source.split('.')
 
 		while (1):
 			line = fp.readline()
@@ -380,6 +383,15 @@ class GFF_file:
 			except GFF_error:
 				raise GFF_error('badly formatted gff')
 			
+			## source-level filtering
+			if self._source:
+				if self._source == 'wb':
+					if gff.type == 'gene' and gff.source != 'WormBase':
+						continue
+				else:
+					raise GFF_error('only wb filtering so far')
+			
+			# save the feature
 			if gff.chrom not in self._chroms: self._chroms[gff.chrom] = []
 			self._chroms[gff.chrom].append(gff)
 			if gff.type not in self._types: self._types[gff.type] = []

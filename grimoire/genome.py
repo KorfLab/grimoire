@@ -37,18 +37,20 @@ class GenomeError(Exception):
 class Reader:
 	"""Class for iterating through DNA objects with attached feature tables."""
 
-	def __init__(self, fasta=None, gff=None, check=False):
+	def __init__(self, fasta=None, gff=None, check=False, source=None):
 		"""
 		Parameters
 		----------
 		+ fasta= `str`  path to fasta file (may be compressed)
 		+ gff=   `str`  path to gff (or other file, may be compressed)
 		+ check= `bool` check that the alphabet conforms to IUPAC DNA
+		+ source= `str` optional source-based parsing (e.g. wb.270)
 		"""
 
-		self._gff = io.GFF_file(gff)
+		self._gff = io.GFF_file(gff, source=source)
 		self._fasta = io.FASTA_stream(fasta)
 		self._check = check
+		self._source = source
 
 	def __iter__(self):
 		return self
