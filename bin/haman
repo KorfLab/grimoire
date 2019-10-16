@@ -5,6 +5,7 @@ import sys
 import operator
 import os
 import copy
+import json
 
 from grimoire.sequence import DNA
 from grimoire.feature import Feature, mRNA, Gene, FeatureTable
@@ -89,6 +90,7 @@ def segment_by_genes():
 			fp[set]['ff'].write(dna.fasta())
 
 def segment_by_regions():
+"""This is really tied to working with WormBase"""
 
 	if os.path.exists(arg.out):
 		raise HamanError('output dir exists, will not overwrite')
@@ -144,13 +146,48 @@ def segment_by_regions():
 				keep.append(f)
 			remap = []
 			for f in keep:
-				remap.append(Feature(dna, f.beg - region.beg + 1,
-					f.end - region.beg + 1, f.strand, f.type, phase=f.phase,
+				remap.append(Feature(dna, f.beg - region.beg,
+					f.end - region.beg, f.strand, f.type, phase=f.phase,
 					score=f.score, source=f.source, id=f.id, pid=f.pid))
 			gfp = open(dir + '/' + str(idx) + '.gff', 'w+')
 			for f in remap:
+				dna.ftable.add_feature(f)
 				gfp.write(f.gff())
 				gfp.write('\n')
+			
+			# json metadata
+			genes = dna.ftable.build_genes()
+			pc_genes = 0
+			nc_genes = 0
+			pc_issues = 0
+			introns = 0
+			strand = None
+			rnaseq = 0
+			for gene in genes:
+				if strand == None:
+					strand = gene.strand
+				elif strand != gene.strand:
+					strand = '.'
+				if len(gene.transcripts()) == 0: nc_genes += 1
+				else:
+					pc_genes += 1
+					if gene.issues: pc_issues += 1
+					for tx in gene.transcripts():
+						introns += len(tx.introns)
+			for f in remap:
+				if f.type == 'intron' and f.source == 'RNASeq_splice':
+					rnaseq += 1
+			meta = {
+				'pc_genes': pc_genes,
+				'nc_genes': nc_genes,
+				'pc_issues': pc_issues,
+				'introns': introns,
+				'strand': strand,
+				'rnaseq': rnaseq,
+			}
+			mfp = open(dir + '/' + str(idx) + '.json', 'w+')
+			mfp.write(json.dumps(meta, indent=4))
+			mfp.close()
 
 if __name__ == '__main__':
 	if arg.segment == 'gene':
