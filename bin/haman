@@ -90,7 +90,7 @@ def segment_by_genes():
 			fp[set]['ff'].write(dna.fasta())
 
 def segment_by_regions():
-"""This is really tied to working with WormBase"""
+	"""This is really tied to working with WormBase"""
 
 	if os.path.exists(arg.out):
 		raise HamanError('output dir exists, will not overwrite')
