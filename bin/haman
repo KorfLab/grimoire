@@ -142,12 +142,14 @@ def segment_by_regions():
 			stuff = chrom.ftable.fetch(region.beg, region.end)
 			keep = []
 			for f in stuff:
-				if f.beg < region.beg or f.end > region.end: continue
+				if f.beg <= region.beg or f.end >= region.end: continue
 				keep.append(f)
 			remap = []
 			for f in keep:
-				remap.append(Feature(dna, f.beg - region.beg,
-					f.end - region.beg, f.strand, f.type, phase=f.phase,
+				nbeg = f.beg - region.beg
+				nend = f.end - region.end
+				remap.append(Feature(dna, nbeg, nend,
+					f.strand, f.type, phase=f.phase,
 					score=f.score, source=f.source, id=f.id, pid=f.pid))
 			gfp = open(dir + '/' + str(idx) + '.gff', 'w+')
 			for f in remap:
