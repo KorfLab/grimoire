@@ -147,7 +147,7 @@ def segment_by_regions():
 			remap = []
 			for f in keep:
 				nbeg = f.beg - region.beg
-				nend = f.end - region.end
+				nend = f.end - region.beg
 				remap.append(Feature(dna, nbeg, nend,
 					f.strand, f.type, phase=f.phase,
 					score=f.score, source=f.source, id=f.id, pid=f.pid))
