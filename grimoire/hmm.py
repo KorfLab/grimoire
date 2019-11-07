@@ -52,30 +52,34 @@ def train_emission(seqs, context=0):
 
 	Parameters
 	----------
-	+ seqs    `list` list of sequences of type `str`
+	+ seqs    `list` of `dict` each with two keys: `seq` type `str`, and `weight` type `float`
 	+ context= `int` order of the Markov model (0 or greater)
 	"""
-
+	
 	count = emission_model(context=context)
 	freq = {}
 
 	if context == 0:
 		total = 0
-		for seq in seqs:
+		for item in seqs:
+			seq = item['seq']
+			weight = item['weight']
 			for i in range(len(seq)):
 				nt = seq[i:i+1]
 				if (nt in count):
-					count[nt] += 1
+					count[nt] += weight
 					total += 1
 		for nt in count: freq[nt] = round(count[nt] / total, 4)
 	else:
-		for seq in seqs:
+		for item in seqs:
+			seq = item['seq']
+			weight = item['weight']
 			for i in range(len(seq) -context):
 				pos = i + context
 				ctx = seq[i:i+context]
 				nt = seq[pos:pos+1]
 				if ctx in count and nt in count[ctx]:
-					count[ctx][nt] += 1
+					count[ctx][nt] += weight
 		for ctx in count:
 			total = 0
 			freq[ctx] = {}
@@ -90,20 +94,22 @@ def train_emissions(seqs, context=0):
 
 	Parameters
 	----------
-	+ seqs     `list` list of sequences of type `str`
+	+ seqs    `list` of `dict` each with two keys: `seq` type `str`, and `weight` type `float`
 	+ context= `int` order of the Markov model (0 or greater)
 	"""
 
 	counts = []
 	freqs = []
-	for i in range(len(seqs[0])):
+	for i in range(len(seqs[0]['seq'])):
 		counts.append(emission_model(context=context))
 
 	if (context == 0):
-		for seq in seqs:
+		for item in seqs:
+			seq = item['seq']
+			weight = item['weight']
 			for i in range(len(seq)):
 				nt = seq[i:i+1]
-				if (nt in counts[i]): counts[i][nt] += 1
+				if (nt in counts[i]): counts[i][nt] += weight
 		for count in counts:
 			total = 0
 			freq = {}
@@ -115,13 +121,15 @@ def train_emissions(seqs, context=0):
 			for ctx in counts[i]:
 				for nt in counts[i][ctx]:
 					counts[i][ctx][nt] = 1 # they will all be 0.25
-		for seq in seqs:
+		for item in seqs:
+			seq = item['seq']
+			weight = item['weight']
 			for i in range(len(seq) - context):
 				pos = i + context
-				ctx = seq[i:i+context]
+				ctx =seq[i:i+context]
 				nt = seq[i + context : i + context + 1]
 				if (ctx in counts[pos] and nt in counts[pos][ctx]):
-					counts[pos][ctx][nt] += 1
+					counts[pos][ctx][nt] += weight
 		for i in range(len(counts)):
 			freqs.append({})
 			for ctx in counts[i]:
@@ -798,7 +806,7 @@ class StochasticViterbi(HMM_NT_decoder):
 
 	def generate_paths(self, n):
 		"""Generates a list of paths using the Stochastic Viterbi algorithm. Returns
-		a `list` of `Parse` objects."""
+		a `list` of `Parse` objects. """
 
 		term_cdf = []
 		if self.model.log:

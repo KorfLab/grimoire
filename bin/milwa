@@ -128,9 +128,9 @@ if arg.model == 'don':
 					iseq = tx.introns[i].seq_str()
 					don_seq = iseq[0:arg.don_len]
 					int_seq = iseq[arg.don_len:-arg.acc_len]
-					exp_seqs.append(exp_seq)
-					don_seqs.append(don_seq)
-					int_seqs.append(int_seq)
+					exp_seqs.append({'seq' : exp_seq, 'weight' : 1})
+					don_seqs.append({'seq' : don_seq, 'weight' : 1})
+					int_seqs.append({'seq' : int_seq, 'weight' : 1})
 					intron_len += len(int_seq)
 					exon_len += len(exp_seq)
 					splices += 1
@@ -186,9 +186,9 @@ elif arg.model == 'acc':
 					iseq = tx.introns[i].seq_str()
 					int_seq = iseq[arg.don_len:-arg.acc_len]
 					acc_seq = iseq[-arg.acc_len:len(iseq)]
-					int_seqs.append(int_seq)
-					acc_seqs.append(acc_seq)
-					exn_seqs.append(exn_seq)
+					int_seqs.append({'seq' : int_seq, 'weight' : 1})
+					acc_seqs.append({'seq' : acc_seq, 'weight' : 1})
+					exn_seqs.append({'seq' : exn_seq, 'weight' : 1})
 					intron_len += len(int_seq)
 					exon_len += len(exn_seq)
 					splices += 1
@@ -249,11 +249,11 @@ elif arg.model == 'exon':
 					don_seq = inext[0:arg.don_len]
 					ip_seq = iprev[0:-len(acc_seq)]
 					in_seq = inext[len(don_seq):]
-					acc_seqs.append(acc_seq)
-					exon_seqs.append(exon_seq)
-					don_seqs.append(don_seq)
-					intron_seqs.append(ip_seq)
-					intron_seqs.append(in_seq)
+					acc_seqs.append({'seq' : acc_seq, 'weight' : 1})
+					exon_seqs.append({'seq' : exon_seq, 'weight' : 1})
+					don_seqs.append({'seq' : don_seq, 'weight' : 1})
+					intron_seqs.append({'seq' : ip_seq, 'weight' : 1})
+					intron_seqs.append({'seq' : in_seq, 'weight' : 1})
 					splices += 1
 					exon_len += tx.exons[i].end - tx.exons[i].beg + 1
 					inta_len += len(in_seq)
@@ -325,11 +325,11 @@ elif arg.model == 'intron':
 					don_seq = iseq[0:arg.don_len]
 					int_seq = iseq[arg.don_len:-arg.acc_len]
 					acc_seq = iseq[-arg.acc_len:len(iseq)]
-					exp_seqs.append(exp_seq)
-					don_seqs.append(don_seq)
-					int_seqs.append(int_seq)
-					acc_seqs.append(acc_seq)
-					exn_seqs.append(exn_seq)
+					exp_seqs.append({'seq' : exp_seq, 'weight' : 1})
+					don_seqs.append({'seq' : edon_seq, 'weight' : 1})
+					int_seqs.append({'seq' : eint_seq, 'weight' : 1})
+					acc_seqs.append({'seq' : eacc_seq, 'weight' : 1})
+					exn_seqs.append({'seq' : eexn_seq, 'weight' : 1})
 					intron_len += len(int_seq)
 					exon_len += len(exp_seq)
 					splices += 1
@@ -391,7 +391,7 @@ elif arg.model == 'gene':
 	
 	for chr in genome:
 		genes = chr.ftable.build_genes()	
-		gen_seqs.append(chr.seq)
+		gen_seqs.append({'seq' : echr.seq, 'weight' : 1})
 		for gene in genes:
 			if gene.issues and arg.canonical: continue
 			if not gene.transcripts(): continue
@@ -404,15 +404,15 @@ elif arg.model == 'gene':
 				for exon in tx.exons:
 					exon_seq = exon.seq_str()
 					exon_len += len(exon_seq)
-					exon_seqs.append(exon_seq)
+					exon_seqs.append({'seq' : eexon_seq, 'weight' : 1})
 				for intron in tx.introns:
 					iseq = intron.seq_str()
 					don_seq = iseq[0:arg.don_len]
 					int_seq = iseq[arg.don_len:-arg.acc_len]
 					acc_seq = iseq[-arg.acc_len:len(iseq)]
-					don_seqs.append(don_seq)
-					int_seqs.append(int_seq)
-					acc_seqs.append(acc_seq)
+					don_seqs.append({'seq' : edon_seq, 'weight' : 1})
+					int_seqs.append({'seq' : eint_seq, 'weight' : 1})
+					acc_seqs.append({'seq' : eacc_seq, 'weight' : 1})
 					intron_len += len(int_seq)
 					splices += 1
 			
@@ -465,7 +465,7 @@ elif arg.model == 'mRNA':
 	
 	for chr in genome:
 		genes = chr.ftable.build_genes()	
-		gen_seqs.append(chr.seq)
+		gen_seqs.append({'seq' : chr.seq, 'weight' : 1})
 		for gene in genes:
 			if gene.issues and arg.canonical: continue
 			if not gene.transcripts(): continue
@@ -485,12 +485,12 @@ elif arg.model == 'mRNA':
 				cds_seq = cds[3:-3]
 				stp_seq = cds[-3:]
 				ut3_seq = ptx[end:len(ptx)]
-				ut5_seqs.append(ut5_seq)
-				koz_seqs.append(koz_seq)
-				atg_seqs.append(atg_seq)
-				cds_seqs.append(cds_seq)
-				stp_seqs.append(stp_seq)
-				ut3_seqs.append(ut3_seq)
+				ut5_seqs.append({'seq' : chr.sequt5_seq, 'weight' : 1})
+				koz_seqs.append({'seq' : chr.seqkoz_seq, 'weight' : 1})
+				atg_seqs.append({'seq' : chr.seqatg_seq, 'weight' : 1})
+				cds_seqs.append({'seq' : chr.seqcds_seq, 'weight' : 1})
+				stp_seqs.append({'seq' : chr.seqstp_seq, 'weight' : 1})
+				ut3_seqs.append({'seq' : chr.sequt3_seq, 'weight' : 1})
 				ut5_len += len(ut5_seq)
 				cds_len += len(cds_seq)
 				ut3_len == len(ut3_seq)

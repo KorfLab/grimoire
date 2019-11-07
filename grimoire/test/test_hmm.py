@@ -3,6 +3,7 @@ import unittest
 import copy
 import os
 import json
+import sys
 
 import grimoire.sequence as sequence
 import grimoire.genome as genome
@@ -23,14 +24,14 @@ class TestHMM(unittest.TestCase):
 			fasta='data/ce270.fa.gz')
 		for chrom in gen:
 			genes = chrom.ftable.build_genes()
-			gen_seqs.append(chrom.seq)
+			gen_seqs.append({'seq' : chrom.seq, 'weight' : 1})
 			for gene in genes:
 				if gene.issues: continue
 				for mrna in gene.transcripts():
 					if not mrna.is_coding: continue
 					cds_seqs.append(mrna.cds_str())
 					for intron in mrna.introns:
-						donor_seqs.append(intron.seq_str()[0:6])
+						donor_seqs.append({'seq' : intron.seq_str()[0:6], 'weight' : 1})
 		
 		donor_emits = hmm.train_emissions(donor_seqs, context=0)
 		donor_states = hmm.state_factory('DON', donor_emits)
@@ -67,7 +68,7 @@ class TestHMM(unittest.TestCase):
 		
 	def test_train_emissions(self):
 		em = hmm.train_emissions(self.seqs, context=1)
-		self.assertEqual(len(em), len(self.seqs[0]))
+		self.assertEqual(len(em), len(self.seqs[0]['seq']))
 		self.assertEqual(len(em[0]), 4)
 		with self.assertRaises(hmm.HMMError):
 			em = hmm.train_emission(self.seqs, context=-1)
