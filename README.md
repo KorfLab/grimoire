@@ -42,7 +42,8 @@ Program names are themed after spell names from the classic RPG
 | tiltowait | explosion  | (planned multi-genome decoder)
 | zilwan    | dispel     | (planned profile/alignment decoder)
 | latumapic | identify   | (planned region-ifier)
-
+| molito    | spark storm| (planned recursive intron decoder)
+| porfic    | sheild     | (planned intron trainer for molito)
 
 Contributors
 ------------
