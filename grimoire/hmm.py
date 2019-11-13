@@ -161,11 +161,13 @@ def train_cds(seqs, context=0):
 		counts.append(emission_model(context=context))
 
 	if (context == 0):
-		for seq in seqs:
+		for item in seqs:
+			seq = item['seq']
+			weight = item['weight']
 			for i in range(0, len(seq) -3, 3):
 				for j in range(3):
 					nt = seq[i+j]
-					if (nt in counts[j]) : counts[j][nt] += 1
+					if (nt in counts[j]) : counts[j][nt] += weight
 		for count in counts:
 			total = 0
 			freq = {}
@@ -173,13 +175,15 @@ def train_cds(seqs, context=0):
 			for nt in count: freq[nt] = round(count[nt] / total	, 4)
 			freqs.append(freq)
 	else:
-		for seq in seqs:
+		for item in seqs:
+			seq = item['seq']
+			weight = item['weight']
 			for i in range(context, len(seq), 1):
 				ctx = seq[i-context:i]
 				nt = seq[i]
 				frame = i % 3
-				if (ctx in counts[frame] and nt in counts[frame][ctx]) :
-						counts[frame][ctx][nt] += 1
+				if (ctx in counts[frame] and nt in counts[frame][ctx]):
+					counts[frame][ctx][nt] += weight
 		for j in range(3):
 			freqs.append({})
 			for ctx in counts[j]:
