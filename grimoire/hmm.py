@@ -54,8 +54,7 @@ def train_emission(seqs, context=0):
 	----------
 	+ seqs    `list` of `dict` each with two keys: `seq` type `str`, and `weight` type `float`
 	+ context= `int` order of the Markov model (0 or greater)
-	"""
-	
+	"""	
 	count = emission_model(context=context)
 	freq = {}
 
@@ -68,7 +67,7 @@ def train_emission(seqs, context=0):
 				nt = seq[i:i+1]
 				if (nt in count):
 					count[nt] += weight
-					total += 1
+					total += weight
 		for nt in count: freq[nt] = round(count[nt] / total, 4)
 	else:
 		for item in seqs:
