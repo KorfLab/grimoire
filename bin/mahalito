@@ -1,9 +1,10 @@
+#!/usr/bin/env python3
+
 import argparse
 import sys
 
 import grimoire.toolbox as toolbox
 import grimoire.sequence as sequence
-import grimoire.decode as decode
 import grimoire.hmm as hmm
 
 parser = argparse.ArgumentParser(description='2 phase gene finder')
