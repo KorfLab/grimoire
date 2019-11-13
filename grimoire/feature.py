@@ -124,10 +124,32 @@ class Feature:
 		else:
 			self.children.append(child)
 
-	def seq_str(self):
-		"""Returns the sequence of a `Feature` as a `str` in + strand."""
+	def seq_str(self, off5=0, off3=0):
+		"""
+		Returns the sequence of a `Feature` as a `str` in + strand. The `off5`
+		and `off3` parameters let you grab extra sequence on either side. For
+		example `off5:-3` would be 3 nt upstream of the feature regardless of
+		which strand it is on (actually -3 beg or +3 end in chromosome coords).
+		
+		Parameters
+		----------
+		+ off5 `int` optional adjustment to 5' coordinate
+		+ off3 `int` optional adjustment to 3' coordinate
+		
+		"""
+		
+		begat, endat = 0, 0
+		if off5 != 0 or off3 != 0:
+			if self.strand == '+':
+				begat = off5
+				endat = off3
+			elif self.strand == '-':
+				begat = -off3
+				endat = -off5
+			else:
+				raise FeatureError('attempt to use offsets with no strand')
 
-		seq = self.dna.seq[self.beg-1:self.end]
+		seq = self.dna.seq[self.beg-1 +begat:self.end +endat]
 		if self.strand == '-': seq = toolbox.revcomp_str(seq)
 		return seq
 
