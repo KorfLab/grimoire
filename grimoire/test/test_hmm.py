@@ -29,7 +29,7 @@ class TestHMM(unittest.TestCase):
 				if gene.issues: continue
 				for mrna in gene.transcripts():
 					if not mrna.is_coding: continue
-					cds_seqs.append(mrna.cds_str())
+					cds_seqs.append({'seq':mrna.cds_str(), 'weight':1})
 					for intron in mrna.introns:
 						donor_seqs.append({'seq' : intron.seq_str()[0:6], 'weight' : 1})
 		

@@ -315,9 +315,17 @@ class State:
 
 	@classmethod
 	def from_json(cls, json_string):
-		"""Generates `State` object from JSON-formatted string."""
-		state = cls()
-		state.__dict__ = json.loads(json_string)
+		"""Generates `State` object from JSON-formatted string. Only used when
+		working with naked states outside of an HMM, such as training."""
+		s = json.loads(json_string)
+		st = State()
+		st.name = s['name']
+		st.init = s['init']
+		st.term = s['term']
+		st.ctxt = s['ctxt']
+		st.emit = s['emit']
+		st.next = s['next']
+		return st
 
 	def to_json(self):
 		"""Returns JSON-formatted `str` representing `State` object."""
