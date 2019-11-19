@@ -20,7 +20,7 @@ such as exons or introns. The results are structured as JSON files and
 stored in the specified directory. The --mode parameter specifies how the
 training is to occur:
 
-  'build_genes' uses grimoire.ftable.build_genes()
+  'gene_models' uses grimoire.ftable.build_genes() to model genes
   'wb_splice'   uses rnaseq_splice data from wormbase
 """
 
@@ -34,7 +34,7 @@ parser.add_argument('--gff', required=True, type=str,
 	metavar='<path>', help='path to GFF (or related) file')
 parser.add_argument('--dir', required=True, type=str,
 	metavar='<path>', help='path to directory containing JSON output files')
-parser.add_argument('--mode', required=False, type=str, default='build_genes',
+parser.add_argument('--mode', required=False, type=str, default='gene_models',
 	metavar='<string>', help='genome|rna_splice')
 arg = parser.parse_args()
 
@@ -46,38 +46,14 @@ arg = parser.parse_args()
 class MilwaError(Exception):
 	pass
 
-
-#############
-## Globals ##
-#############
-
-## single states ##
-
-int_ctx_max = 5
-exon_ctx_max = 5
-u5_ctx_max = 3
-u3_ctx_max = 3
-
-gen_ctx_max = 5
-null_ctx_max = 5
-cds_ctx_max = 2
-
-## state arrays ##
-sparam = {
-	'DON': {'o5':[0, 2], 'o3':[2, 6], 'ctx': [0, 1]},
-	'ACC': {'o5':[2, 8], 'o3':[0, 2], 'ctx': [0, 1]},
-	'KOZ': {'o5':[10],   'o3':[3],    'ctx':[0]},
-	'TER': {'o5':[3],    'o3':[10],   'ctx':[0]},
-}
-
-def train_genomic(ctx, name):
+def gm_train_genomic(ctx, name):
 	state = hmm.null_state_factory(file=arg.fasta, context=ctx)
 	state.name = name
 	path = '{}/{}-genomic-{}.json'.format(arg.dir, name, ctx)
 	with open(path, 'w+') as file:
 		file.write(state.to_json())
 
-def train_state(genes, type, ctx):
+def gm_train_state(genes, type, ctx):
 	seqs = []
 	for gene in genes:
 		for tx in gene.transcripts():
@@ -95,7 +71,7 @@ def train_state(genes, type, ctx):
 	with open(path, 'w+') as file:
 		file.write(state.to_json())
 
-def train_cds_state(genes,  ctx):
+def gm_train_cds_state(genes,  ctx):
 	seqs = []
 	for gene in genes:
 		for tx in gene.transcripts():
@@ -107,7 +83,7 @@ def train_cds_state(genes,  ctx):
 	with open(path, 'w+') as file:
 		file.write(state.to_json())
 
-def train_state_array(genes, type, o5, o3, ctx):
+def gm_train_state_array(genes, type, o5, o3, ctx):
 	seqs = []
 	for gene in genes:
 		for tx in gene.transcripts():
@@ -144,11 +120,23 @@ def train_state_array(genes, type, o5, o3, ctx):
 	with open(path, 'w+') as file:
 		file.write(json.dumps(states, indent=4, cls=hmm.HMMdecoder))
 
-if __name__ == '__main__':
+def train_from_gene_models():
 
-	if not os.path.exists(arg.dir):
-		os.mkdir(arg.dir)
-
+	# states to train
+	int_ctx_max = 5
+	exon_ctx_max = 5
+	u5_ctx_max = 3
+	u3_ctx_max = 3
+	gen_ctx_max = 5
+	null_ctx_max = 5
+	cds_ctx_max = 2
+	sparam = {
+		'DON': {'o5':[0, 2], 'o3':[2, 6], 'ctx': [0, 1]},
+		'ACC': {'o5':[2, 8], 'o3':[0, 2], 'ctx': [0, 1]},
+		'KOZ': {'o5':[10],   'o3':[3],    'ctx':[0]},
+		'TER': {'o5':[3],    'o3':[10],   'ctx':[0]},
+	}
+	
 	# stats
 	stats = {
 		'genomic_length'   : 0,
@@ -168,10 +156,10 @@ if __name__ == '__main__':
 	}
 
 	# genomic state
-	for ctx in range(gen_ctx_max +1): train_genomic(ctx, 'GEN')
+	for ctx in range(gen_ctx_max +1): gm_train_genomic(ctx, 'GEN')
 	
 	# null state
-	for ctx in range(null_ctx_max +1): train_genomic(ctx, 'NULL')
+	for ctx in range(null_ctx_max +1): gm_train_genomic(ctx, 'NULL')
 	
 	# setup
 	genes = []
@@ -182,20 +170,20 @@ if __name__ == '__main__':
 		stats['chromosome_count'] += 1
 
 	# simple states
-	for ctx in range(int_ctx_max +1):  train_state(genes, 'INT', ctx)
-	for ctx in range(exon_ctx_max +1): train_state(genes, 'EXON', ctx)
-	for ctx in range(u5_ctx_max +1):   train_state(genes, 'UTR5', ctx)
-	for ctx in range(u3_ctx_max +1):   train_state(genes, 'UTR3', ctx)
+	for ctx in range(int_ctx_max +1):  gm_train_state(genes, 'INT', ctx)
+	for ctx in range(exon_ctx_max +1): gm_train_state(genes, 'EXON', ctx)
+	for ctx in range(u5_ctx_max +1):   gm_train_state(genes, 'UTR5', ctx)
+	for ctx in range(u3_ctx_max +1):   gm_train_state(genes, 'UTR3', ctx)
 	
 	# coding states
-	for ctx in range(cds_ctx_max +1): train_cds_state(genes, ctx)	
+	for ctx in range(cds_ctx_max +1): gm_train_cds_state(genes, ctx)	
 	
 	# state arrays
 	for name in sparam:
 		for o5 in sparam[name]['o5']:
 			for o3 in sparam[name]['o3']:
 				for ctx in sparam[name]['ctx']:
-					train_state_array(genes, name, o5, o3, ctx)
+					gm_train_state_array(genes, name, o5, o3, ctx)
 	
 	# stats
 	for gene in genes:
@@ -216,9 +204,88 @@ if __name__ == '__main__':
 				stats['utr3_count'] += 1
 			stats['cds_count'] += 1
 			stats['cds_length'] += len(tx.cds_str())
-	path = '{}/{}'.format(arg.dir, 'stats.json')
+	path = '{}/{}'.format(arg.dir, 'gene_models.stats.json')
 	with open(path, 'w+') as file:
 		file.write(json.dumps(stats, indent=4))
+
+def ws_train_state(features, type, ctx):
+	seqs = []
+	for f in features:
+		if f.type == 'intron' and f.source == 'RNASeq_splice':
+			seqs.append({'seq' : f.seq_str(), 'weight' : f.score})
+
+	em = hmm.train_emission(seqs, context=ctx)
+	state = hmm.State(name=type, context=ctx, emits=em)
+	path = '{}/{}-{}-{}.json'.format(arg.dir, type, 'wb_splice', ctx)
+	with open(path, 'w+') as file:
+		file.write(state.to_json())
+
+def ws_train_state_array(features, type, o5, o3, ctx):
+	seqs = []
+	for f in features:
+		if type == 'DON':
+			if f.type == 'intron' and f.source == 'RNASeq_splice':
+					iseq = f.seq_str(off5=-o5)[0:o5+o3]
+					seqs.append({'seq':iseq, 'weight':f.score})
+		elif type == 'ACC':
+			if f.type == 'intron' and f.source == 'RNASeq_splice':
+				iseq = f.seq_str(off3=o3)[-(o5 + o3):]
+				seqs.append({'seq':iseq, 'weight':f.score})
 	
+	em = hmm.train_emissions(seqs, context=ctx)
+	states = hmm.state_factory(type, em)
+	
+	path = '{}/{}-{}-{}-{}-{}.json'.format(arg.dir, type, 'wb_splice', o5, o3, ctx)
+	with open(path, 'w+') as file:
+		file.write(json.dumps(states, indent=4, cls=hmm.HMMdecoder))
+
+def train_from_wb_splice():
+
+	# states to train
+	int_ctx_max = 5
+	sparam = {
+		'DON': {'o5':[0, 2], 'o3':[2, 6], 'ctx': [0, 1]},
+		'ACC': {'o5':[2, 8], 'o3':[0, 2], 'ctx': [0, 1]},
+	}
+	
+	# stats
+	stats = {
+		'intron_length' : 0,
+		'intron_count' : 0,
+	}
+
+	genome = Reader(fasta=arg.fasta, gff=arg.gff)
+	flist = []
+	for chrom in genome:
+		flist += chrom.ftable.features
+		
+	# simple states
+	for ctx in range(int_ctx_max +1):  ws_train_state(flist, 'INT', ctx)
+	
+	# state arrays
+	for name in sparam:
+		for o5 in sparam[name]['o5']:
+			for o3 in sparam[name]['o3']:
+				for ctx in sparam[name]['ctx']:
+					ws_train_state_array(flist, name, o5, o3, ctx)
+	
+	# stats
+	for f in flist:
+		if f.type == 'intron' and f.source == 'RNASeq_splice':
+			stats['intron_length'] += f.end - f.beg + 1
+			stats['intron_count']  += f.score
+	
+	with open(arg.dir + '/wb_splice.stats.json', 'w+') as file:
+		file.write(json.dumps(stats, indent=4))
+
+if __name__ == '__main__':
+
+	if not os.path.exists(arg.dir):
+		os.mkdir(arg.dir)
+
+	if   arg.mode == 'gene_models': train_from_gene_models()
+	elif arg.mode == 'wb_splice':   train_from_wb_splice()
+	else : raise MilwaError()
+
 
 
