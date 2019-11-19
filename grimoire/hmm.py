@@ -83,7 +83,12 @@ def train_emission(seqs, context=0):
 			total = 0
 			freq[ctx] = {}
 			for nt in count[ctx]: total += count[ctx][nt]
-			for nt in count[ctx]: freq[ctx][nt] = round(count[ctx][nt]/total, 4)
+			if total > 0:
+				for nt in count[ctx]:
+					freq[ctx][nt] = round(count[ctx][nt]/total, 4)
+			else:
+				for nt in count[ctx]:
+					freq[ctx][nt] = 0
 
 	return freq
 
