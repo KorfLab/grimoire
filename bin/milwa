@@ -35,7 +35,7 @@ parser.add_argument('--gff', required=True, type=str,
 parser.add_argument('--dir', required=True, type=str,
 	metavar='<path>', help='path to directory containing JSON output files')
 parser.add_argument('--mode', required=False, type=str, default='gene_models',
-	metavar='<string>', help='genome|rna_splice')
+	metavar='<string>', help='gene_models|wb_splice')
 arg = parser.parse_args()
 
 
