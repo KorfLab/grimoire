@@ -29,7 +29,8 @@ Program names are themed after spell names from the classic RPG
 | calfo     | x-ray      | genome annotation reporter
 | kandi     | locate     | genome annotation viewer
 | haman     | change     | genome slicer
-| milwa     | light      | hmm buider
+| milwa     | light      | state builder
+| lomilwa   | more light | hmm assembler
 | dumapic   | clarity    | hmm grapher 
 | halito    | fire       | basic hmm decoder
 | mahalito  | big fire   | 2-pass gene decoder
