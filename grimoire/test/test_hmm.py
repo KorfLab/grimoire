@@ -94,6 +94,21 @@ class TestHMM(unittest.TestCase):
 	def test_HMM_emit(self):
 		self.assertEqual(self.hmm.null.emit['A'], 0.3197)
 	
+	def test_State_io(self):
+		with open('/tmp/donor.state', 'w+') as f:
+			f.write(hmm.State.to_json(self.hmm.states[0]))
+		sr = None
+		with open('/tmp/donor.state') as f:
+			sr = f.readlines()
+		sj = ''.join(sr)
+		s = hmm.State.from_json(sj)
+		self.assertIsInstance(s, hmm.State)
+		self.assertEqual(self.hmm.states[0].name, s.name)
+		self.assertEqual(self.hmm.states[0].init, s.init)
+		self.assertEqual(self.hmm.states[0].term, s.term)
+		self.assertEqual(self.hmm.states[0].ctxt, s.ctxt)
+		self.assertEqual(self.hmm.states[0].next, s.next)
+	
 	def test_HMM_io(self):
 		p1 = '/tmp/donor.hmm'
 		p2 = '/tmp/donor.hmm.gz'
