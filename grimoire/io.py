@@ -374,6 +374,7 @@ class GFF_file:
 			line = fp.readline()
 			if isinstance(line, bytes): line = line.decode()
 			if line == '': break
+			if line[0:1] == '>': break
 			
 			gff = None
 			try:
