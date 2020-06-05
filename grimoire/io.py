@@ -154,13 +154,14 @@ class FASTA_stream:
 		while (True):
 			line = self._fp.readline()
 			if isinstance(line, bytes): line = line.decode()
-			if line[0:1] == '>':
-				self._lastline = line
-				break
 			if line == '':
 				self.done = True
 				self._fp.close()
 				break
+			if line[0] == '>':
+				self._lastline = line
+				break
+
 			line = line.replace(' ', '')
 			seq.append(line.strip())
 
