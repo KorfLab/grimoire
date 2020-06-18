@@ -495,7 +495,7 @@ class GFF_stream:
 		try:
 			gff = GFF_entry(line)
 		except GFF_skip:
-			return self.next()
+			return self.__next__()
 		except GFF_error:
 			raise GFF_error('badly formatted gff')
 		
