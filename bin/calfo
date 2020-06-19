@@ -3,6 +3,7 @@
 import argparse
 import base64
 import io
+import os
 import operator
 import statistics
 
@@ -31,6 +32,8 @@ parser.add_argument('--title', required=True, type=str,
 	metavar='<path>', help='title of report')
 parser.add_argument('--html', required=True, type=str,
 	metavar='<path>', help='path to html output file')
+parser.add_argument('--text', required=False, type=str,
+	metavar='<path>', help='send raw values to directory of text files')
 arg = parser.parse_args()
 
 class CalfoError(Exception):
@@ -110,7 +113,17 @@ def bar_chart(data, title):
 	text += 'Total: ' + str(sum(values)) + ': ' + str(data) + '.<p>'
 
 	return text
-	
+
+def write_list(data, filename):
+	with open(filename, "w") as fp:
+		for d in data:
+			fp.write(f'{d}\n')
+
+def write_dict(data, filename):
+	with open(filename, "w") as fp:
+		for d in data:
+			fp.write(f'{d}\t{data[d]}\n')
+
 ###############################################################################
 # Report Init
 ###############################################################################
@@ -173,6 +186,7 @@ f_ok, f_err = 0, 0
 gene_issues = {}
 tx_issues = {}
 f_issues = {}
+tx_errs = []
 
 genome = Reader(fasta=arg.fasta, gff=arg.gff)
 for chr in genome:
@@ -199,6 +213,7 @@ for chr in genome:
 
 	# error section
 	for gene in genes:
+		
 		if not gene.issues: 
 			gene_ok += 1
 		else:
@@ -213,9 +228,12 @@ for chr in genome:
 				tx_ok += 1
 			else:
 				tx_err += 1
+				iss = []
 				for issue in tx.issues:
 					if issue not in tx_issues: tx_issues[issue] = 0
 					tx_issues[issue] += 1
+					iss.append(issue)
+				tx_errs.append(f'{tx.id} {iss}');
 			
 			# feature level
 			for f in tx.children:
@@ -238,6 +256,26 @@ doc.write(histogram(elen, 'Exon Lengths', 10))
 doc.write(histogram(ilen, 'Intron Lengths', 10))
 doc.write(histogram(u5len, 'UTR5 Lengths', 10))
 doc.write(histogram(u3len, 'UTR3 Lengths', 10))
+
+if arg.text:
+	if not os.path.isdir(arg.text):
+		os.mkdir(arg.text)
+	write_list(tpg, f'{arg.text}/transcripts_per_gene.txt')
+	write_list(ept, f'{arg.text}/exons_per_gene.txt')
+	write_list(ipt, f'{arg.text}/introns_per_gene.txt')
+	write_list(u5pt, f'{arg.text}/utr5_per_gene.txt')
+	write_list(u3pt, f'{arg.text}/utr3_per_gene.txt')
+	write_list(tlen, f'{arg.text}/transcript_len.txt')
+	write_list(clen, f'{arg.text}/coding_len.txt')
+	write_list(elen, f'{arg.text}/exon_len.txt')
+	write_list(ilen, f'{arg.text}/intron_len.txt')
+	write_list(u5len, f'{arg.text}/utr5_len.txt')
+	write_list(u3len, f'{arg.text}/utr3_len.txt')
+	write_list(tx_errs, f'{arg.text}/errors.txt')
+	write_dict(gene_issues, f'{arg.text}/gene_issues.txt')
+	write_dict(tx_issues,  f'{arg.text}/tx_issues.txt')
+	write_dict(f_issues,  f'{arg.text}/feature_issues.txt')
+
 
 ###############################################################################
 # Protein-Coding Gene Errors : General
