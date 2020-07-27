@@ -27,7 +27,7 @@ Program names are themed after spell names from the classic RPG
 | Name      | Meaning    | Function                               |
 |:----------|:-----------|:---------------------------------------|
 | calfo     | x-ray      | genome annotation reporter
-| kandi     | locate     | genome annotation viewer
+| kandi     | locate     | curses-based genome annotation viewer
 | haman     | change     | genome slicer
 | milwa     | light      | state builder
 | lomilwa   | more light | hmm assembler
