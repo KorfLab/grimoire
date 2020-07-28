@@ -217,6 +217,21 @@ class GFF_entry:
 		else:
 			self.attr = ''
 
+	def string(self, delim='\t'):
+		"""
+		Returns a string formatted as a GFF row.
+		
+		Parameters
+		----------
+		+ delim=`str` delimeter, default is tab
+		"""
+		return delim.join((self.chrom, self.source, self.type,
+			str(self.beg), str(self.end),
+			self.score, self.strand, self.phase, self.attr))
+
+	def __str__(self):
+		return self.string()
+
 def _from_GTF(file):
 	
 	fp = None
