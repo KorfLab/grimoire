@@ -10,19 +10,23 @@ import json
 from grimoire.sequence import DNA
 from grimoire.feature import Feature, mRNA, Gene, FeatureTable
 from grimoire.genome import Reader
+import grimoire.io as gio
 
 ## Command line stuff ##
 
 extended_help = """
 %(prog)s is used for converting chromosome-based genomic data into
 smaller pieces. This is useful in a training environment when you want
-to create cross-validation training and testing sets.
+to create cross-validation training and testing sets or when you want a
+minimal set for tutorials and functional tests.
 
 Segmenting by gene goes through protein-coding gene build and saves as
 fasta + gff3.
 
 Segmenting by region pulls all gff of gene-ic regions (overlaps merged) and
 saves as a directory of regions.
+
+Segmenting by percent keeps the first x% of the genome.
 
 Source: wb.270 wormbase filtering
 """
@@ -38,7 +42,9 @@ parser.add_argument('--gff', required=True, type=str,
 parser.add_argument('--out', required=True, type=str,
 	metavar='<str>', help='output name (file or dir)')
 parser.add_argument('--segment', required=False, type=str,
-	metavar='<str>', help='gene|region')
+	metavar='<str>', help='gene|region|percent')
+parser.add_argument('--pct', required=False, type=int, default=1.0,
+	metavar='<int>', help='for use with percent segmenting [%(default).3f]')
 parser.add_argument('--source', required=False, type=str,
 	metavar='<str>', help='rule-based parsing based on gff source')
 parser.add_argument('--split', required=False, type=int, default=1,
@@ -191,18 +197,26 @@ def segment_by_regions():
 			mfp.write(json.dumps(meta, indent=4))
 			mfp.close()
 
+def segment_by_percent():
+	FRACTION = arg.pct / 100
+	
+	chrom = {}
+	with open(f'{arg.out}.fa', 'w') as fp:
+		for entry in gio.FASTA_stream(filename=arg.fasta):
+			l = int(len(entry.seq) * FRACTION)
+			chrom[entry.id] = entry.seq[0:l]
+			fp.write(f'>{entry.id} 1..{l+1}\n')
+			for i in range(0, len(chrom[entry.id]), 50):
+				fp.write(f'{chrom[entry.id][i:i+50]}\n')
+
+	with open(f'{arg.out}.gff', 'w') as fp:
+		for gff in gio.GFF_stream(filename=arg.gff):
+			limit = len(chrom[gff.chrom])
+			if gff.beg < limit and gff.end < limit:
+				fp.write(f'{gff}\n')
+
 if __name__ == '__main__':
-	if arg.segment == 'gene':
-		segment_by_genes()
-	elif arg.segment == 'region':
-		segment_by_regions()
-	else:
-		raise HamanError('unknown segmentation type: ' + arg.segment)
-
-# There might be a better way to do this by simply taking all the gff
-# in any region. Why build genes at all?
-
-
-
-
-
+	if   arg.segment == 'gene':    segment_by_genes()
+	elif arg.segment == 'region':  segment_by_regions()
+	elif arg.segment == 'percent': segment_by_percent()
+	else: raise HamanError('unknown segmentation type: ' + arg.segment)
