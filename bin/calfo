@@ -32,8 +32,8 @@ parser.add_argument('--title', required=True, type=str,
 	metavar='<path>', help='title of report')
 parser.add_argument('--html', required=True, type=str,
 	metavar='<path>', help='path to html output file')
-parser.add_argument('--text', required=False, type=str,
-	metavar='<path>', help='send raw values to directory of text files')
+parser.add_argument('--tables', required=False, type=str,
+	metavar='<path>', help='path to directory for tables of raw data')
 arg = parser.parse_args()
 
 class CalfoError(Exception):
@@ -257,43 +257,46 @@ doc.write(histogram(ilen, 'Intron Lengths', 10))
 doc.write(histogram(u5len, 'UTR5 Lengths', 10))
 doc.write(histogram(u3len, 'UTR3 Lengths', 10))
 
-if arg.text:
-	if not os.path.isdir(arg.text):
-		os.mkdir(arg.text)
-	write_list(tpg, f'{arg.text}/transcripts_per_gene.txt')
-	write_list(ept, f'{arg.text}/exons_per_gene.txt')
-	write_list(ipt, f'{arg.text}/introns_per_gene.txt')
-	write_list(u5pt, f'{arg.text}/utr5_per_gene.txt')
-	write_list(u3pt, f'{arg.text}/utr3_per_gene.txt')
-	write_list(tlen, f'{arg.text}/transcript_len.txt')
-	write_list(clen, f'{arg.text}/coding_len.txt')
-	write_list(elen, f'{arg.text}/exon_len.txt')
-	write_list(ilen, f'{arg.text}/intron_len.txt')
-	write_list(u5len, f'{arg.text}/utr5_len.txt')
-	write_list(u3len, f'{arg.text}/utr3_len.txt')
-	write_list(tx_errs, f'{arg.text}/errors.txt')
-	write_dict(gene_issues, f'{arg.text}/gene_issues.txt')
-	write_dict(tx_issues,  f'{arg.text}/tx_issues.txt')
-	write_dict(f_issues,  f'{arg.text}/feature_issues.txt')
+if arg.tables:
+	if not os.path.isdir(arg.tables):
+		os.mkdir(arg.tables)
+	write_list(tpg, f'{arg.tables}/transcripts_per_gene.txt')
+	write_list(ept, f'{arg.tables}/exons_per_gene.txt')
+	write_list(ipt, f'{arg.tables}/introns_per_gene.txt')
+	write_list(u5pt, f'{arg.tables}/utr5_per_gene.txt')
+	write_list(u3pt, f'{arg.tables}/utr3_per_gene.txt')
+	write_list(tlen, f'{arg.tables}/transcript_len.txt')
+	write_list(clen, f'{arg.tables}/coding_len.txt')
+	write_list(elen, f'{arg.tables}/exon_len.txt')
+	write_list(ilen, f'{arg.tables}/intron_len.txt')
+	write_list(u5len, f'{arg.tables}/utr5_len.txt')
+	write_list(u3len, f'{arg.tables}/utr3_len.txt')
+	write_list(tx_errs, f'{arg.tables}/errors.txt')
+	write_dict(gene_issues, f'{arg.tables}/gene_issues.txt')
+	write_dict(tx_issues,  f'{arg.tables}/tx_issues.txt')
+	write_dict(f_issues,  f'{arg.tables}/feature_issues.txt')
 
 
 ###############################################################################
 # Protein-Coding Gene Errors : General
 ###############################################################################
 
-doc.write('<h2>Protein-coding Gene Annotation Errors</h2>')
+doc.write('<h2>Protein-coding Gene Annotation Issues</h2>')
 
-doc.write('Gene errors: {} / {} = {}'.format(gene_err, gene_ok,
-	gene_err /(gene_err + gene_ok)))
-doc.write(bar_chart(gene_issues, 'Gene Errors'))
+if gene_err + gene_ok > 0:
+	doc.write('Gene issues: {} / {} = {}'.format(gene_err, gene_ok,
+		gene_err /(gene_err + gene_ok)))
+	doc.write(bar_chart(gene_issues, 'Gene Errors'))
 
-doc.write('mRNA errors: {} / {} = {}'.format(tx_err, tx_ok,
-	tx_err /(tx_err + tx_ok)))
-doc.write(bar_chart(tx_issues, 'mRNA Errors'))
+if tx_err + tx_ok > 0:
+	doc.write('mRNA issues: {} / {} = {}'.format(tx_err, tx_ok,
+		tx_err /(tx_err + tx_ok)))
+	doc.write(bar_chart(tx_issues, 'mRNA Errors'))
 
-doc.write('Component errors: {} / {} = {}'.format(f_err, f_ok,
-	f_err /(f_err + f_ok)))
-doc.write(bar_chart(f_issues, 'Component Errors'))
+if f_err + f_ok > 0:
+	doc.write('Component issues: {} / {} = {}'.format(f_err, f_ok,
+		f_err /(f_err + f_ok)))
+	doc.write(bar_chart(f_issues, 'Component Errors'))
 
 ###############################################################################
 # Footer
