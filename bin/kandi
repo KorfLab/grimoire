@@ -15,7 +15,7 @@ from grimoire.feature import Gene, mRNA, Feature, FeatureTable
 ## Command line stuff ##
 
 extended_help = """
-%(prog)s is a very simple terminal-based genome browser designed for testing
+kandi is a very simple terminal-based genome browser designed for testing
 and debugging seqeunce analysis algorithms. It loads all of the
 sequences and features into memory and doesn't do any coordinate
 indexing. It is therefore not suitable for complete genomes.

@@ -12,7 +12,7 @@ from grimoire.feature import FeatureTable
 
 extended_help = """
 
-%(prog)s is designed to compare two sets of protein-coding gene
+morlis is designed to compare two sets of protein-coding gene
 annotations. Traditionally, this would be reference vs. prediciton, but
 it could also be two separate pipelines or the same pipeline at
 different times. Note that all of the features must reference the same

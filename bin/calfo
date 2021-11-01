@@ -15,7 +15,7 @@ from grimoire.io import FASTA_stream, GFF_stream
 ## Command line stuff ##
 
 extended_help = """
-%(prog)s provides an overview of a genome annotation as an HTML page. There
+calfo provides an overview of a genome annotation as an HTML page. There
 are graphs showing the characteristics of chromosomes and genes as well as
 an overview of some of the errors/non-canonical features.
 """

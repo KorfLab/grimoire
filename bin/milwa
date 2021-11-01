@@ -15,7 +15,7 @@ from grimoire.genome import Reader
 ## Command line stuff ##
 
 extended_help = """
-%(prog)s is used for training States and State Arrays for gene components
+milwa is used for training States and State Arrays for gene components
 such as exons or introns. The results are structured as JSON files and
 stored in the specified directory. The --mode parameter specifies how the
 training is to occur:
