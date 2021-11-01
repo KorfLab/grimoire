@@ -15,7 +15,7 @@ import grimoire.io as gio
 ## Command line stuff ##
 
 extended_help = """
-%(prog)s is used for converting chromosome-based genomic data into
+haman is used for converting chromosome-based genomic data into
 smaller pieces. This is useful in a training environment when you want
 to create cross-validation training and testing sets or when you want a
 minimal set for tutorials and functional tests.
@@ -101,11 +101,11 @@ def segment_by_regions():
 	if os.path.exists(arg.out):
 		raise HamanError('output dir exists, will not overwrite')
 	os.mkdir(arg.out)
-	
+
 	genome = Reader(gff=arg.gff, fasta=arg.fasta, source=arg.source)
 	idx = 0
 	for chrom in genome:
-	
+
 		# create regions of overlapping genes
 		chrom.ftable._sort()
 		genes = []
@@ -128,13 +128,13 @@ def segment_by_regions():
 					skip = j
 					break
 			regions.append(region)
-		
+
 		# remap sequence and features smaller and export
 		for region in regions:
 			idx += 1
 			dir = arg.out + '/' + str(idx)
 			os.mkdir(dir)
-			
+
 			# fasta
 			seq = chrom.seq[region.beg:region.end+1] # +1 or not?
 			dna = DNA(name=str(idx), seq=seq,
@@ -143,7 +143,7 @@ def segment_by_regions():
 			ffp = open(dir + '/' + str(idx) + '.fa', 'w+')
 			ffp.write(dna.fasta())
 			ffp.close()
-						
+
 			# gff
 			stuff = chrom.ftable.fetch(region.beg, region.end)
 			keep = []
@@ -162,7 +162,7 @@ def segment_by_regions():
 				dna.ftable.add_feature(f)
 				gfp.write(f.gff())
 				gfp.write('\n')
-			
+
 			# json metadata
 			genes = dna.ftable.build_genes()
 			pc_genes = 0
@@ -199,7 +199,7 @@ def segment_by_regions():
 
 def segment_by_percent():
 	FRACTION = arg.pct / 100
-	
+
 	chrom = {}
 	with open(f'{arg.out}.fa', 'w') as fp:
 		for entry in gio.FASTA_stream(filename=arg.fasta):
