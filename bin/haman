@@ -170,7 +170,8 @@ def segment_by_regions():
 			pc_issues = 0
 			introns = 0
 			strand = None
-			rnaseq = 0
+			splices = 0
+			depth = 0
 			for gene in genes:
 				if strand == None:
 					strand = gene.strand
@@ -184,14 +185,17 @@ def segment_by_regions():
 						introns += len(tx.introns)
 			for f in remap:
 				if f.type == 'intron' and f.source == 'RNASeq_splice':
-					rnaseq += 1
+					splices += 1
+				if f.source == 'RNASeq_reads':
+					if f.score > depth: depth = f.score
 			meta = {
 				'pc_genes': pc_genes,
 				'nc_genes': nc_genes,
 				'pc_issues': pc_issues,
 				'introns': introns,
 				'strand': strand,
-				'rnaseq': rnaseq,
+				'splices': splices,
+				'depth': depth
 			}
 			mfp = open(dir + '/' + str(idx) + '.json', 'w+')
 			mfp.write(json.dumps(meta, indent=4))
@@ -209,11 +213,11 @@ def segment_by_percent():
 			for i in range(0, len(chrom[entry.id]), 50):
 				fp.write(f'{chrom[entry.id][i:i+50]}\n')
 
-	with open(f'{arg.out}.gff', 'w') as fp:
+	with open(f'{arg.out}.gff3', 'w') as fp:
 		for gff in gio.GFF_stream(filename=arg.gff):
 			limit = len(chrom[gff.chrom])
 			if gff.beg < limit and gff.end < limit:
-				fp.write(f'{gff}\n')
+				fp.write(f'{gff}')
 
 if __name__ == '__main__':
 	if   arg.segment == 'gene':    segment_by_genes()
