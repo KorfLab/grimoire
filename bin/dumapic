@@ -9,7 +9,7 @@ import grimoire.hmm as hmm
 ## Command line ##
 
 extended_help = """
-%(prog)s draws a state diagram for an HMM using Graphviz. Transitions
+dumapic draws a state diagram for an HMM using Graphviz. Transitions
 probabilities can be labeled, but currently there is no support for
 emission probabilities because they can be quite complex when
 lexicalized. The grimmoire/docs directory contains svg files created

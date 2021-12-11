@@ -10,7 +10,7 @@ from grimoire.feature import Feature
 ## Command line ##
 
 extended_help = """
-%(prog)s generates random sequences consistent with an HMM. While the
+mogref generates random sequences consistent with an HMM. While the
 HMM may specify terminal state probabilities, %(prog)s creates sequences
 of defined length, and therefore ignores implicit length distributions.
 """

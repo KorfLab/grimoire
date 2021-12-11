@@ -13,7 +13,7 @@ import grimoire.hmm as hmm
 ## Command line stuff ##
 
 extended_help = """
-%(prog)s is used to decode sequences given an HMM using the standard Viterbi
+halito is used to decode sequences given an HMM using the standard Viterbi
 algorithm. Input is FASTA, output is GFF. %(prog)s can parallelize jobs.
 """
 
