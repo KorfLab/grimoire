@@ -31,12 +31,12 @@ class FASTA_entry:
 	def string(self, wrap=80):
 		"""
 		Returns a string formatted as a FASTA file.
-		
+
 		Parameters
 		----------
 		+ wrap=`int` number of characters per line
 		"""
-		
+
 		s = '>'
 		if self.id: s += self.id
 		if self.desc: s += ' ' + self.desc
@@ -56,7 +56,7 @@ class FASTA_file:
 		Parameters
 		----------
 		+ filename `str` path to file
-		
+
 		Attributes
 		----------
 		+ ids	`list` identifiers of entries in file
@@ -68,7 +68,7 @@ class FASTA_file:
 		self._offset = {} # indexes identifiers to file offsets
 		self.ids = []
 		self._fp = open(self._filename, 'r')
-		while (True):
+		while True:
 			line = self._fp.readline()
 			if line == '': break
 			if line[0:1] == '>':
@@ -83,7 +83,7 @@ class FASTA_file:
 	def get(self, id):
 		"""
 		Returns a `FASTA_entry` corresponding to given identifier.
-		
+
 		Parameters
 		----------
 		+ id `str` unique identifier
@@ -96,7 +96,7 @@ class FASTA_file:
 		id = m[1]
 		desc = m[2]
 		seq = []
-		while (True):
+		while True:
 			line = self._fp.readline()
 			if line[0:1] == '>': break
 			if line == '': break
@@ -115,7 +115,7 @@ class FASTA_stream:
 		----------
 		+ filename=    `str` name of a file
 		+ filepointer= `obj` bytes-like object
-		
+
 		Specify filename or filepointer, not both.
 		"""
 
@@ -151,7 +151,7 @@ class FASTA_stream:
 		desc = m[2]
 		seq = []
 
-		while (True):
+		while True:
 			line = self._fp.readline()
 			if isinstance(line, bytes): line = line.decode()
 			if line == '':
@@ -165,7 +165,7 @@ class FASTA_stream:
 			line = line.replace(' ', '')
 			seq.append(line.strip())
 
-		return FASTA_entry(id, desc, "".join(seq))		
+		return FASTA_entry(id, desc, "".join(seq))
 
 class GFF_skip(Exception):
 	pass
@@ -175,13 +175,13 @@ class GFF_error(Exception):
 
 class GFF_entry:
 	"""Class representing a GFF entry (row)."""
-	
+
 	def __init__(self, line):
 		"""
 		Parameters
 		----------
 		+ line `str` a line from a GFF file
-		
+
 		Attributes
 		----------
 		+ chrom  `str`   chromosome
@@ -199,11 +199,11 @@ class GFF_entry:
 			raise GFF_skip
 		if line[0:1] == '\n':
 			raise GFF_skip
-			
+
 		column = line.split('\t')
 		if len(column) < 8:
 			raise GFF_error('badly formatted gff')
-		
+
 		self.chrom = column[0]
 		self.source = column[1]
 		self.type = column[2]
@@ -220,7 +220,7 @@ class GFF_entry:
 	def string(self, delim='\t'):
 		"""
 		Returns a string formatted as a GFF row.
-		
+
 		Parameters
 		----------
 		+ delim=`str` delimeter, default is tab
@@ -233,11 +233,11 @@ class GFF_entry:
 		return self.string()
 
 def _from_GTF(file):
-	
+
 	fp = None
 	if re.search(r'\.gz$', file): fp = gzip.open(file)
 	else:                         fp = open(file, 'r')
-		
+
 	# stuff
 	temp = tempfile.TemporaryFile()
 	gffs = []
@@ -249,7 +249,7 @@ def _from_GTF(file):
 		if line[0:1]=='#': continue
 		col = line.rstrip().split('\t')
 		if len(col) < 9: continue
-			
+
 		if col[2] == 'gene':
 			id = re.search('gene_id "(\S+)"', col[8])[1]
 			col[8] = 'ID=' + id
@@ -266,7 +266,7 @@ def _from_GTF(file):
 			gffs.append(col)
 		elif col[2] == 'stop_codon':
 			stops.append(col[3])
-		
+
 	for gff in gffs:
 		if gff[2] == 'CDS':
 			if gff[6] == '+':
@@ -277,7 +277,7 @@ def _from_GTF(file):
 				beg = int(gff[3])
 				if str(beg -3) in stops:
 					gff[3] = str(beg -3)
-	
+
 	# return
 	for gff in gffs: temp.write(str.encode('\t'.join(gff) + '\n'))
 	temp.seek(0)
@@ -288,17 +288,17 @@ def _from_BED12(file):
 	fp = None
 	if re.search(r'\.gz$', file): fp = gzip.open(file)
 	else:                         fp = open(file, 'r')
-		
+
 	# stuff
 	temp = tempfile.TemporaryFile()
 	genes = {}
-	
+
 	# parse the file
 	for line in fp:
 		if isinstance(line, bytes): line = line.decode()
 		col = line.split('\t')
 		if len(col) < 12: continue
-		
+
 		chr_id = col[0]
 		chr_beg = int(col[1]) + 1
 		chr_end = int(col[2])
@@ -313,7 +313,7 @@ def _from_BED12(file):
 		starts = col[11].split(',')
 		gid = re.search('(\w+)\.\d+', txid)[1]
 		attr = 'ID=' + txid + ';Parent=' + gid
-		
+
 		# create the gene feature if necessary
 		if gid not in genes:
 			temp.write(str.encode('\t'.join([chr_id, '.', 'gene', str(chr_beg),
@@ -339,20 +339,20 @@ def _from_BED12(file):
 				else:             ce = end
 				temp.write(str.encode('\t'.join([chr_id, 'araport', 'CDS',
 					str(cb), str(ce), score, strand, '.', attr]) + '\n'))
-	
+
 	# return the bytes object
 	temp.seek(0)
 	return temp
 
 class GFF_file:
 	"""Class for reading and searching a GFF (and other) annotation files."""
-	
+
 	def __init__(self, file=None, source=None):
 		"""
 		Parameters
 		----------
 		+ file=   `str` path to file, which may be compressed
-		
+
 		Attributes
 		----------
 		+ chroms	`list` chromosome names
@@ -362,12 +362,12 @@ class GFF_file:
 		---------------
 		GFF_file reads GFF3 files natively. It also autoconverts files in GTF
 		and BED12 into GFF3. All conversions are by file extension mappings.
-		
+
 		+ GFF3: *.gff3, *.gff3.gz
 		+ GTF: *.gtf, *.gtf.gz
 		+ BED12: *.bed, *.bed.gz
 		"""
-		
+
 		# if it's not GFF3, turn it into GFF3 before proceeding
 		fp = None
 		if   re.search(r'\.gff3\.gz$', file): fp = gzip.open(file)
@@ -381,19 +381,19 @@ class GFF_file:
 		elif re.search(r'\.bed\.gz$',  file): fp = _from_BED12(file)
 		elif re.search(r'\.bed$',      file): fp = _from_BED12(file)
 		else: raise IOError('unknown format: ' + file)
-				
+
 		self._chroms = {}
 		self._types = {}
 		self._source = None
 		self._version = None
 		if source: (self._source, self._version) = source.split('.')
 
-		while (1):
+		while True:
 			line = fp.readline()
 			if isinstance(line, bytes): line = line.decode()
 			if line == '': break
 			if line[0:1] == '>': break
-			
+
 			gff = None
 			try:
 				gff = GFF_entry(line)
@@ -401,7 +401,7 @@ class GFF_file:
 				continue
 			except GFF_error:
 				raise GFF_error('badly formatted gff')
-			
+
 			## source-level filtering
 			if self._source:
 				if self._source == 'wb':
@@ -409,7 +409,7 @@ class GFF_file:
 						continue
 				else:
 					raise GFF_error('only wb filtering so far')
-			
+
 			# save the feature
 			if gff.chrom not in self._chroms: self._chroms[gff.chrom] = []
 			self._chroms[gff.chrom].append(gff)
@@ -471,10 +471,10 @@ class GFF_stream:
 		----------
 		+ filename=    `str` name of a file
 		+ filepointer= `obj` bytes-like object
-		
+
 		Specify filename or filepointer, not both.
 		"""
-		
+
 		self._fp = None
 
 		if filename != None:
@@ -507,7 +507,7 @@ class GFF_stream:
 		if line == '':
 			self._fp.close()
 			raise StopIteration()
-		
+
 		gff = None
 		try:
 			gff = GFF_entry(line)
@@ -515,7 +515,7 @@ class GFF_stream:
 			return self.__next__()
 		except GFF_error:
 			raise GFF_error('badly formatted gff')
-		
+
 		return gff
 
 

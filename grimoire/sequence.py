@@ -1,8 +1,10 @@
 """
 Classes for represnting biological sequences.
 """
+
 import grimoire.toolbox as toolbox
 from grimoire.feature import FeatureTable
+
 
 class SequenceError(Exception):
 	pass
@@ -43,7 +45,7 @@ class DNA(BioSequence):
 		+ name=		`str` ideally a unique identifier
 		+ desc=		`str` free text description of sequence
 		+ seq=		`str` nucleotide sequence
-		
+
 		Attributes
 		----------
 		+ name

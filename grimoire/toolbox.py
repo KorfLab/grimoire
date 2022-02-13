@@ -1,16 +1,17 @@
 """
-Miscellaneous functions for operating on numbers and strings.
+Miscellaneous functions for operating on numbers, strings, and such.
 """
 
 import math
 import re
 import gzip
 import operator
+import random
 from functools import reduce
 
 class ToolboxError(Exception):
 	pass
-	
+
 def prod(iterable):
 	"""Returns product of the elements in an iterable."""
 	return reduce(operator.mul, iterable) # replace with math.prod when  3.8 is standard
@@ -132,3 +133,68 @@ def translate_str(seq, table='standard'):
 		if codon in GCODE[table]: pro.append(GCODE[table][codon])
 		else: pro.append('X')
 	return "".join(pro)
+
+def random_dna(length, a=0.25, c=0.25, g=0.25, t=0.25):
+	"""
+	Generates random nucleotide sequence.
+
+	Parameters
+	----------
+	+ length `int` nucleotide sequence
+	+ a= `float` probability of A
+	+ c= `float` probability of C
+	+ g= `float` probability of G
+	+ t= `float` probability of T
+	"""
+
+	assert(math.isclose(a+c+g+t, 1.0))
+	seq = ''
+	for i in range(length):
+		r = random.random()
+		if   r < a:     seq += 'A'
+		elif r < a+c:   seq += 'C'
+		elif r < a+c+g: seq += 'G'
+		else:           seq += 'T'
+	return seq
+
+def get_filepointer(filename):
+	"""
+	Returns a filepointer to a file based on file name (.gz or - for stdin).
+	"""
+
+	fp = None
+	if   filename.endswith('.gz'): fp = gzip.open(filename, 'rt')
+	elif filename == '-':          fp = sys.stdin
+	else:                          fp = open(filename)
+	return fp
+
+def read_fasta(filename):
+	"""
+	Simple fasta reader that returns name, seq for a filename.
+
+	Parameters
+	----------
+	+ filename
+	"""
+
+	name = None
+	seqs = []
+
+	fp = get_filepointer(filename)
+
+	while True:
+		line = fp.readline()
+		if line == '': break
+		line = line.rstrip()
+		if line.startswith('>'):
+			if len(seqs) > 0:
+				seq = ''.join(seqs)
+				yield(name, seq)
+				name = line[1:]
+				seqs = []
+			else:
+				name = line[1:]
+		else:
+			seqs.append(line)
+	yield(name, ''.join(seqs))
+	fp.close()
