@@ -15,182 +15,104 @@ import grimoire.io as gio
 ## Command line stuff ##
 
 extended_help = """
-haman is used for converting chromosome-based genomic data into
-smaller pieces. This is useful in a training environment when you want
-to create cross-validation training and testing sets or when you want a
-minimal set for tutorials and functional tests.
 
-Segmenting by gene goes through protein-coding gene build and saves as
-fasta + gff3.
+haman is used for converting chromosome-based genomic data into smaller pieces.
+This is useful in a training environment when you want to create cross
+validation training and testing sets or when you want a minimal set for
+tutorials and functional tests.
 
-Segmenting by region pulls all gff of gene-ic regions (overlaps merged) and
-saves as a directory of regions.
+Segmenting by percent keeps the first x% of the genome and saves as <out>.fa
+and <out.gff>.
 
-Segmenting by percent keeps the first x% of the genome.
+Segmenting by gene focuses on plus strand protein-coding genes. Output is fasta
+and gff in the <out> directory.
 
-Source: wb.270 wormbase filtering
+Segmenting by region splits the chromosome into regions of non-overlapping genes.
+
 """
 
 parser = argparse.ArgumentParser(
 	description='Segments chromosome sequences and features.',
 	formatter_class=argparse.RawDescriptionHelpFormatter,
 	epilog=extended_help)
-parser.add_argument('--fasta', required=True, type=str,
-	metavar='<path>', help='path to input fasta file')
-parser.add_argument('--gff', required=True, type=str,
-	metavar='<path>', help='path to input GFF3 (or similar) file')
-parser.add_argument('--out', required=True, type=str,
-	metavar='<str>', help='output name (file or dir)')
-parser.add_argument('--segment', required=False, type=str,
-	metavar='<str>', help='gene|protein|region|percent')
+parser.add_argument('fasta', type=str, metavar='<fasta>',
+	help='path to input fasta file')
+parser.add_argument('gff', type=str, metavar='<gff>',
+	help='path to input GFF3 (or similar) file')
+parser.add_argument('method', type=str, metavar='<method>',
+	help='gene|protein|region|percent')
+parser.add_argument('out', type=str, metavar='<out>',
+	help='output name (file or dir)')
 parser.add_argument('--pct', required=False, type=int, default=1.0,
 	metavar='<int>', help='for use with percent segmenting [%(default).3f]')
 parser.add_argument('--source', required=False, type=str,
 	metavar='<str>', help='rule-based parsing based on gff source')
-parser.add_argument('--split', required=False, type=int, default=1,
-	metavar='<int>', help='split into <int> parts [%(default)d]')
 parser.add_argument('--padding', required=False, type=int, default=100,
-	metavar='<int>', help='length of flanking sequence [%(default)d]')
+	metavar='<int>', help='start of first feature [%(default)d]')
 arg = parser.parse_args()
 
 class HamanError(Exception):
 	pass
 
-def chromify(g, beg, end):
-	dna = DNA(seq=g.dna.seq[beg:end], name=g.id + '-remapped')
-	dna.ftable.add_feature(Feature(dna, g.beg -beg, g.end -beg, g.strand,
-		'gene', id=g.id))
-	for t in g.transcripts():
-		dna.ftable.add_feature(Feature(dna, t.beg -beg, t.end -beg,
-			t.strand, t.type, id=t.id, pid=t.pid))
-		for f in t.children:
-			dna.ftable.add_feature(Feature(dna, f.beg -beg, f.end -beg,
-				f.strand, f.type, pid=f.pid))
-	if g.strand == '-':
-		dna.revcomp()
-	return dna
+def remap_export(root, name, chrom, regions, idx, plus=False):
 
-def remap_export(root, name, chrom, regions, idx):
 	# remap sequence and features smaller and export
 	for region in regions:
 		idx += 1
-		dname = root + '/' + name + str(idx)
-		os.mkdir(dname)
-		
-		# fasta
+
+		# dna
 		seq = chrom.seq[region.beg:region.end+1] # +1 or not?
 		dna = DNA(name=str(idx), seq=seq,
-			desc='chrom:{} beg:{} end:{}'.format(chrom.name,
-			region.beg, region.end))
-		ffp = open(dname + '/' + str(idx) + '.fa', 'w+')
-		ffp.write(dna.fasta())
-		ffp.close()
-					
-		# gff
+			desc=f'chrom:{chrom.name} beg:{region.beg} end:{region.end}')
+
+		# feature table
 		stuff = chrom.ftable.fetch(region.beg, region.end)
 		keep = []
 		for f in stuff:
 			if f.beg <= region.beg or f.end >= region.end: continue
 			keep.append(f)
-		remap = []
+
 		for f in keep:
 			nbeg = f.beg - region.beg
 			nend = f.end - region.beg
-			remap.append(Feature(dna, nbeg, nend,
+			dna.ftable.add_feature(Feature(dna, nbeg, nend,
 				f.strand, f.type, phase=f.phase,
 				score=f.score, source=f.source, id=f.id, pid=f.pid))
-		gfp = open(dname + '/' + str(idx) + '.gff', 'w+')
-		for f in remap:
-			dna.ftable.add_feature(f)
+
+		if plus: dna.revcomp()
+
+		# output
+		ffp = open(f'{root}/{idx}.fa', 'w+')
+		ffp.write(dna.fasta())
+		ffp.close()
+		gfp = open(f'{root}/{idx}.gff', 'w+')
+		for f in dna.ftable.features:
 			gfp.write(f.gff())
 			gfp.write('\n')
-		
-		# json metadata
-		genes = dna.ftable.build_genes()
-		pc_genes = 0
-		nc_genes = 0
-		pc_issues = 0
-		introns = 0
-		strand = None
-		rnaseq = 0
-		for gene in genes:
-			if strand == None:
-				strand = gene.strand
-			elif strand != gene.strand:
-				strand = '.'
-			if len(gene.transcripts()) == 0: nc_genes += 1
-			else:
-				pc_genes += 1
-				if gene.issues: pc_issues += 1
-				for tx in gene.transcripts():
-					introns += len(tx.introns)
-		for f in remap:
-			if f.type == 'intron' and f.source == 'RNASeq_splice':
-				rnaseq += 1
-		meta = {
-			'pc_genes': pc_genes,
-			'nc_genes': nc_genes,
-			'pc_issues': pc_issues,
-			'introns': introns,
-			'strand': strand,
-			'rnaseq': rnaseq,
-		}
-		mfp = open(dname + '/' + str(idx) + '.json', 'w+')
-		mfp.write(json.dumps(meta, indent=4))
-		mfp.close()
-		
+
 	return idx
 
-def segment_by_protein():
-
-	fp = []
-	if arg.split:
-		for i in range(arg.split):
-			fp.append({
-				'gf':open(arg.out + '-' + str(i) + '.gff3', 'w+'),
-				'ff':open(arg.out + '-' + str(i) + '.fa', 'w+'),
-			})
-
-	count = 0
-	genome = Reader(gff=arg.gff, fasta=arg.fasta)
-	for chrom in genome:
-		for gene in chrom.ftable.build_genes():
-			if gene.issues: continue
-			if len(gene.transcripts()) == 0: continue # RNA genes?
-			rbeg = gene.beg - arg.padding -1
-			rend = gene.end + arg.padding +1
-			if rbeg < 1 or rend > len(chrom.seq): continue
-			dna = chromify(gene, rbeg, rend)
-			setn = count % arg.split
-			count += 1
-			fp[setn]['gf'].write(dna.ftable.gff() + '\n')
-			fp[setn]['ff'].write(dna.fasta())
-
 def segment_by_gene():
+
 	if os.path.exists(arg.out):
 		raise HamanError('output dir exists, will not overwrite')
 	os.mkdir(arg.out)
-	
-	genome = Reader(gff=arg.gff, fasta=arg.fasta, source=arg.source)
+
+	genome = Reader(gff=arg.gff, fasta=arg.fasta)
 	idx = 0
 	for chrom in genome:
-	
-		# create gene regions
 		regions = []
-		for f in chrom.ftable.features:
-			if f.type != 'gene': continue
-			beg = f.beg - arg.padding
-			end = f.end + arg.padding
-			if beg < 1: beg = 1
-			if end > len(chrom.seq): end = len(chrom.seq)
+		for gene in chrom.ftable.build_genes():
+			if gene.issues: continue
+			if len(gene.transcripts()) == 0: continue # RNA genes
+			beg = gene.beg - arg.padding
+			end = gene.end - arg.padding
+			if gene.beg < 1 or gene.end >= len(chrom.seq): continue
 			region = Feature(chrom, beg, end, '.', 'region', source='haman')
 			regions.append(region)
-		
-		idx = remap_export(arg.out, 'gene', chrom, regions, idx)
-		
+		idx = remap_export(arg.out, 'gene', chrom, regions, idx, plus=True)
 
 def segment_by_region():
-	"""This is really tied to working with WormBase"""
 
 	if os.path.exists(arg.out):
 		raise HamanError('output dir exists, will not overwrite')
@@ -222,7 +144,7 @@ def segment_by_region():
 					skip = j
 					break
 			regions.append(region)
-		
+
 		idx = remap_export(arg.out, 'region', chrom, regions, idx)
 
 def segment_by_percent():
@@ -237,7 +159,7 @@ def segment_by_percent():
 			for i in range(0, len(chrom[entry.id]), 50):
 				fp.write(f'{chrom[entry.id][i:i+50]}\n')
 
-	with open(f'{arg.out}.gff3', 'w') as fp:
+	with open(f'{arg.out}.gff', 'w') as fp:
 		for gff in gio.GFF_stream(filename=arg.gff):
 			limit = len(chrom[gff.chrom])
 			if gff.beg < limit and gff.end < limit:
@@ -245,8 +167,7 @@ def segment_by_percent():
 
 ## CLI ##
 
-if   arg.segment == 'protein': segment_by_protein()
-elif arg.segment == 'region':  segment_by_region()
-elif arg.segment == 'gene':    segment_by_gene()
-elif arg.segment == 'percent': segment_by_percent()
-else: raise HamanError('unknown segmentation type: ' + arg.segment)
+if   arg.method == 'gene':    segment_by_gene()
+elif arg.method == 'region':  segment_by_region()
+elif arg.method == 'percent': segment_by_percent()
+else: raise HamanError('unknown method: ' + arg.method)
