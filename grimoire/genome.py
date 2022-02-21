@@ -14,20 +14,20 @@ from grimoire.feature import Feature, Gene, mRNA, ncRNA
 
 def gff_to_feature(dna, gff):
 	"""Converts a GFF object into a Feature object."""
-	
+
 	attr = gff.attr.rstrip()
-	
+
 	id = None
 	im = re.search('ID=([^;]+)', attr)
 	if im:
 		id = im[1].rstrip()
-	
+
 	pid = None
-	pm = re.search('Parent=([^;]+)', attr)			
+	pm = re.search('Parent=([^;]+)', attr)
 	if pm:
 		if ',' in pm[1]: pid = pm[1].split(',')
 		else:            pid = pm[1]
-			
+
 	return Feature(dna, gff.beg, gff.end, gff.strand, gff.type,
 		source=gff.source, score=gff.score, id=id, pid=pid)
 
@@ -66,13 +66,13 @@ class Reader:
 			entry = next(self._fasta)
 			dna = DNA(name=entry.id, seq=entry.seq)
 			if self._check: dna.check_alphabet()
-			
+
 			# add features
 			for g in self._gff.get(chrom=dna.name):
 				dna.ftable.add_feature(gff_to_feature(dna, g))
-			
+
 			return dna
-			
+
 		except StopIteration:
 			raise StopIteration()
 

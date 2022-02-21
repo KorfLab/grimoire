@@ -24,10 +24,8 @@ tutorials and functional tests.
 Segmenting by percent keeps the first x% of the genome and saves as <out>.fa
 and <out.gff>.
 
-Segmenting by gene focuses on plus strand protein-coding genes. Output is fasta
-and gff in the <out> directory.
-
-Segmenting by region splits the chromosome into regions of non-overlapping genes.
+Segmenting by gene focuses protein-coding genes. Output is fasta and gff in the
+<out> directory. Sequence and coordinates are converted to plus strand.
 
 """
 
@@ -40,7 +38,7 @@ parser.add_argument('fasta', type=str, metavar='<fasta>',
 parser.add_argument('gff', type=str, metavar='<gff>',
 	help='path to input GFF3 (or similar) file')
 parser.add_argument('method', type=str, metavar='<method>',
-	help='gene|protein|region|percent')
+	help='gene|percent')
 parser.add_argument('out', type=str, metavar='<out>',
 	help='output name (file or dir)')
 parser.add_argument('--pct', required=False, type=int, default=1.0,
@@ -49,50 +47,16 @@ parser.add_argument('--source', required=False, type=str,
 	metavar='<str>', help='rule-based parsing based on gff source')
 parser.add_argument('--padding', required=False, type=int, default=100,
 	metavar='<int>', help='start of first feature [%(default)d]')
+parser.add_argument('--issuesok', action='store_true',
+	help='include genes with non-canoinical issues')
 arg = parser.parse_args()
+
 
 class HamanError(Exception):
 	pass
 
-def remap_export(root, name, chrom, regions, idx, plus=False):
 
-	# remap sequence and features smaller and export
-	for region in regions:
-		idx += 1
-
-		# dna
-		seq = chrom.seq[region.beg:region.end+1] # +1 or not?
-		dna = DNA(name=str(idx), seq=seq,
-			desc=f'chrom:{chrom.name} beg:{region.beg} end:{region.end}')
-
-		# feature table
-		stuff = chrom.ftable.fetch(region.beg, region.end)
-		keep = []
-		for f in stuff:
-			if f.beg <= region.beg or f.end >= region.end: continue
-			keep.append(f)
-
-		for f in keep:
-			nbeg = f.beg - region.beg
-			nend = f.end - region.beg
-			dna.ftable.add_feature(Feature(dna, nbeg, nend,
-				f.strand, f.type, phase=f.phase,
-				score=f.score, source=f.source, id=f.id, pid=f.pid))
-
-		if plus: dna.revcomp()
-
-		# output
-		ffp = open(f'{root}/{idx}.fa', 'w+')
-		ffp.write(dna.fasta())
-		ffp.close()
-		gfp = open(f'{root}/{idx}.gff', 'w+')
-		for f in dna.ftable.features:
-			gfp.write(f.gff())
-			gfp.write('\n')
-
-	return idx
-
-def segment_by_gene():
+def segment_by_protein_coding_gene():
 
 	if os.path.exists(arg.out):
 		raise HamanError('output dir exists, will not overwrite')
@@ -101,51 +65,48 @@ def segment_by_gene():
 	genome = Reader(gff=arg.gff, fasta=arg.fasta)
 	idx = 0
 	for chrom in genome:
-		regions = []
 		for gene in chrom.ftable.build_genes():
+			if not gene.is_coding(): continue
 			if gene.issues: continue
-			if len(gene.transcripts()) == 0: continue # RNA genes
 			beg = gene.beg - arg.padding
-			end = gene.end - arg.padding
+			end = gene.end + arg.padding
 			if gene.beg < 1 or gene.end >= len(chrom.seq): continue
-			region = Feature(chrom, beg, end, '.', 'region', source='haman')
-			regions.append(region)
-		idx = remap_export(arg.out, 'gene', chrom, regions, idx, plus=True)
 
-def segment_by_region():
+			idx += 1
 
-	if os.path.exists(arg.out):
-		raise HamanError('output dir exists, will not overwrite')
-	os.mkdir(arg.out)
+			# fasta
+			name = f'ch.{idx}' # database name
+			seq = chrom.seq[beg:end+1]
+			desc = f'{chrom.name}:{beg}-{end} {gene.id}'
+			dna = DNA(name=name, seq=seq, desc=desc)
 
-	genome = Reader(gff=arg.gff, fasta=arg.fasta, source=arg.source)
-	idx = 0
-	for chrom in genome:
+			# gff
+			stuff = chrom.ftable.fetch(beg, end)
+			keep = []
+			for f in stuff:
+				if f.beg > beg and f.end < end: keep.append(f)
 
-		# create regions of overlapping genes
-		chrom.ftable._sort()
-		genes = []
-		for f in chrom.ftable.features:
-			if f.type == 'gene': genes.append(f)
-		regions = []
-		skip = 0
-		for i in range(len(genes)):
-			if skip > i: continue
-			beg = genes[i].beg - arg.padding
-			end = genes[i].end + arg.padding
-			if beg < 1: beg = 1
-			if end > len(chrom.seq): end = len(chrom.seq)
-			region = Feature(chrom, beg, end, '.', 'region', source='haman')
-			for j in range(i + 1, len(genes)):
-				if genes[j].overlap(region):
-					if genes[j].end > region.end:
-						region.end = genes[j].end
-				else:
-					skip = j
-					break
-			regions.append(region)
+			for f in keep:
+				nbeg = f.beg - beg
+				nend = f.end - beg
+				dna.ftable.add_feature(Feature(dna, nbeg, nend,
+					f.strand, f.type, phase=f.phase,
+					score=f.score, source=f.source, id=f.id, pid=f.pid))
 
-		idx = remap_export(arg.out, 'region', chrom, regions, idx)
+			# convert to plus strand as necessary
+			if gene.strand == '-': dna.revcomp()
+
+			# output
+			ffp = open(f'{arg.out}/{name}.fa', 'w+')
+			ffp.write(dna.fasta())
+			ffp.close()
+
+			gfp = open(f'{arg.out}/{name}.gff3', 'w+')
+			for f in dna.ftable.features:
+				gfp.write(f.gff())
+				gfp.write('\n')
+			gfp.close()
+
 
 def segment_by_percent():
 	FRACTION = arg.pct / 100
@@ -167,7 +128,6 @@ def segment_by_percent():
 
 ## CLI ##
 
-if   arg.method == 'gene':    segment_by_gene()
-elif arg.method == 'region':  segment_by_region()
-elif arg.method == 'percent': segment_by_percent()
+if   arg.method == 'pcg': segment_by_protein_coding_gene()
+elif arg.method == 'pct': segment_by_percent()
 else: raise HamanError('unknown method: ' + arg.method)
