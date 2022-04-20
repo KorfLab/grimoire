@@ -1,27 +1,50 @@
 #!/usr/bin/env python3
 
 import argparse
-import subprocess
+import os
 import sys
 
-import grimoire.genome
-import grimoire.feature
+from grimoire.genome import Reader
 
 #######
 # CLI #
 #######
 
-parser = argparse.ArgumentParser(description='svg-based genome visualizer')
+extended_help = """
+latumapic provides svg images of genome annotations. It requires a fasta file of
+the sequences and gff file of the annotaions. Each record in a fasta file gets
+its own svg. If the output directory is set to 'foo' and the identifier is
+'bar', the image is saved as foo/bar.svg.
+"""
+
+parser = argparse.ArgumentParser(
+	description='svg-based genome visualizer',
+	formatter_class=argparse.RawDescriptionHelpFormatter,
+	epilog=extended_help)
 parser.add_argument('fasta', type=str, metavar='<fasta>',
 	help='path to fasta file')
 parser.add_argument('gff', type=str, metavar='<gff>',
 	help='path to gff file')
+parser.add_argument('out', type=str, metavar='<out dir>',
+	help='path to output directory')
 # many customization options to follow
 arg = parser.parse_args()
 
 ###########
-# Classes # move these to grimoire proper later
+# Classes # move these to grimoire proper later and include unit tests
 ###########
+
+"""
+
+A Drawing has the following elements
++ header
++ body - tracks
++ footer
++ decorations
+
+"""
+
+just a bunch of ideas at this point, not working code
 
 class Drawing():
 
@@ -49,7 +72,7 @@ class Drawing():
 
 class Track():
 
-	def __init__(self, dna, title="Untitled Track"):
+	def __init__(self, title="Untitled Track"):
 		self.title = title
 
 	def add_features(self, f):
@@ -58,12 +81,92 @@ class Track():
 	def add_gene(self, tx):
 		pass
 		
+class Exon():
+
+	def __init__(self, beg, end, strand,
+			score=None, cds_beg=None, cds_end=None):
+		self.beg = beg
+		self.end = end
+		self.strand = strand
+		self.score = score
+		self.cds_beg = cds_beg
+		self.cds_end = cds_end
+
+	def svg():
+		pass
+
+class Intron():
+	
+	def __init__(self, beg, end, strand,
+			score=None, don=None, acc=None):
+		self.beg = beg
+		self.end = end
+		self.strand = strand
+		self.score = score
+		self.don = don
+		self.acc = acc
+
+	def svg():
+		pass
+
+class Transcript():
+
+	def __init__(self, tx):
+		self.tx = tx
+	
+	def svg():
 		
+
+	
+		
+class Decoration():
+
+	def __init__(self, type,
+			x=None, y=None, w=None, h=None,
+			x1=None, x2=None, y1=None, y2=None, 
+			r=None, rx=None, ry=None,
+			title=None, text=None,
+			stroke=None, fill=None):
+		self.type = type
+		self.x = x
+		self.y = y
+		self.w = w
+		self.h = h
+		self.x1 = x1
+		self.x2 = x2
+		self.y1 = y1
+		self.y2 = y2
+		self.r = r
+		self.rx = rx
+		self.ry = ry
+		self.title = title
+		self.text = text
+		self.color = color
+		self.stroke = stroke
+		self.fill = fill
+
 ########
 # Main #
 ########
 
-for chrom in grimoire.genome.Reader(arg.fasta, arg.gff):
+if not os.path.exists(arg.out): os.mkdir(arg.out)
+
+for chrom in Reader(arg.fasta, arg.gff):
 	print(chrom.name, chrom.desc, len(chrom.seq))
 	
 
+"""
+
+set viewbox to actual size and then use absolute pixel coordinates
+
+circle
+ellipse
+<g> for group - not sure I will use it
+line
+rect - can have rounded corners
+text - of course
+title - use for mouse-over text, make it the first element inside
+	use to label the name of the gene
+	use to label the intron consensus?
+
+"""
