@@ -64,7 +64,7 @@ class Reader:
 		"""
 		try:
 			entry = next(self._fasta)
-			dna = DNA(name=entry.id, seq=entry.seq)
+			dna = DNA(name=entry.id, seq=entry.seq, desc=entry.desc)
 			if self._check: dna.check_alphabet()
 
 			# add features

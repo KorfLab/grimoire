@@ -1,0 +1,69 @@
+#!/usr/bin/env python3
+
+import argparse
+import subprocess
+import sys
+
+import grimoire.genome
+import grimoire.feature
+
+#######
+# CLI #
+#######
+
+parser = argparse.ArgumentParser(description='svg-based genome visualizer')
+parser.add_argument('fasta', type=str, metavar='<fasta>',
+	help='path to fasta file')
+parser.add_argument('gff', type=str, metavar='<gff>',
+	help='path to gff file')
+# many customization options to follow
+arg = parser.parse_args()
+
+###########
+# Classes # move these to grimoire proper later
+###########
+
+class Drawing():
+
+	def __init__(self, dna, title="Untitled", width=1000):
+		self.title = title
+		self.width = width
+		self.scale = len(dna.seq) / width
+		self.tracks = []
+
+	def add_track(self, track):
+		self.tracks.append(track)
+	
+	def plot(self, size=10):
+		xmlns = 'xmlns="http://www.w3.org/2000/svg"'
+		height = (len(self.body) + 2) * size
+		vbox = f'viewBox="0 0 {self.width} {height}"'
+		print(f'<svg {vbox} {xmlns}>')
+		print('<style>')
+		print('  .red { fill: red; }')
+		print('  .blk { fill: black; }')
+		print('</style>')
+		print(f'<text x="10" y="10" class="blk">{self.title}</text>')
+		print('</svg>')
+
+
+class Track():
+
+	def __init__(self, dna, title="Untitled Track"):
+		self.title = title
+
+	def add_features(self, f):
+		pass
+
+	def add_gene(self, tx):
+		pass
+		
+		
+########
+# Main #
+########
+
+for chrom in grimoire.genome.Reader(arg.fasta, arg.gff):
+	print(chrom.name, chrom.desc, len(chrom.seq))
+	
+

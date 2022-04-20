@@ -28,6 +28,7 @@ Program names are themed after spell names from the classic RPG
 |:----------|:-----------|:---------------------------------------|
 | calfo     | x-ray      | genome annotation reporter
 | kandi     | locate     | curses-based genome annotation viewer
+| latumapic | identify   | svg-based static annotation viewer
 | haman     | change     | genome slicer
 | milwa     | light      | state builder
 | lomilwa   | more light | hmm assembler
@@ -42,7 +43,6 @@ Program names are themed after spell names from the classic RPG
 | lahalito  | torch      | (planned full genome decoder)
 | tiltowait | explosion  | (planned multi-genome decoder)
 | zilwan    | dispel     | (planned profile/alignment decoder)
-| latumapic | identify   | (planned region-ifier)
 | molito    | spark storm| (planned recursive intron decoder)
 | porfic    | shield     | (planned intron trainer for molito)
 
