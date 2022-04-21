@@ -63,12 +63,10 @@ class Track():
 	# track x-coordiantes are nucleotide coordinats
 	# track y-coordinates are 0 (modified elsewhere)
 
-	def __init__(self, title="Untitled Track"):
-		self.title = title
+	def __init__(self, text=None):
+		self.text = text
 		self.stuff = [] # the various elements in the track
-
-	def add_box(self, f, title=None):
-		pass
+		self.size = 0
 
 	def add_exon(self, f, title=None):
 		pass
@@ -84,16 +82,36 @@ class Track():
 
 	def add_wiggle(self, a, title=None):
 		pass
-		# poly-line
 
 	def add_arrow(self, a, title=None):
 		pass
-		# promoter
 
 	def add_transcript(self, gene):
 		pass
-		# exons, introns, cds
 
+class Box():
+
+	def __init__(self, beg, end, size, color='black', text=None):
+		self.beg = beg
+		self.end = end
+		self.size = size
+		self.color = color
+		self.text = text
+	
+	def svg(self, y):
+		pass # need to pass in y always
+
+class Line():
+
+	def __init__(self, beg, end, size, color='black', text=None):
+		self.beg = beg
+		self.end = end
+		self.size = size
+		self.color = color
+		self.text = text
+	
+	def svg(self, y):
+		pass # need to pass in y always
 
 
 ########
@@ -108,12 +126,14 @@ for chrom in Reader(arg.fasta, arg.gff):
 	for gene in chrom.ftable.build_genes():
 		for tx in gene.transcripts():
 			track = Track(title=tx.id)
+			fig.add_track(track)
 			for exon in tx.exons:
-				track.add_box(exon)
+				track.add_exon(exon)
 			for intron in tx.introns:
 				track.add_intron(intron)
 			for cds in tx.cdss:
-				track.add_box(cds)
+				track.add_cds(cds)
+	# make up some other elements
 
 
 """

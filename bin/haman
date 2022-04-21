@@ -67,7 +67,7 @@ def segment_by_protein_coding_gene():
 	for chrom in genome:
 		for gene in chrom.ftable.build_genes():
 			if not gene.is_coding(): continue
-			if gene.issues: continue
+			if gene.issues and not arg.issuesok: continue
 			beg = gene.beg - arg.padding
 			end = gene.end + arg.padding
 			if gene.beg < 1 or gene.end >= len(chrom.seq): continue

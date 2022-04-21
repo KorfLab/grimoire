@@ -242,13 +242,13 @@ class mRNA(Transcript):
 	+ utr3s		`list`	3' UTRs
 	"""
 
-	clade = 'std' #standard
+	clade = 'std' # standard
 	limit = {
-		'exon':   {'min':20, 'max':10000},
+		'exon':   {'min':25, 'max':10000},
 		'cds':    {'min':1,  'max':10000},
 		'utr5':   {'min':0,  'max':1000},
 		'utr3':   {'min':0,  'max':1000},
-		'intron': {'min':30, 'max':10000},
+		'intron': {'min':35, 'max':10000},
 	}
 	dons = {'GT':True}
 	accs = {'AG':True}
