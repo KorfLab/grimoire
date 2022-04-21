@@ -34,116 +34,67 @@ arg = parser.parse_args()
 # Classes # move these to grimoire proper later and include unit tests
 ###########
 
-"""
+class Figure():
 
-A Drawing has the following elements
-+ header
-+ body - tracks
-+ footer
-+ decorations
-
-"""
-
-just a bunch of ideas at this point, not working code
-
-class Drawing():
-
-	def __init__(self, dna, title="Untitled", width=1000):
-		self.title = title
-		self.width = width
-		self.scale = len(dna.seq) / width
+	def __init__(self, dna, filename, title=None):
+		self.filename = filename # eventually
 		self.tracks = []
+		self.width = len(dna.seq)
 
 	def add_track(self, track):
 		self.tracks.append(track)
-	
-	def plot(self, size=10):
-		xmlns = 'xmlns="http://www.w3.org/2000/svg"'
-		height = (len(self.body) + 2) * size
-		vbox = f'viewBox="0 0 {self.width} {height}"'
-		print(f'<svg {vbox} {xmlns}>')
-		print('<style>')
-		print('  .red { fill: red; }')
-		print('  .blk { fill: black; }')
-		print('</style>')
-		print(f'<text x="10" y="10" class="blk">{self.title}</text>')
-		print('</svg>')
 
+	def height(self):
+		return 100 # need to add up header, body, footer
+
+	def svg(self, size=10):
+		xmlns = 'xmlns="http://www.w3.org/2000/svg"'
+		vbox = f'viewBox="0 0 {self.width} {self.height()}"'
+		out = []
+		out.append(f'<svg {vbox} {xmlns}>') # begin
+		# header
+		# body
+		# footer
+		# decorations
+		out.append('</svg>') # end
 
 class Track():
 
+	# track x-coordiantes are nucleotide coordinats
+	# track y-coordinates are 0 (modified elsewhere)
+
 	def __init__(self, title="Untitled Track"):
 		self.title = title
+		self.stuff = [] # the various elements in the track
 
-	def add_features(self, f):
+	def add_box(self, f, title=None):
 		pass
 
-	def add_gene(self, tx):
+	def add_exon(self, f, title=None):
 		pass
-		
-class Exon():
+		# just a box with specific color scheme
 
-	def __init__(self, beg, end, strand,
-			score=None, cds_beg=None, cds_end=None):
-		self.beg = beg
-		self.end = end
-		self.strand = strand
-		self.score = score
-		self.cds_beg = cds_beg
-		self.cds_end = cds_end
-
-	def svg():
+	def add_cds(self, f, title=None):
 		pass
+		# just a box with a specific color scheme
 
-class Intron():
-	
-	def __init__(self, beg, end, strand,
-			score=None, don=None, acc=None):
-		self.beg = beg
-		self.end = end
-		self.strand = strand
-		self.score = score
-		self.don = don
-		self.acc = acc
-
-	def svg():
+	def add_intron(self, f, title=None):
 		pass
+		# poly-line with elbow
 
-class Transcript():
+	def add_wiggle(self, a, title=None):
+		pass
+		# poly-line
 
-	def __init__(self, tx):
-		self.tx = tx
-	
-	def svg():
-		
+	def add_arrow(self, a, title=None):
+		pass
+		# promoter
 
-	
-		
-class Decoration():
+	def add_transcript(self, gene):
+		pass
+		# exons, introns, cds
 
-	def __init__(self, type,
-			x=None, y=None, w=None, h=None,
-			x1=None, x2=None, y1=None, y2=None, 
-			r=None, rx=None, ry=None,
-			title=None, text=None,
-			stroke=None, fill=None):
-		self.type = type
-		self.x = x
-		self.y = y
-		self.w = w
-		self.h = h
-		self.x1 = x1
-		self.x2 = x2
-		self.y1 = y1
-		self.y2 = y2
-		self.r = r
-		self.rx = rx
-		self.ry = ry
-		self.title = title
-		self.text = text
-		self.color = color
-		self.stroke = stroke
-		self.fill = fill
+
 
 ########
 # Main #
@@ -152,16 +103,23 @@ class Decoration():
 if not os.path.exists(arg.out): os.mkdir(arg.out)
 
 for chrom in Reader(arg.fasta, arg.gff):
-	print(chrom.name, chrom.desc, len(chrom.seq))
-	
+	fig = Figure(chrom, f'{arg.out}/{chrom.name}.svg')
+	print(fig.filename)
+	for gene in chrom.ftable.build_genes():
+		for tx in gene.transcripts():
+			track = Track(title=tx.id)
+			for exon in tx.exons:
+				track.add_box(exon)
+			for intron in tx.introns:
+				track.add_intron(intron)
+			for cds in tx.cdss:
+				track.add_box(cds)
+
 
 """
-
 set viewbox to actual size and then use absolute pixel coordinates
 
-circle
-ellipse
-<g> for group - not sure I will use it
+circle/ellipse for decorations
 line
 rect - can have rounded corners
 text - of course
