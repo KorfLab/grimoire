@@ -3,6 +3,7 @@ Classes for sequence features
 """
 
 import operator
+import sys
 
 import grimoire.toolbox as toolbox
 
@@ -373,6 +374,43 @@ class mRNA(Transcript):
 		if stop not in self.stops: self.issues['stop'] = True
 		for i in range(len(pro) - 1):
 			if pro[i:i+1] == '*': self.issues['ptc'] = True
+
+
+	def use_longest_orf(self):
+		# not sure if this works on negative strand
+		#print('\nstarting use_longest_orf', file=sys.stderr)
+		#print(len(self.dna.seq))
+		#print(self)
+		rna = ''
+		for exon in self.exons: rna += exon.seq_str()
+		pep, cds_tx_beg = toolbox.longest_orf(rna)
+		if pep == None: return
+		cds_tx_end = cds_tx_beg + len(pep) * 3 + 2
+		#print(pep, cds_tx_beg, cds_tx_end)
+		moff = 0 # mRNA offset
+		for exon in self.exons:
+			eb = moff               # coor in mRNA-space
+			ee = moff + exon.length # coor in mRNA-space
+			
+			if ee >= cds_tx_beg and eb <= cds_tx_end:
+				#if cds_tx_beg == ee:
+				#print('making cds from', exon)
+				#print(eb, cds_tx_beg, ee, cds_tx_end)
+				if cds_tx_beg == ee: continue
+				cds_beg = exon.beg
+				cds_end = exon.end
+				if eb < cds_tx_beg:
+					cds_beg = exon.beg + cds_tx_beg - moff
+				if ee > cds_tx_end:
+					cds_end = exon.beg + cds_tx_end - moff
+				#print('making', cds_beg, cds_end)
+				cds = Feature(self.dna, cds_beg, cds_end, exon.strand,
+					'CDS', source='longest_orf', pid=self.id)
+				#print(cds)
+				self.cdss.append(cds)
+			
+			moff += exon.length
+		#print('ending use_longest_orf', file=sys.stderr)
 
 	def cds_str(self):
 		"""Returns sequence of coding exons as a string."""

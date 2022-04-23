@@ -7,6 +7,7 @@ import re
 import gzip
 import operator
 import random
+import sys
 from functools import reduce
 
 class ToolboxError(Exception):
@@ -133,6 +134,26 @@ def translate_str(seq, table='standard'):
 		if codon in GCODE[table]: pro.append(GCODE[table][codon])
 		else: pro.append('X')
 	return "".join(pro)
+
+def longest_orf(seq):
+	orfs = []
+	for f in range(3):
+		pro = translate_str(seq[f:])
+		start = 0
+		while start < len(pro):
+			stop = 0
+			if pro[start] == 'M':
+				for i, s in enumerate(pro[start+1:]):
+					if s == '*':
+						stop = i + start +1
+						break
+			if stop != 0:
+				orfs.append( (pro[start:stop], start*3 + f) )
+			start += 1
+	orfs.sort(key=lambda t: len(t[0]), reverse=True)
+	
+	if len(orfs) > 0: return orfs[0]
+	else:             return (None, None)
 
 def random_dna(length, a=0.25, c=0.25, g=0.25, t=0.25):
 	"""
