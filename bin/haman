@@ -38,7 +38,7 @@ parser.add_argument('fasta', type=str, metavar='<fasta>',
 parser.add_argument('gff', type=str, metavar='<gff>',
 	help='path to input GFF3 (or similar) file')
 parser.add_argument('method', type=str, metavar='<method>',
-	help='gene|percent')
+	help='pcg|pct')
 parser.add_argument('out', type=str, metavar='<out>',
 	help='output name (file or dir)')
 parser.add_argument('--pct', required=False, type=int, default=1.0,
