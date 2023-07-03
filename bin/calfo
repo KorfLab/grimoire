@@ -303,7 +303,7 @@ if f_err + f_ok > 0:
 ###############################################################################
 
 FOOTER = """
-This document was prepared using <em>fathom</em>,
+This document was prepared using <em>calfo</em>,
 part of the <em>grimoire</em> tools from the KorfLab.
 For more information, see
 <a href="https://github.com/KorfLab/grimoire">grimoire</a> at GitHub.
