@@ -68,8 +68,8 @@ def segment_by_protein_coding_gene():
 		for gene in chrom.ftable.build_genes():
 			if not gene.is_coding(): continue
 			if gene.issues and not arg.issuesok: continue
-			beg = gene.beg - arg.padding
-			end = gene.end + arg.padding
+			beg = gene.beg - arg.padding -1
+			end = gene.end + arg.padding -1
 			if gene.beg < 1 or gene.end >= len(chrom.seq): continue
 
 			idx += 1
@@ -94,7 +94,9 @@ def segment_by_protein_coding_gene():
 					score=f.score, source=f.source, id=f.id, pid=f.pid))
 
 			# convert to plus strand as necessary
-			if gene.strand == '-': dna.revcomp()
+			if gene.strand == '-':
+				#continue
+				dna.revcomp()
 
 			# output
 			ffp = open(f'{arg.out}/{name}.fa', 'w+')
