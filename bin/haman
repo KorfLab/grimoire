@@ -79,7 +79,7 @@ def segment_by_protein_coding_gene():
 			# fasta
 			name = f'ch.{idx}' # database name
 			seq = chrom.seq[beg:end+1]
-			desc = f'{chrom.name}:{beg}-{end} {gene.id}'
+			desc = f'{chrom.name}:{beg}-{end} {gene.strand} {gene.id}'
 			dna = DNA(name=name, seq=seq, desc=desc)
 
 			# gff
