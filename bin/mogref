@@ -35,9 +35,9 @@ parser.add_argument('--null_model', action='store_true',
 	help='emit sequence from the null model')
 arg = parser.parse_args()
 
-class MorlisError(Exception):
+class MogrefError(Exception):
 	pass
-	
+
 def convert_to_cdf(state):
 	if state.ctxt == 0:
 		sum = 0
@@ -53,7 +53,7 @@ def convert_to_cdf(state):
 
 def null_generator(model, length):
 	if (model.null.ctxt > 0):
-		raise MorlisError('null model context > 0')
+		raise MogrefError('null model context > 0')
 	seq = ''
 	while (len(seq) < length):
 		r = random.random()
@@ -67,12 +67,12 @@ def state_generator(model, init, map, length):
 	padding = 10 # in case there is context
 	seq = null_generator(model, padding)
 	path = []
-		
+
 	while len(seq) < length + padding:
 		r = random.random()
 		state = map[init]
 		found = None
-		
+
 		if state.ctxt == 0:
 			r = random.random()
 			for nt in ['A', 'C', 'G', 'T']:
@@ -86,12 +86,12 @@ def state_generator(model, init, map, length):
 				if r < state.emit[ctx][nt]:
 					found = nt
 					break
-		
+
 		if found:
 			seq += found
 			path.append(state.name)
 			next = None
-			
+
 			# choose next state (inefficient)
 			r = random.random()
 			sum = 0
@@ -101,10 +101,10 @@ def state_generator(model, init, map, length):
 					next = name
 					break
 		else:
-			raise MorlisError('unforeseen')
-		
+			raise MorgrefError('unforeseen')
+
 		init = name
-	
+
 	return seq[padding:], path
 
 if __name__ == '__main__':
@@ -114,7 +114,7 @@ if __name__ == '__main__':
 
 	model = HMM.read(filename=arg.hmm)
 	if model.log:
-		raise MorlisError('log-space models not supported')
+		raise MogrefError('log-space models not supported')
 
 	# convert all state emissions to cumulative distributions
 	for s in model.states:
@@ -127,7 +127,7 @@ if __name__ == '__main__':
 	for s in model.states:
 		sum += s.init
 		init_cdf.append({'name':s.name, 'prob':sum})
-	if sum < 0: raise MorlisError('sum needs to be at least 1.0')
+	if sum < 0: raise MogrefError('sum needs to be at least 1.0')
 
 	# mapping of state array to state dictionary needed later
 	map = {}
@@ -142,12 +142,12 @@ if __name__ == '__main__':
 		dna = None
 		features = []
 		name = 'emitted-' + str(i)
-	
+
 		if arg.null_model:
 			seq = null_generator(model, arg.length)
 			dna = DNA(seq=seq, name=name)
 			features.append(Feature(dna, 1, arg.length, '.', 'chromosome'))
-		else:	
+		else:
 			init = None
 			r = random.random()
 			for v in init_cdf:
@@ -159,11 +159,11 @@ if __name__ == '__main__':
 			dec = HMM_NT_decoder(dna=dna, model=model)
 			p = Parse(path=path, decoder=dec)
 			features = p.features()
-	
+
 		# write files
 		fasta.write(dna.fasta())
 		for f in features:
 			gff.write(f.gff() + '\n')
-	
+
 	fasta.close()
 	gff.close()
