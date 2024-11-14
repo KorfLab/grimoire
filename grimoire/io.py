@@ -251,17 +251,17 @@ def _from_GTF(file):
 		if len(col) < 9: continue
 
 		if col[2] == 'gene':
-			id = re.search('gene_id "(\S+)"', col[8])[1]
+			id = re.search(r'gene_id "(\S+)"', col[8])[1]
 			col[8] = 'ID=' + id
 			gffs.append(col)
 		elif col[2] == 'transcript':
-			pid = re.search('gene_id "(\S+)"', col[8])[1]
-			tid = re.search('transcript_id "(\S+)"', col[8])[1]
+			pid = re.search(r'gene_id "(\S+)"', col[8])[1]
+			tid = re.search(r'transcript_id "(\S+)"', col[8])[1]
 			col[2] = 'mRNA'
 			col[8] = 'ID=' + tid + ';Parent=' + pid
 			gffs.append(col)
 		elif col[2] == 'exon' or col[2] == 'CDS':
-			pid = re.search('transcript_id "(\S+)"', col[8])[1]
+			pid = re.search(r'transcript_id "(\S+)"', col[8])[1]
 			col[8] = 'Parent=' + pid
 			gffs.append(col)
 		elif col[2] == 'stop_codon':
@@ -311,7 +311,7 @@ def _from_BED12(file):
 		n = int(col[9])
 		sizes = col[10].split(',')
 		starts = col[11].split(',')
-		gid = re.search('(\w+)\.\d+', txid)[1]
+		gid = re.search(r'(\w+)\.\d+', txid)[1]
 		attr = 'ID=' + txid + ';Parent=' + gid
 
 		# create the gene feature if necessary

@@ -49,6 +49,8 @@ parser.add_argument('--padding', required=False, type=int, default=100,
 	metavar='<int>', help='start of first feature [%(default)d]')
 parser.add_argument('--issuesok', action='store_true',
 	help='include genes with non-canoinical issues')
+parser.add_argument('--plus', action='store_true',
+	help='convert all genes to positive strand')
 arg = parser.parse_args()
 
 
@@ -77,7 +79,7 @@ def segment_by_protein_coding_gene():
 			# fasta
 			name = f'ch.{idx}' # database name
 			seq = chrom.seq[beg:end+1]
-			desc = f'{chrom.name}:{beg}-{end} {gene.id}'
+			desc = f'{chrom.name}:{beg}-{end} {gene.strand} {gene.id}'
 			dna = DNA(name=name, seq=seq, desc=desc)
 
 			# gff
@@ -94,9 +96,7 @@ def segment_by_protein_coding_gene():
 					score=f.score, source=f.source, id=f.id, pid=f.pid))
 
 			# convert to plus strand as necessary
-			if gene.strand == '-':
-				#continue
-				dna.revcomp()
+			if gene.strand == '-' and arg.plus: dna.revcomp()
 
 			# output
 			ffp = open(f'{arg.out}/{name}.fa', 'w+')
